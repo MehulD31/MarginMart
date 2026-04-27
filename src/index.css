@@ -590,7 +590,7 @@ img { max-width: 100%; display: block; }
 /* ---- Floating WhatsApp ---- */
 .floating-wa {
   position: fixed;
-  bottom: 1.5rem;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   right: 1.5rem;
   z-index: 999;
   width: 60px;
@@ -602,13 +602,24 @@ img { max-width: 100%; display: block; }
   justify-content: center;
   color: white;
   box-shadow: 0 4px 20px rgba(37, 211, 102, 0.5);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   animation: pulse-wa 2s infinite;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.floating-wa:hover {
-  transform: scale(1.1);
-  box-shadow: 0 8px 30px rgba(37, 211, 102, 0.6);
+.floating-wa:active {
+  transform: scale(0.92);
+}
+
+.btn-whatsapp:active,
+.btn-outline:active {
+  transform: scale(0.96);
+}
+
+.btn-whatsapp, .btn-outline {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @keyframes pulse-wa {
