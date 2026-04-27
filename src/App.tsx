@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  TrendingUp, 
-  MessageCircle, 
-  Truck, 
-  CheckCircle2, 
+import {
+  TrendingUp,
+  MessageCircle,
+  Truck,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Phone,
@@ -148,8 +148,8 @@ const ProblemSection = () => (
           { emoji: "😤", title: "Competition zyada, margin kam", desc: "Bagal wali dukaan ne rate gira diya, ab aap bhi girate ho. Profit zero." },
           { emoji: "⏰", title: "Time hi nahi milta", desc: "Subah se raat tak dukaan pe baithna padta hai. Deals dhundhne ka waqt kahan hai?" },
         ].map((item, i) => (
-          <motion.div 
-            key={i} 
+          <motion.div
+            key={i}
             className="problem-card"
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -172,7 +172,7 @@ const TwoWays = () => (
     <div className="container">
       <h2 className="section-title">2 Tarike se Kaam Karta Hai</h2>
       <p className="section-sub">Aap choose karo — dono free hain</p>
-      
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
         <motion.div
           style={{ background: 'var(--green-light)', border: '2px solid var(--green)', borderRadius: 'var(--radius)', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
@@ -194,11 +194,11 @@ const TwoWays = () => (
                 </div>
               ))}
             </div>
-            <a 
-              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20join%20the%20Daily%20Deals%20group" 
-              className="btn-whatsapp" 
+            <a
+              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20join%20the%20Daily%20Deals%20group"
+              className="btn-whatsapp"
               style={{ padding: '0.6rem 1rem', fontSize: '0.9rem', justifyContent: 'center' }}
-              target="_blank" 
+              target="_blank"
               rel="noopener"
             >
               Join Deals Group
@@ -226,11 +226,11 @@ const TwoWays = () => (
                 </div>
               ))}
             </div>
-            <a 
-              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20share%20my%20product%20list%20to%20save%20money" 
-              className="btn-whatsapp" 
+            <a
+              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20share%20my%20product%20list%20to%20save%20money"
+              className="btn-whatsapp"
               style={{ background: 'var(--orange)', padding: '0.6rem 1rem', fontSize: '0.9rem', justifyContent: 'center' }}
-              target="_blank" 
+              target="_blank"
               rel="noopener"
             >
               Share Product List
@@ -260,9 +260,9 @@ const PriceTable = () => {
       <div className="container">
         <h2 className="section-title">Kitna bachega? Khud dekho 👇</h2>
         <p className="section-sub">Real prices jo humne last week track kiye — aapke supplier se compare karo</p>
-        
+
         <div className="price-table-wrapper">
-          <motion.div 
+          <motion.div
             className="price-table"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -287,7 +287,7 @@ const PriceTable = () => {
             ))}
           </motion.div>
         </div>
-        
+
         <div style={{ textAlign: 'center', marginTop: '2rem' }}>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.95rem' }}>
             Sirf 8 products pe <strong style={{ color: 'var(--green)' }}>₹168 saved</strong> — sochiye daily kitna bach sakta hai
@@ -308,7 +308,7 @@ const HowItWorks = () => (
     <div className="container">
       <h2 className="section-title">Kaam kaise hota hai?</h2>
       <p className="section-sub">4 simple steps — aapko kuch nahi karna, bas order do</p>
-      
+
       <div className="steps-grid">
         {[
           { num: "1", icon: <Bot size={20} />, title: "AI Prices Track Karta Hai", desc: "Humara AI automation system Zepto, Blinkit, JioMart, Amazon pe har product ka price 24/7 monitor karta hai" },
@@ -316,8 +316,8 @@ const HowItWorks = () => (
           { num: "3", icon: <CheckCircle2 size={20} />, title: "Aap Order Karo", desc: "Bas reply karo kitna chahiye — koi app download, koi login nahi" },
           { num: "4", icon: <Truck size={20} />, title: "Dukaan Pe Delivery", desc: "10 minute se lekar 48 ghante mein delivery — source ke hisaab se. COD ya online payment, jo aapko suit kare." },
         ].map((step, i) => (
-          <motion.div 
-            key={i} 
+          <motion.div
+            key={i}
             className="step-card"
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -340,30 +340,30 @@ const Testimonials = () => (
     <div className="container">
       <h2 className="section-title">Dukandaar kya bol rahe hain</h2>
       <p className="section-sub">Jo log already use kar rahe hain unka experience</p>
-      
+
       <div className="testimonial-grid">
         {[
-          { 
-            name: "Ramesh Gupta", 
-            loc: "Kirana Store, Dwarka", 
+          {
+            name: "Ramesh Gupta",
+            loc: "Kirana Store, Dwarka",
             initial: "R",
-            text: "Pehle supplier se fixed rate pe leta tha. Ab MarginMart se 15-20% sasta mil jaata hai. Aur unka AI system itna fast hai — Zepto se order karo toh 10 minute mein aa jaata hai. Mahine ka ₹8,000-10,000 extra bach raha hai." 
+            text: "Pehle supplier se fixed rate pe leta tha. Ab MarginMart se 15-20% sasta mil jaata hai. Aur unka AI system itna fast hai — Zepto se order karo toh 10 minute mein aa jaata hai. Mahine ka ₹8,000-10,000 extra bach raha hai."
           },
-          { 
-            name: "Sunil Sharma", 
-            loc: "Grocery Shop, Rohini", 
+          {
+            name: "Sunil Sharma",
+            loc: "Grocery Shop, Rohini",
             initial: "S",
-            text: "WhatsApp pe daily deals aati hain. Jo chahiye wo reply kar deta hoon. Next day dukaan pe mil jaata hai. Bahut simple hai." 
+            text: "WhatsApp pe daily deals aati hain. Jo chahiye wo reply kar deta hoon. Next day dukaan pe mil jaata hai. Bahut simple hai."
           },
-          { 
-            name: "Priya Verma", 
-            loc: "General Store, Janakpuri", 
+          {
+            name: "Priya Verma",
+            loc: "General Store, Janakpuri",
             initial: "P",
-            text: "Mujhe sabse accha yeh laga ki koi udhaar ka jhanjhat nahi. Cash on delivery hai. Aur prices sach mein kam hain." 
+            text: "Mujhe sabse accha yeh laga ki koi udhaar ka jhanjhat nahi. Cash on delivery hai. Aur prices sach mein kam hain."
           },
         ].map((t, i) => (
-          <motion.div 
-            key={i} 
+          <motion.div
+            key={i}
             className="testimonial-card"
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -389,35 +389,35 @@ const Testimonials = () => (
 // ─── FAQ ───
 const FAQ = () => {
   const [open, setOpen] = useState<number | null>(null)
-  
+
   const faqs = [
-    { 
-      q: "Kya mujhe apna existing supplier chhodna padega?", 
-      a: "Bilkul nahi. Hum keh rahe hain — apne supplier se bhi lo, par jo cheezein humse sasti mil rahi hain woh humse le lo. Dono saath chal sakta hai." 
+    {
+      q: "Kya mujhe apna existing supplier chhodna padega?",
+      a: "Bilkul nahi. Hum keh rahe hain — apne supplier se bhi lo, par jo cheezein humse sasti mil rahi hain woh humse le lo. Dono saath chal sakta hai."
     },
-    { 
-      q: "Minimum kitna order karna padega?", 
-      a: "Koi minimum order nahi hai. Aapko jo chahiye — 1 packet bhi ho ya 100 — hum deliver karenge." 
+    {
+      q: "Minimum kitna order karna padega?",
+      a: "Koi minimum order nahi hai. Aapko jo chahiye — 1 packet bhi ho ya 100 — hum deliver karenge."
     },
-    { 
-      q: "Payment kaise hoga?", 
-      a: "Dono option hain — Cash on Delivery (COD) ya Online Payment (UPI/GPay). Jab maal aapki dukaan pe aaye, tab paisa do. Koi advance nahi lagta." 
+    {
+      q: "Payment kaise hoga?",
+      a: "Dono option hain — Cash on Delivery (COD) ya Online Payment (UPI/GPay). Jab maal aapki dukaan pe aaye, tab paisa do. Koi advance nahi lagta."
     },
-    { 
-      q: "Delivery kitne time mein hoti hai?", 
-      a: "Yeh depend karta hai sourcing pe. Agar Zepto/Blinkit se mil raha hai toh 10 minute mein bhi aa sakta hai. Agar wholesale ya Amazon se source ho raha hai toh 24-48 ghante lagte hain. Har deal ke saath delivery time bata dete hain." 
+    {
+      q: "Delivery kitne time mein hoti hai?",
+      a: "Yeh depend karta hai sourcing pe. Agar Zepto/Blinkit se mil raha hai toh 10 minute mein bhi aa sakta hai. Agar wholesale ya Amazon se source ho raha hai toh 24-48 ghante lagte hain. Har deal ke saath delivery time bata dete hain."
     },
-    { 
-      q: "Yeh products original hain ya duplicate?", 
-      a: "100% original branded products. Yeh same products hain jo Blinkit aur JioMart pe milte hain — hum wahan se best deals pick karke aapko dete hain." 
+    {
+      q: "Yeh products original hain ya duplicate?",
+      a: "100% original branded products. Yeh same products hain jo Blinkit aur JioMart pe milte hain — hum wahan se best deals pick karke aapko dete hain."
     },
-    { 
-      q: "Koi signup fee ya subscription hai?", 
-      a: "Nahi, bilkul free hai. Koi hidden charges nahi. Aap sirf product ka price pay karo." 
+    {
+      q: "Koi signup fee ya subscription hai?",
+      a: "Nahi, bilkul free hai. Koi hidden charges nahi. Aap sirf product ka price pay karo."
     },
-    { 
-      q: "Kya main apni zaroorat ke products maang sakta hoon?", 
-      a: "Haan bilkul! Aap do tarike se use kar sakte ho: (1) Hum daily deals bhejte hain WhatsApp pe, ya (2) Aap apne top 10 best-selling products ya jo stock khatam ho gaya uski list bhejo — humara AI system best price dhundh ke aapko batayega." 
+    {
+      q: "Kya main apni zaroorat ke products maang sakta hoon?",
+      a: "Haan bilkul! Aap do tarike se use kar sakte ho: (1) Hum daily deals bhejte hain WhatsApp pe, ya (2) Aap apne top 10 best-selling products ya jo stock khatam ho gaya uski list bhejo — humara AI system best price dhundh ke aapko batayega."
     },
   ]
 
@@ -426,19 +426,19 @@ const FAQ = () => {
       <div className="container">
         <h2 className="section-title">Aksar Poochhe Jaane Wale Sawaal</h2>
         <p className="section-sub">Aapke mann mein jo bhi doubt ho, yahan dekho</p>
-        
+
         <div className="faq-list">
           {faqs.map((faq, i) => (
             <div className="faq-item" key={i}>
-              <button 
-                className="faq-question" 
+              <button
+                className="faq-question"
                 onClick={() => setOpen(open === i ? null : i)}
               >
                 {faq.q}
                 {open === i ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </button>
               {open === i && (
-                <motion.div 
+                <motion.div
                   className="faq-answer"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -459,7 +459,7 @@ const FAQ = () => {
 const FinalCTA = () => (
   <section className="final-cta">
     <div className="container">
-      <motion.div 
+      <motion.div
         className="final-cta-box"
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
