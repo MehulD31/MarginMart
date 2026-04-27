@@ -5,19 +5,11 @@ import {
   MessageCircle, 
   Truck, 
   CheckCircle2, 
-  Search, 
-  Zap,
   ChevronDown,
   ChevronUp,
-  Clock,
-  ShieldCheck,
-  IndianRupee,
   Phone,
-  Store,
   AlertTriangle,
-  Bot,
-  CreditCard,
-  Banknote
+  Bot
 } from 'lucide-react'
 import './index.css'
 
