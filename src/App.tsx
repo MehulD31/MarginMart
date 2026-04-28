@@ -3,16 +3,12 @@ import { motion } from 'framer-motion'
 import {
   TrendingUp,
   MessageCircle,
-  Truck,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Phone,
   AlertTriangle,
-  Bot,
-  ShoppingBag,
-  Zap,
-  Sparkles
+  Bot
 } from 'lucide-react'
 import './index.css'
 
