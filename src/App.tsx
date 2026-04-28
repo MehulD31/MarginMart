@@ -86,7 +86,7 @@ const Hero = () => (
           seedha aapki <span className="highlight-orange">dukaan</span> pe
         </h1>
         <p className="hero-sub">
-          Grocery, Fashion, Electronics, Beauty, Footwear — humara AI rozana 500+ deals track karta hai Amazon, Flipkart, Myntra, Ajio aur 3 aur platforms pe.
+          Grocery, Fashion, Electronics, Beauty — rozana WhatsApp Community pe deals aati hain product photo ke saath. Ya apni zaroorat batao — hum 7+ platforms scan karke best price dhundh denge.
         </p>
         <motion.a
           href={WA_LINK}
@@ -224,28 +224,28 @@ const TwoWays = () => (
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
         >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📢</div>
+          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>👥</div>
           <div style={{ background: 'var(--green)', color: 'white', display: 'inline-block', padding: '0.3rem 0.8rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700, marginBottom: '1rem', textTransform: 'uppercase' }}>Way 1</div>
-          <h3 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>Hum Deals Bhejte Hain</h3>
+          <h3 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>WhatsApp Community Join Karo</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-            Rozana WhatsApp pe best deals aati hain — photo ke saath. Jo pasand aaye, reply karo aur order ho jaaye.
+            Hamare WhatsApp Community mein shamil ho jao. Rozana product photos aur prices aate hain — jo deal pasand aaye, us message pe reply karo. Hum order place karke aapki dukaan pe deliver kar denge.
           </p>
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {['Daily deals on WhatsApp', 'Photo + price attached', 'Bas reply karo = order done'].map((item, i) => (
+              {['Community mein join karo — free', 'Daily deals: photo + price milega', 'Deal pasand aaya? Bas reply karo', 'Hum order place karke deliver karenge'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
                   <CheckCircle2 size={15} color="var(--green)" /> {item}
                 </div>
               ))}
             </div>
             <a
-              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20join%20the%20Daily%20Deals%20group"
+              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20join%20the%20MarginMart%20WhatsApp%20Community"
               className="btn-whatsapp"
               style={{ padding: '0.6rem 1rem', fontSize: '0.9rem', justifyContent: 'center' }}
               target="_blank"
               rel="noopener"
             >
-              Join Deals Group
+              Community Mein Join Karo
             </a>
           </div>
         </motion.div>
@@ -256,28 +256,28 @@ const TwoWays = () => (
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
         >
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔍</div>
+          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📋</div>
           <div style={{ background: 'var(--orange)', color: 'white', display: 'inline-block', padding: '0.3rem 0.8rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700, marginBottom: '1rem', textTransform: 'uppercase' }}>Way 2</div>
-          <h3 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>Aap Batao, Hum Dhundhein</h3>
+          <h3 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>Apni Zaroorat Batao, Hum Dhundhein</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-            Apne top 10 best-selling products ya out-of-stock items ki list do. Hum AI se best price dhundh ke denge.
+            Jo product chahiye uska naam WhatsApp pe bhejo. Hum Amazon, Flipkart, Myntra, Ajio, Zepto, Blinkit aur JioMart — sabhi jagah scan karke sabse sasta option aapko batayenge.
           </p>
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {['Apni product list bhejo', 'Stock khatam hua? Hum laate hain', 'Best price guaranteed'].map((item, i) => (
+              {['Product ka naam bhejo', 'Hum 7+ platforms scan karenge', 'Best price confirm hone ke baad order', 'Seedha dukaan pe delivery'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
                   <CheckCircle2 size={15} color="var(--orange)" /> {item}
                 </div>
               ))}
             </div>
             <a
-              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20share%20my%20product%20list%20to%20save%20money"
+              href="https://wa.me/918871565551?text=Hi%2C%20mujhe%20kuch%20products%20chahiye%2C%20kya%20aap%20best%20price%20dhundh%20sakte%20ho%3F"
               className="btn-whatsapp"
               style={{ background: 'var(--orange)', padding: '0.6rem 1rem', fontSize: '0.9rem', justifyContent: 'center' }}
               target="_blank"
               rel="noopener"
             >
-              Share Product List
+              Apni Zaroorat Bhejo
             </a>
           </div>
         </motion.div>
@@ -358,10 +358,10 @@ const HowItWorks = () => (
 
       <div className="steps-grid">
         {[
-          { num: "1", title: "AI 7 Platforms Track Karta Hai", desc: "Amazon, Flipkart, Myntra, Ajio, Zepto, Blinkit, JioMart — sabka data ek jagah. Grocery se fashion tak har deal monitor hoti hai." },
-          { num: "2", title: "Deal ya Zaroorat — Dono Chalega", desc: "Hum daily multi-category deals bhejte hain WhatsApp pe. Ya aap specific products ki list bhejo — hum dhundh denge." },
-          { num: "3", title: "Aap Order Karo", desc: "Bas reply karo — koi app download, koi login nahi. Hum sourcing, packaging aur dispatch handle karte hain." },
-          { num: "4", title: "Dukaan Pe Delivery", desc: "10 minute se lekar 48 ghante mein delivery — source ke hisaab se. COD ya online payment, jo suit kare." },
+          { num: "1", title: "Community Join Karo ya Requirement Bhejo", desc: "WhatsApp Community mein join karo daily deals ke liye — ya seedha apni product requirement hume message karo." },
+          { num: "2", title: "Deal Dekho ya Hum Scan Karte Hain", desc: "Community mein rozana product photos + prices aate hain. Ya aapki requirement ke liye hum Amazon, Flipkart, Myntra, Ajio, Zepto, Blinkit, JioMart — sabhi check karte hain." },
+          { num: "3", title: "Reply Karo — Order Ho Jaata Hai", desc: "Jo deal chahiye us message pe reply karo, ya hum best price confirm karne ke baad aapka order place karte hain. Koi app, koi login nahi." },
+          { num: "4", title: "Dukaan Pe Delivery", desc: "COD ya online payment — jo suit kare. 10 minute se lekar 48 ghante mein delivery, source ke hisaab se." },
         ].map((step, i) => (
           <motion.div
             key={i}
