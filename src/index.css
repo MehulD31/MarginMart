@@ -37,6 +37,12 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  /* Reserve space for sticky mobile CTA */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 768px) {
+  body { padding-bottom: 72px; }
 }
 
 h1, h2, h3, h4 {
@@ -718,58 +724,177 @@ img { max-width: 100%; display: block; }
   50% { box-shadow: 0 4px 30px rgba(37, 211, 102, 0.7); }
 }
 
-/* ---- Responsive ---- */
+/* ===== MOBILE-FIRST RESPONSIVE ===== */
+
+/* --- 768px: tablets & large phones --- */
 @media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-  }
-  
-  .stat-number { font-size: 1.8rem; }
-  
+
+  /* Section spacing */
+  .section { padding: 3rem 0; }
+  .hero { padding: 2.5rem 0 3rem; }
+  .final-cta { padding: 3rem 0; }
+  .final-cta-box { padding: 2.5rem 1.25rem; }
+
+  /* Stats — 3 across still fits at 768 */
+  .stats-grid { gap: 1rem; }
+  .stat-number { font-size: 2rem; }
+
+  /* Steps — 2 columns */
   .steps-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
-  
+
+  /* Price table — horizontal scroll, hide emoji */
   .price-table-header,
   .price-row {
-    grid-template-columns: 1.5fr 1fr 1fr 0.8fr;
+    grid-template-columns: 1.6fr 0.9fr 0.9fr 0.8fr;
     padding: 0.85rem 1rem;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
-  
   .product-emoji { display: none; }
-  
-  .section { padding: 3.5rem 0; }
-  
-  .hero { padding: 3rem 0 3.5rem; }
-  
-  .hero-badges { gap: 0.75rem; }
-  
-  .final-cta-box { padding: 2.5rem 1.5rem; }
-  
+  .cat-pill { display: none; }
+
+  /* Testimonials — single column */
   .testimonial-grid { grid-template-columns: 1fr; }
+
+  /* Hero badges — 2 per row */
+  .hero-badges {
+    gap: 0.5rem 1rem;
+    justify-content: center;
+  }
+  .hero-badge { font-size: 0.82rem; }
+
+  /* Platforms — 3 per row */
+  .platform-card {
+    min-width: 90px;
+    padding: 1.1rem 1.2rem;
+  }
+
+  /* Categories — 3 per row */
+  .categories-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.85rem;
+  }
+  .category-card { padding: 1.25rem 0.75rem; }
+  .category-emoji { font-size: 1.8rem; }
+  .category-label { font-size: 0.8rem; }
+
+  /* Trust bar — wrap smaller */
+  .trust-item { font-size: 0.8rem; }
+
+  /* Calc */
+  .calc-box { padding: 2rem 1.25rem; }
+  .calc-result-card { min-width: 120px; padding: 1rem; }
+  .calc-result-num { font-size: 1.5rem; }
 }
 
+/* --- 480px: standard phones --- */
 @media (max-width: 480px) {
+
+  /* Global */
+  .container { padding: 0 1rem; }
+  .section { padding: 2.5rem 0; }
+
+  /* Hero */
+  .hero { padding: 2rem 0 2.5rem; }
+  .hero h1 { font-size: 1.9rem; line-height: 1.2; }
+  .hero-sub { font-size: 0.95rem; margin-bottom: 2rem; }
+
+  /* Buttons — full width on mobile for max tap area */
+  .btn-whatsapp-lg {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem 1.5rem;
+    font-size: 1.05rem;
+    border-radius: 14px;
+  }
+
+  /* Hero badges — 2 per row */
+  .hero-badges { gap: 0.4rem 0.75rem; }
+  .hero-badge { font-size: 0.78rem; }
+
+  /* Stats — single column */
   .stats-grid {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    gap: 1.25rem;
+    text-align: center;
   }
-  
-  .steps-grid {
-    grid-template-columns: 1fr;
+  .stat-number { font-size: 2.4rem; }
+
+  /* Steps — single column */
+  .steps-grid { grid-template-columns: 1fr; gap: 1rem; }
+
+  /* Categories — 2 per row */
+  .categories-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
   }
-  
-  .hero h1 { font-size: 2rem; }
-  
-  .hero-sub { font-size: 1rem; }
-  
-  .btn-whatsapp-lg {
-    padding: 0.9rem 1.8rem;
-    font-size: 1rem;
+
+  /* Platforms — wrap naturally */
+  .platforms-grid { gap: 0.75rem; }
+  .platform-card { min-width: 80px; padding: 1rem; }
+  .platform-emoji { font-size: 1.6rem; }
+  .platform-name { font-size: 0.8rem; }
+
+  /* Price table — compact 3-col (hide Supplier col) */
+  .price-table-header {
+    grid-template-columns: 2fr 1fr 0.8fr;
   }
+  .price-row {
+    grid-template-columns: 2fr 1fr 0.8fr;
+  }
+  .price-table-header span:nth-child(2),
+  .price-row .old-price { display: none; }
+
+  /* FAQ — bigger tap targets */
+  .faq-question {
+    padding: 1rem 1.25rem;
+    font-size: 0.92rem;
+    min-height: 56px;
+  }
+  .faq-answer { padding: 0 1.25rem 1rem; }
+
+  /* Testimonials */
+  .testimonial-card { padding: 1.5rem 1.25rem; }
+
+  /* Section titles */
+  .section-title { font-size: 1.6rem; }
+  .section-sub { font-size: 0.95rem; margin-bottom: 2rem; }
+
+  /* Final CTA */
+  .final-cta-box { padding: 2rem 1rem; }
+  .final-cta-box h2 { font-size: 1.6rem; }
+  .final-cta-box p { font-size: 0.95rem; }
+  .urgency-tag { font-size: 0.78rem; }
+
+  /* Trust bar — 2 per row */
+  .trust-grid { gap: 0.5rem 1.5rem; }
+  .trust-item { font-size: 0.78rem; }
+
+  /* Calculator */
+  .calc-box { padding: 1.75rem 1rem; border-radius: 16px; }
+  .calc-label { font-size: 0.92rem; }
+  .calc-spend { font-size: 1.4rem; }
+  .calc-results { flex-direction: column; gap: 0.75rem; }
+  .calc-result-card { min-width: unset; width: 100%; padding: 1rem 1.5rem; }
+  .calc-result-num { font-size: 1.8rem; }
+  .calc-divider { transform: rotate(90deg); }
+
+  /* Sticky CTA — taller touch target */
+  .sticky-cta { padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px)); }
+  .sticky-cta-btn { font-size: 1.05rem; border-radius: 14px; padding: 0.95rem; }
+
+  /* Social toast — above sticky bar */
+  .social-toast { bottom: 5.5rem; left: 0.75rem; right: 0.75rem; max-width: unset; }
+
+  /* Navbar */
+  .logo { font-size: 1.2rem; }
+  .btn-whatsapp-nav { padding: 0.55rem 1rem; font-size: 0.82rem; }
+
+  /* Problem cards */
+  .problem-card { padding: 1.5rem; }
+  .problem-emoji { font-size: 2rem; }
 }
 
 /* ---- Trust Bar ---- */
