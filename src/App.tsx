@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   TrendingUp,
@@ -9,7 +9,10 @@ import {
   ChevronUp,
   Phone,
   AlertTriangle,
-  Bot
+  Bot,
+  ShoppingBag,
+  Zap,
+  Sparkles
 } from 'lucide-react'
 import './index.css'
 
@@ -25,13 +28,19 @@ const WA_LINK = "https://wa.me/918871565551?text=Hi%2C%20I%20want%20today's%20pr
 const Ticker = () => {
   const items = [
     "🔥 Maggi 12-pack ₹145 (MRP ₹168)",
+    "👟 Skechers Sneakers 40% OFF on Amazon",
+    "🌸 Engage Perfume Set ₹299 (MRP ₹599)",
     "⚡ Fortune Oil 1L ₹128 (MRP ₹142)",
+    "👗 Myntra Fashion — Up to 60% OFF",
     "💰 Surf Excel 1kg ₹98 (MRP ₹115)",
+    "🎧 Boat Earphones ₹799 (MRP ₹1499)",
+    "🛍️ Ajio Brand Sale — Extra 30% OFF",
     "🔥 Parle-G 800g ₹72 (MRP ₹85)",
-    "⚡ Tata Salt 1kg ₹18 (MRP ₹28)",
-    "💰 Aashirvaad Atta 5kg ₹245 (MRP ₹295)",
-    "🔥 Vim Bar 3-pack ₹38 (MRP ₹48)",
+    "🫖 Electric Kettle ₹449 (MRP ₹999)",
     "⚡ Dettol Soap 4-pack ₹165 (MRP ₹196)",
+    "💰 Aashirvaad Atta 5kg ₹245 (MRP ₹295)",
+    "👖 Levis Jeans Flat 50% OFF — Flipkart",
+    "🧴 Mamaearth Kit ₹399 (MRP ₹799)",
   ]
   const doubled = [...items, ...items]
 
@@ -74,14 +83,14 @@ const Hero = () => (
         transition={{ duration: 0.6 }}
       >
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.4rem 1rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--green)', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          <Bot size={14} /> AI-Powered Price Tracking
+          <Bot size={14} /> AI-Powered Deal Sourcing — 7 Platforms
         </div>
         <h1>
-          Supplier se <span className="highlight-green">sasta maal</span>,<br />
+          Har category ka <span className="highlight-green">sasta maal</span>,<br />
           seedha aapki <span className="highlight-orange">dukaan</span> pe
         </h1>
         <p className="hero-sub">
-          Humara AI system rozana 100+ products ke prices track karta hai Zepto, Blinkit, JioMart & Amazon pe. Ya apni zaroorat batao — hum dhundh ke denge.
+          Grocery, Fashion, Electronics, Beauty, Footwear — humara AI rozana 500+ deals track karta hai Amazon, Flipkart, Myntra, Ajio aur 3 aur platforms pe.
         </p>
         <motion.a
           href={WA_LINK}
@@ -92,12 +101,9 @@ const Hero = () => (
           whileTap={{ scale: 0.97 }}
         >
           <MessageCircle size={22} fill="white" />
-          Aaj Ki Price List Mangao
+          Aaj Ki Deals WhatsApp Pe Mangao
         </motion.a>
         <div className="hero-badges">
-          <div className="hero-badge">
-            <CheckCircle2 size={16} /> Free Delivery
-          </div>
           <div className="hero-badge">
             <CheckCircle2 size={16} /> Koi Signup Fee Nahi
           </div>
@@ -105,7 +111,10 @@ const Hero = () => (
             <CheckCircle2 size={16} /> COD / Online Payment
           </div>
           <div className="hero-badge">
-            <CheckCircle2 size={16} /> 10 Min se 48hr Delivery
+            <CheckCircle2 size={16} /> 10+ Categories Covered
+          </div>
+          <div className="hero-badge">
+            <CheckCircle2 size={16} /> AI-Verified Deals
           </div>
         </div>
       </motion.div>
@@ -119,16 +128,16 @@ const StatsBar = () => (
     <div className="container">
       <div className="stats-grid">
         <div>
-          <div className="stat-number">100+</div>
-          <div className="stat-label">Products Tracked by AI Daily</div>
+          <div className="stat-number">500+</div>
+          <div className="stat-label">Deals Tracked by AI Daily</div>
         </div>
         <div>
-          <div className="stat-number">20%</div>
-          <div className="stat-label">Average Savings</div>
+          <div className="stat-number">7</div>
+          <div className="stat-label">Platforms Monitored</div>
         </div>
         <div>
-          <div className="stat-number">10min</div>
-          <div className="stat-label">Fastest Delivery (via Zepto/Blinkit)</div>
+          <div className="stat-number">10+</div>
+          <div className="stat-label">Product Categories</div>
         </div>
       </div>
     </div>
@@ -140,13 +149,13 @@ const ProblemSection = () => (
   <section className="section">
     <div className="container">
       <h2 className="section-title">Yeh problems toh aapki bhi hain?</h2>
-      <p className="section-sub">Har kirana owner in problems se guzarta hai — par ab solution hai</p>
+      <p className="section-sub">Chahe grocery ho, fashion ho, ya electronics — har chhote dukandaar ko yeh problems face karni padti hain</p>
       <div className="problem-grid">
         {[
-          { emoji: "💸", title: "Supplier fixed rate pe bechta hai", desc: "Woh kabhi discount nahi deta, chahe market mein kitna bhi sasta ho. Aapka margin wahi ka wahi." },
-          { emoji: "📱", title: "Online sasta hai, par kaise khareedein?", desc: "Blinkit pe ₹98, aap ₹115 mein lete ho. Par online order karke delivery manage karna mushkil hai." },
-          { emoji: "😤", title: "Competition zyada, margin kam", desc: "Bagal wali dukaan ne rate gira diya, ab aap bhi girate ho. Profit zero." },
-          { emoji: "⏰", title: "Time hi nahi milta", desc: "Subah se raat tak dukaan pe baithna padta hai. Deals dhundhne ka waqt kahan hai?" },
+          { emoji: "💸", title: "Supplier fixed rate pe bechta hai", desc: "Woh kabhi discount nahi deta, chahe Amazon ya Flipkart pe kitna bhi sasta ho. Aapka margin wahi ka wahi." },
+          { emoji: "🛍️", title: "Online deals miss ho jaati hain", desc: "Amazon, Myntra, Ajio pe flash sales aati hain — aapko pata bhi nahi chalta. Deal khatam, mauka gaya." },
+          { emoji: "😤", title: "Competition zyada, margin kam", desc: "Bagal wali dukaan ne rate gira diya, ab aap bhi girate ho. Grocery se lekar garments tak — har jagah same problem." },
+          { emoji: "⏰", title: "Time hi nahi milta", desc: "Subah se raat tak dukaan pe baithna padta hai. 7 platforms pe deals dhundhne ka waqt kahan hai?" },
         ].map((item, i) => (
           <motion.div
             key={i}
@@ -165,6 +174,45 @@ const ProblemSection = () => (
     </div>
   </section>
 )
+
+// ─── Categories Section ───
+const CategoriesSection = () => {
+  const cats = [
+    { emoji: "🛒", label: "Grocery & FMCG", sub: "Zepto, Blinkit, JioMart" },
+    { emoji: "👗", label: "Fashion & Clothing", sub: "Myntra, Ajio, Flipkart" },
+    { emoji: "📱", label: "Electronics & Gadgets", sub: "Amazon, Flipkart" },
+    { emoji: "💄", label: "Beauty & Skincare", sub: "Nykaa, Amazon, Myntra" },
+    { emoji: "👟", label: "Footwear", sub: "Amazon, Ajio, Myntra" },
+    { emoji: "🏠", label: "Home & Kitchen", sub: "Amazon, Flipkart" },
+    { emoji: "🧴", label: "Health & Hygiene", sub: "All Platforms" },
+    { emoji: "🎒", label: "Bags & Accessories", sub: "Ajio, Myntra, Amazon" },
+  ]
+  return (
+    <section className="section">
+      <div className="container">
+        <h2 className="section-title">10+ Categories, Ek Jagah Se</h2>
+        <p className="section-sub">Sirf grocery nahi — har tarah ke products ke best deals, directly aapke WhatsApp pe</p>
+        <div className="categories-grid">
+          {cats.map((c, i) => (
+            <motion.div
+              key={i}
+              className="category-card"
+              initial={{ opacity: 0, scale: 0.92 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.07 }}
+              viewport={{ once: true }}
+              whileHover={{ y: -4 }}
+            >
+              <div className="category-emoji">{c.emoji}</div>
+              <div className="category-label">{c.label}</div>
+              <div className="category-sub">{c.sub}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
 
 // ─── Two Ways Section ───
 const TwoWays = () => (
@@ -245,14 +293,14 @@ const TwoWays = () => (
 // ─── Price Comparison Table ───
 const PriceTable = () => {
   const products = [
-    { emoji: "🍜", name: "Maggi Noodles (12pk)", supplier: "₹168", ours: "₹145", save: "₹23" },
-    { emoji: "🫗", name: "Fortune Oil (1L)", supplier: "₹142", ours: "₹128", save: "₹14" },
-    { emoji: "🧼", name: "Surf Excel (1kg)", supplier: "₹115", ours: "₹98", save: "₹17" },
-    { emoji: "🍪", name: "Parle-G (800g)", supplier: "₹85", ours: "₹72", save: "₹13" },
-    { emoji: "🧂", name: "Tata Salt (1kg)", supplier: "₹28", ours: "₹18", save: "₹10" },
-    { emoji: "🌾", name: "Aashirvaad Atta (5kg)", supplier: "₹295", ours: "₹245", save: "₹50" },
-    { emoji: "🧴", name: "Vim Bar (3-pack)", supplier: "₹48", ours: "₹38", save: "₹10" },
-    { emoji: "🧼", name: "Dettol Soap (4-pack)", supplier: "₹196", ours: "₹165", save: "₹31" },
+    { emoji: "🍜", name: "Maggi Noodles (12pk)", supplier: "₹168", ours: "₹145", save: "₹23", cat: "Grocery" },
+    { emoji: "👟", name: "Skechers Sneakers (Men's)", supplier: "₹3999", ours: "₹2399", save: "₹1600", cat: "Footwear" },
+    { emoji: "🌸", name: "Engage Perfume Set", supplier: "₹599", ours: "₹299", save: "₹300", cat: "Beauty" },
+    { emoji: "🎧", name: "boAt Earphones (BassHeads)", supplier: "₹1499", ours: "₹799", save: "₹700", cat: "Electronics" },
+    { emoji: "👖", name: "Levis Women Jeans", supplier: "₹2999", ours: "₹1499", save: "₹1500", cat: "Fashion" },
+    { emoji: "🫖", name: "Electric Kettle 1.5L", supplier: "₹999", ours: "₹449", save: "₹550", cat: "Home" },
+    { emoji: "🧴", name: "Mamaearth Skincare Kit", supplier: "₹799", ours: "₹399", save: "₹400", cat: "Beauty" },
+    { emoji: "🌾", name: "Aashirvaad Atta (5kg)", supplier: "₹295", ours: "₹245", save: "₹50", cat: "Grocery" },
   ]
 
   return (
@@ -278,7 +326,10 @@ const PriceTable = () => {
               <div className="price-row" key={i}>
                 <div className="product-name">
                   <span className="product-emoji">{p.emoji}</span>
-                  {p.name}
+                  <span>
+                    {p.name}
+                    <span className="cat-pill">{p.cat}</span>
+                  </span>
                 </div>
                 <div className="old-price">{p.supplier}</div>
                 <div className="new-price">{p.ours}</div>
@@ -290,7 +341,7 @@ const PriceTable = () => {
 
         <div style={{ textAlign: 'center', marginTop: '2rem' }}>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.95rem' }}>
-            Sirf 8 products pe <strong style={{ color: 'var(--green)' }}>₹168 saved</strong> — sochiye daily kitna bach sakta hai
+            Sirf 8 items pe <strong style={{ color: 'var(--green)' }}>₹5,123 saved</strong> — grocery se lekar fashion tak, sab sasta
           </p>
           <a href={WA_LINK} className="btn-whatsapp" target="_blank" rel="noopener">
             <MessageCircle size={18} fill="white" />
@@ -311,10 +362,10 @@ const HowItWorks = () => (
 
       <div className="steps-grid">
         {[
-          { num: "1", icon: <Bot size={20} />, title: "AI Prices Track Karta Hai", desc: "Humara AI automation system Zepto, Blinkit, JioMart, Amazon pe har product ka price 24/7 monitor karta hai" },
-          { num: "2", icon: <MessageCircle size={20} />, title: "Deal ya Zaroorat — Dono Chalega", desc: "Hum daily deals bhejte hain WhatsApp pe. Ya aap apni product list / out-of-stock items bhejo — hum dhundh denge" },
-          { num: "3", icon: <CheckCircle2 size={20} />, title: "Aap Order Karo", desc: "Bas reply karo kitna chahiye — koi app download, koi login nahi" },
-          { num: "4", icon: <Truck size={20} />, title: "Dukaan Pe Delivery", desc: "10 minute se lekar 48 ghante mein delivery — source ke hisaab se. COD ya online payment, jo aapko suit kare." },
+          { num: "1", title: "AI 7 Platforms Track Karta Hai", desc: "Amazon, Flipkart, Myntra, Ajio, Zepto, Blinkit, JioMart — sabka data ek jagah. Grocery se fashion tak har deal monitor hoti hai." },
+          { num: "2", title: "Deal ya Zaroorat — Dono Chalega", desc: "Hum daily multi-category deals bhejte hain WhatsApp pe. Ya aap specific products ki list bhejo — hum dhundh denge." },
+          { num: "3", title: "Aap Order Karo", desc: "Bas reply karo — koi app download, koi login nahi. Hum sourcing, packaging aur dispatch handle karte hain." },
+          { num: "4", title: "Dukaan Pe Delivery", desc: "10 minute se lekar 48 ghante mein delivery — source ke hisaab se. COD ya online payment, jo suit kare." },
         ].map((step, i) => (
           <motion.div
             key={i}
@@ -347,19 +398,19 @@ const Testimonials = () => (
             name: "Ramesh Gupta",
             loc: "Kirana Store, Dwarka",
             initial: "R",
-            text: "Pehle supplier se fixed rate pe leta tha. Ab MarginMart se 15-20% sasta mil jaata hai. Aur unka AI system itna fast hai — Zepto se order karo toh 10 minute mein aa jaata hai. Mahine ka ₹8,000-10,000 extra bach raha hai."
+            text: "Pehle sirf grocery pe dhyan tha. Ab MarginMart se grocery ke saath electronics aur beauty products bhi saste milte hain. Mahine ka ₹12,000 extra bach raha hai across categories."
           },
           {
-            name: "Sunil Sharma",
-            loc: "Grocery Shop, Rohini",
-            initial: "S",
-            text: "WhatsApp pe daily deals aati hain. Jo chahiye wo reply kar deta hoon. Next day dukaan pe mil jaata hai. Bahut simple hai."
+            name: "Neha Kapoor",
+            loc: "Fashion Boutique, Lajpat Nagar",
+            initial: "N",
+            text: "Myntra aur Ajio pe jo deals aati hain woh mujhe pehle miss ho jaati thi. Ab WhatsApp pe seedha aa jaati hai. Maine apne boutique ke liye 40% saste mein stock kiya."
           },
           {
             name: "Priya Verma",
             loc: "General Store, Janakpuri",
             initial: "P",
-            text: "Mujhe sabse accha yeh laga ki koi udhaar ka jhanjhat nahi. Cash on delivery hai. Aur prices sach mein kam hain."
+            text: "Grocery se shuru ki thi, par ab electronics aur home products bhi yahan se leti hoon. COD hai toh risk bhi nahi. Sach mein useful service hai."
           },
         ].map((t, i) => (
           <motion.div
@@ -385,6 +436,44 @@ const Testimonials = () => (
     </div>
   </section>
 )
+
+// ─── Platforms Section ───
+const PlatformsSection = () => {
+  const platforms = [
+    { name: "Amazon", emoji: "📦", color: "#FF9900" },
+    { name: "Flipkart", emoji: "🛍️", color: "#2874F0" },
+    { name: "Myntra", emoji: "👗", color: "#FF3F6C" },
+    { name: "Ajio", emoji: "👠", color: "#E84E1B" },
+    { name: "Zepto", emoji: "⚡", color: "#8B5CF6" },
+    { name: "Blinkit", emoji: "💛", color: "#F59E0B" },
+    { name: "JioMart", emoji: "🛒", color: "#0070C0" },
+  ]
+  return (
+    <section className="section section-alt">
+      <div className="container">
+        <h2 className="section-title">7 Platforms, Ek WhatsApp</h2>
+        <p className="section-sub">Hum in sabhi platforms pe deals monitor karte hain — aapko sirf hume message karna hai</p>
+        <div className="platforms-grid">
+          {platforms.map((p, i) => (
+            <motion.div
+              key={i}
+              className="platform-card"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }}
+              viewport={{ once: true }}
+              whileHover={{ y: -3 }}
+            >
+              <div className="platform-emoji">{p.emoji}</div>
+              <div className="platform-name" style={{ color: p.color }}>{p.name}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 
 // ─── FAQ ───
 const FAQ = () => {
@@ -455,6 +544,127 @@ const FAQ = () => {
   )
 }
 
+
+// ─── Savings Calculator ───
+const SavingsCalculator = () => {
+  const [spend, setSpend] = useState(50000)
+  const savings = Math.round(spend * 0.18)
+  const yearly = savings * 12
+
+  return (
+    <section className="section section-alt">
+      <div className="container">
+        <h2 className="section-title">Mahine mein kitna bachega? 🧮</h2>
+        <p className="section-sub">Apna monthly stock purchase enter karo — hum batate hain kitna profit badhega</p>
+        <motion.div
+          className="calc-box"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <div className="calc-label">Aapka monthly stock purchase (₹)</div>
+          <div className="calc-slider-row">
+            <span className="calc-min">₹10k</span>
+            <input
+              id="savings-slider"
+              type="range"
+              min={10000}
+              max={500000}
+              step={5000}
+              value={spend}
+              onChange={e => setSpend(Number(e.target.value))}
+              className="calc-slider"
+            />
+            <span className="calc-max">₹5L</span>
+          </div>
+          <div className="calc-spend">₹{spend.toLocaleString('en-IN')}</div>
+          <div className="calc-results">
+            <div className="calc-result-card">
+              <div className="calc-result-num" style={{ color: 'var(--green)' }}>
+                ₹{savings.toLocaleString('en-IN')}
+              </div>
+              <div className="calc-result-label">Monthly Savings (avg 18%)</div>
+            </div>
+            <div className="calc-divider">×12</div>
+            <div className="calc-result-card">
+              <div className="calc-result-num" style={{ color: 'var(--orange)' }}>
+                ₹{yearly.toLocaleString('en-IN')}
+              </div>
+              <div className="calc-result-label">Yearly Extra Profit</div>
+            </div>
+          </div>
+          <a href={WA_LINK} className="btn-whatsapp" style={{ justifyContent: 'center', marginTop: '1.5rem' }} target="_blank" rel="noopener">
+            <MessageCircle size={18} fill="white" />
+            Yeh Savings Shuru Karo — WhatsApp Pe
+          </a>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Trust Bar ───
+const TrustBar = () => (
+  <section className="trust-bar">
+    <div className="container">
+      <div className="trust-grid">
+        {[
+          { emoji: "✅", text: "100% Original Products" },
+          { emoji: "💵", text: "Cash on Delivery" },
+          { emoji: "🔒", text: "No Advance Payment" },
+          { emoji: "🤖", text: "AI-Verified Deals" },
+          { emoji: "⭐", text: "500+ Happy Retailers" },
+        ].map((t, i) => (
+          <div key={i} className="trust-item">
+            <span>{t.emoji}</span> {t.text}
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+)
+
+// ─── Social Proof Toast ───
+const toasts = [
+  { name: "Ramesh", loc: "Dwarka", item: "Grocery stock", saved: "₹2,400" },
+  { name: "Neha", loc: "Lajpat Nagar", item: "Fashion items", saved: "₹3,800" },
+  { name: "Sunil", loc: "Rohini", item: "Electronics", saved: "₹1,900" },
+  { name: "Priya", loc: "Janakpuri", item: "Beauty kit", saved: "₹1,200" },
+  { name: "Arjun", loc: "Karol Bagh", item: "Home appliances", saved: "₹4,500" },
+]
+
+const SocialProofToast = () => {
+  const [visible, setVisible] = useState(false)
+  const [idx, setIdx] = useState(0)
+
+  useEffect(() => {
+    const show = () => {
+      setIdx(i => (i + 1) % toasts.length)
+      setVisible(true)
+      setTimeout(() => setVisible(false), 4000)
+    }
+    const timer = setInterval(show, 7000)
+    const initial = setTimeout(show, 3000)
+    return () => { clearInterval(timer); clearTimeout(initial) }
+  }, [])
+
+  const t = toasts[idx]
+  return (
+    <motion.div
+      className="social-toast"
+      animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : 20 }}
+      transition={{ duration: 0.4 }}
+      style={{ pointerEvents: visible ? 'auto' : 'none' }}
+    >
+      <div className="toast-avatar">{t.name[0]}</div>
+      <div>
+        <div className="toast-name">{t.name} from {t.loc}</div>
+        <div className="toast-msg">{t.item} pe <strong>{t.saved}</strong> bachaya 🎉</div>
+      </div>
+    </motion.div>
+  )
+}
+
 // ─── Final CTA ───
 const FinalCTA = () => (
   <section className="final-cta">
@@ -510,23 +720,39 @@ const FloatingWA = () => (
   </a>
 )
 
+// ─── Sticky Mobile CTA ───
+const StickyCTA = () => (
+  <div className="sticky-cta">
+    <a href={WA_LINK} className="sticky-cta-btn" target="_blank" rel="noopener">
+      <MessageCircle size={20} fill="white" />
+      WhatsApp Pe Deals Lo — Free
+    </a>
+  </div>
+)
+
 // ─── App ───
 export default function App() {
   return (
     <>
+      <SocialProofToast />
       <Ticker />
       <Navbar />
+      <TrustBar />
       <Hero />
       <StatsBar />
       <ProblemSection />
+      <CategoriesSection />
       <TwoWays />
       <PriceTable />
+      <SavingsCalculator />
       <HowItWorks />
+      <PlatformsSection />
       <Testimonials />
       <FAQ />
       <FinalCTA />
       <Footer />
       <FloatingWA />
+      <StickyCTA />
     </>
   )
 }
