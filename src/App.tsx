@@ -184,7 +184,7 @@ const CategoriesSection = () => {
     { emoji: "🎒", label: "Bags & Accessories", sub: "Ajio, Myntra, Amazon" },
   ]
   return (
-    <section className="section">
+    <section className="section section-categories">
       <div className="container">
         <h2 className="section-title">10+ Categories, Ek Jagah Se</h2>
         <p className="section-sub">Sirf grocery nahi — har tarah ke products ke best deals, directly aapke WhatsApp pe</p>
@@ -445,7 +445,7 @@ const PlatformsSection = () => {
     { name: "JioMart", emoji: "🛒", color: "#0070C0" },
   ]
   return (
-    <section className="section section-alt">
+    <section className="section section-alt section-platforms">
       <div className="container">
         <h2 className="section-title">7 Platforms, Ek WhatsApp</h2>
         <p className="section-sub">Hum in sabhi platforms pe deals monitor karte hain — aapko sirf hume message karna hai</p>
@@ -502,7 +502,7 @@ const FAQ = () => {
     },
     {
       q: "Kya main apni zaroorat ke products maang sakta hoon?",
-      a: "Haan bilkul! Aap do tarike se use kar sakte ho: (1) Hum daily deals bhejte hain WhatsApp pe, ya (2) Aap apne top 10 best-selling products ya jo stock khatam ho gaya uski list bhejo — humara AI system best price dhundh ke aapko batayega."
+      a: "Haan bilkul! Aap do tarike se use kar sakte ho: (1) Hum daily deals bhejte hain WhatsApp pe, ya (2) Aap apne top 10 best-selling products ya jo stock khatam ho gaya uski list bhejo, humara AI system best price dhundh ke aapko batayega."
     },
   ]
 
