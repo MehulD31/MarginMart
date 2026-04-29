@@ -502,7 +502,7 @@ const FAQ = () => {
     },
     {
       q: "Kya main apni zaroorat ke products maang sakta hoon?",
-      a: "Haan bilkul! Aap do tarike se use kar sakte ho: (1) Hum daily deals bhejte hain WhatsApp pe, ya (2) Aap apne top 10 best-selling products ya jo stock khatam ho gaya uski list bhejo — humara AI system best price dhundh ke aapko batayega."
+      a: "Haan bilkul! Aap do tarike se use kar sakte ho: (1) Hum daily deals bhejte hain WhatsApp pe, ya (2) Aap apne top 10 best-selling products ya jo stock khatam ho gaya uski list bhejo, humara AI system best price dhundh ke aapko batayega."
     },
   ]
 
