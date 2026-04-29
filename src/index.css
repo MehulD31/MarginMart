@@ -787,6 +787,28 @@ img { max-width: 100%; display: block; }
   .calc-box { padding: 2rem 1.25rem; }
   .calc-result-card { min-width: 120px; padding: 1rem; }
   .calc-result-num { font-size: 1.5rem; }
+
+  /* ── HIDE CLUTTER ON MOBILE ── */
+  /* Ticker: unreadable small text on phone */
+  .ticker-wrap { display: none; }
+
+  /* Trust bar: merges with hero badges, redundant */
+  .trust-bar { display: none; }
+
+  /* Stats bar: too wide, stat numbers say little to first-time mobile visitor */
+  .stats-bar { display: none; }
+
+  /* Categories grid: 8 cards overwhelming, info covered in TwoWays */
+  .section-categories { display: none; }
+
+  /* Platforms grid: covered in HowItWorks text, saves full section */
+  .section-platforms { display: none; }
+
+  /* Social proof toast: overlaps sticky CTA, too distracting on small screen */
+  .social-toast { display: none; }
+
+  /* Savings calculator: nice but secondary — hide on mobile to reduce scroll */
+  .calc-box .calc-results { flex-direction: column; }
 }
 
 /* --- 480px: standard phones --- */
@@ -895,6 +917,8 @@ img { max-width: 100%; display: block; }
   /* Problem cards */
   .problem-card { padding: 1.5rem; }
   .problem-emoji { font-size: 2rem; }
+  /* Trim hero AI tag */
+  .hero-ai-tag { font-size: 0.72rem; padding: 0.3rem 0.75rem; }
 }
 
 /* ---- Trust Bar ---- */
