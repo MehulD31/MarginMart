@@ -8,9 +8,11 @@ import {
   ChevronUp,
   Phone,
   AlertTriangle,
-  Bot
+  Bot,
+  Lock
 } from 'lucide-react'
 import './index.css'
+import AdminDashboard from './components/AdminDashboard'
 
 /* ============================================
    MARGINMART — High-Conversion Landing Page
@@ -61,10 +63,18 @@ const Navbar = () => (
         </div>
         <span>Margin<span className="logo-green">Mart</span></span>
       </div>
-      <a href={WA_LINK} className="btn-whatsapp btn-whatsapp-nav" target="_blank" rel="noopener">
-        <Phone size={16} />
-        Contact Us
-      </a>
+      <div className="navbar-actions">
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin'))} 
+          className="admin-trigger-btn"
+        >
+          <Lock size={16} /> Admin
+        </button>
+        <a href={WA_LINK} className="btn-whatsapp btn-whatsapp-nav" target="_blank" rel="noopener">
+          <Phone size={16} />
+          Contact Us
+        </a>
+      </div>
     </div>
   </nav>
 )
@@ -705,6 +715,12 @@ const Footer = () => (
       </div>
       <p>Aapka maal sasta, margin zyada.</p>
       <p style={{ marginTop: '0.5rem' }}>© 2026 MarginMart. All rights reserved.</p>
+      <button 
+        onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin'))}
+        style={{ marginTop: '1.5rem', background: 'none', color: '#ccc', fontSize: '0.7rem', cursor: 'pointer' }}
+      >
+        Admin Portal
+      </button>
     </div>
   </footer>
 )
@@ -728,6 +744,23 @@ const StickyCTA = () => (
 
 // ─── App ───
 export default function App() {
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    // Check if URL ends with /admin
+    if (window.location.pathname === '/admin') {
+      setIsAdmin(true)
+    }
+
+    const handleToggle = () => setIsAdmin(prev => !prev)
+    window.addEventListener('toggle-admin', handleToggle)
+    return () => window.removeEventListener('toggle-admin', handleToggle)
+  }, [])
+
+  if (isAdmin) {
+    return <AdminDashboard onBack={() => setIsAdmin(false)} />
+  }
+
   return (
     <>
       <SocialProofToast />
