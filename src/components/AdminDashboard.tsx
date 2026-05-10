@@ -73,6 +73,7 @@ interface Order {
   created_at: string;
   quantity?: number;
   unit_rate?: number;
+  platform_fee?: number;
   operator_name?: string;
   shopkeeper?: { name: string };
 }
@@ -165,7 +166,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   }
 
   // Order Form
-  const [orderForm, setOrderForm] = useState({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '' });
+  const [orderForm, setOrderForm] = useState({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0' });
 
   // Simulator State
   const [simText, setSimText] = useState('');
@@ -360,6 +361,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       selling_price: parseFloat(orderForm.selling_price),
       quantity: parseFloat(orderForm.quantity || '1'),
       unit_rate: parseFloat(orderForm.unit_rate || '0'),
+      platform_fee: parseFloat(orderForm.platform_fee || '0'),
       status: 'ordered',
       operator_name: operatorName || 'Admin'
     }]);
@@ -367,7 +369,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     if (!error) {
       showToast(`Logged order for ${orderForm.product_name}`);
       setShowOrderModal(false); setOrderPartner(null);
-      setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '' });
+      setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0' });
       fetchOrders();
     } else {
       showToast('Failed to log fulfillment', 'error');
@@ -1665,21 +1667,31 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <div><label>Rate (₹)</label><input type="number" required className="form-input-premium" value={orderForm.unit_rate} onChange={(e) => {
                     const rate = e.target.value;
                     const qty = orderForm.quantity;
-                    setOrderForm({ ...orderForm, unit_rate: rate, deal_price: (parseFloat(rate || '0') * parseFloat(qty || '1')).toString() });
+                    const fee = orderForm.platform_fee;
+                    setOrderForm({ ...orderForm, unit_rate: rate, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
                   }} /></div>
                   <div><label>Quantity</label><input type="number" required className="form-input-premium" value={orderForm.quantity} onChange={(e) => {
                     const qty = e.target.value;
                     const rate = orderForm.unit_rate;
-                    setOrderForm({ ...orderForm, quantity: qty, deal_price: (parseFloat(rate || '0') * parseFloat(qty || '1')).toString() });
+                    const fee = orderForm.platform_fee;
+                    setOrderForm({ ...orderForm, quantity: qty, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
                   }} /></div>
                 </div>
                 <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div><label>Total Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} readOnly /></div>
                   <div><label>Total Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
                 </div>
-                <div className="profit-preview">
-                  <span>Est. Profit: </span>
-                  <strong>₹{(parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0')).toFixed(0)}</strong>
+                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                  <div><label>Platform Fee (Fixed ₹)</label><input type="number" className="form-input-premium" value={orderForm.platform_fee} onChange={(e) => {
+                    const fee = e.target.value;
+                    const rate = orderForm.unit_rate;
+                    const qty = orderForm.quantity;
+                    setOrderForm({ ...orderForm, platform_fee: fee, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
+                  }} /></div>
+                  <div className="profit-preview" style={{ marginTop: '0' }}>
+                    <span>Est. Profit: </span>
+                    <strong>₹{(parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0')).toFixed(0)}</strong>
+                  </div>
                 </div>
                 <button type="submit" disabled={saving} className="btn-pro-primary" style={{ width: '100%' }}><IndianRupee size={16} /> Log Order</button>
               </form>
