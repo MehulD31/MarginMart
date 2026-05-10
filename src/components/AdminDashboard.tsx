@@ -96,8 +96,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [orderPartner, setOrderPartner] = useState<Shopkeeper | null>(null);
 
   const [loginError, setLoginError] = useState(false);
-  const [botToken, setBotToken] = useState('');
-  const [adminChatId, setAdminChatId] = useState('');
+  const [monitorChannels, setMonitorChannels] = useState('deals');
   const [_isBotActive, setIsBotActive] = useState(false);
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -144,30 +143,21 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   async function fetchTelegramConfig() {
     const { data } = await supabase.from('telegram_configs').select('*');
     if (data) {
-      const token = data.find(c => c.key === 'bot_token')?.value || '';
-      const chat = data.find(c => c.key === 'admin_chat_id')?.value || '';
       const active = data.find(c => c.key === 'is_active')?.value === 'true';
-      setBotToken(token);
-      setAdminChatId(chat);
+      const channels = data.find(c => c.key === 'monitor_channels')?.value || 'deals';
       setIsBotActive(active);
+      setMonitorChannels(channels);
     }
   }
 
-  async function saveTelegramConfig() {
-    setSaving(true);
-    const configs = [
-      { key: 'bot_token', value: botToken },
-      { key: 'admin_chat_id', value: adminChatId },
-      { key: 'is_active', value: 'true' }
-    ];
 
-    const { error } = await supabase.from('telegram_configs').upsert(configs);
-    if (error) {
-      showToast('Failed to save configuration', 'error');
-    } else {
-      showToast('Telegram Configuration Saved!', 'success');
-      setIsBotActive(true);
-    }
+  async function saveMonitorChannels() {
+    setSaving(true);
+    const { error } = await supabase.from('telegram_configs').upsert([
+      { key: 'monitor_channels', value: monitorChannels }
+    ]);
+    if (error) showToast('Failed to save channels', 'error');
+    else showToast('Spy Channels Updated!', 'success');
     setSaving(false);
   }
 
@@ -614,11 +604,27 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         
                         <div className="setup-step" style={{ display: 'flex', gap: '1rem' }}>
                           <div className="step-num" style={{ width: '24px', height: '24px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0 }}>2</div>
-                          <div className="step-content">
-                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Bot Configuration</h4>
-                            <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
-                              Bot tokens and Chat IDs are securely managed via Render Environment Variables for 24/7 cloud stability.
+                          <div className="step-content" style={{ width: '100%' }}>
+                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Target Spy Channels</h4>
+                            <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                              Comma-separated list of Telegram @usernames to scrape in real-time.
                             </p>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. deals, prolooterzz, offerzone" 
+                              className="admin-input" 
+                              style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '0.5rem' }} 
+                              value={monitorChannels}
+                              onChange={e => setMonitorChannels(e.target.value)}
+                            />
+                            <button 
+                                className="btn-pro" 
+                                style={{ width: '100%' }} 
+                                onClick={saveMonitorChannels}
+                                disabled={saving}
+                              >
+                                {saving ? 'Updating...' : 'Update Channels'}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -636,7 +642,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                           <span className="value" style={{ fontWeight: 700, color: '#0f172a' }}>{watchlist.length} Products</span>
                         </div>
                       </div>
-                      <div className="engine-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="engine-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div className="stat" style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', textAlign: 'center' }}>
                           <span className="num" style={{ display: 'block', fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
                             {matches.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString()).length}
@@ -646,6 +652,33 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <div className="stat" style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', textAlign: 'center' }}>
                           <span className="num" style={{ display: 'block', fontSize: '1.5rem', fontWeight: 800, color: '#22c55e' }}>24</span>
                           <span className="lbl" style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Hours Uptime</span>
+                        </div>
+                      </div>
+
+                      <div className="channel-analytics" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a' }}>Match Sources Breakdown</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {(() => {
+                            const stats: Record<string, number> = {};
+                            matches.forEach(m => {
+                              // extract channel from telegram link (e.g., https://t.me/prolooterzz/123 -> prolooterzz)
+                              const matchObj = m.telegram_link ? m.telegram_link.match(/t\.me\/([^\/]+)/) : null;
+                              const source = matchObj ? `@${matchObj[1]}` : 'Unknown Source';
+                              stats[source] = (stats[source] || 0) + 1;
+                            });
+                            
+                            const sortedStats = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+                            if (sortedStats.length === 0) {
+                              return <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>No match data available yet.</p>;
+                            }
+
+                            return sortedStats.map(([source, count], idx) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>{source}</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0ea5e9' }}>{count} matches</span>
+                              </div>
+                            ));
+                          })()}
                         </div>
                       </div>
                     </div>
