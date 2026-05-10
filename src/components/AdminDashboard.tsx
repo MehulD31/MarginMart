@@ -353,7 +353,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   // Analytics Calculations
   const totalProfit = orders.reduce((sum, o) => sum + (o.selling_price - o.deal_price), 0);
   const pendingCollection = orders.filter(o => o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0);
-  const _activeMatches = simResults.length;
+
 
   // Operator Performance
   const operatorStats = orders.reduce((acc: any, o) => {
