@@ -75,7 +75,7 @@ interface Order {
 const TEMPLATE_KEYWORDS = ["Dove", "Maggi", "Pampers", "Atta", "Surf Excel", "Cooking Oil", "Rice", "Sugar", "Shampoo", "Soap"];
 
 export default function AdminDashboard({ onBack }: { onBack: () => void }) {
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(() => sessionStorage.getItem('adminAuth') === 'true');
   const [pin, setPin] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'shopkeepers' | 'simulator' | 'orders' | 'billing' | 'matches' | 'automation'>('overview');
   const [shopkeepers, setShopkeepers] = useState<Shopkeeper[]>([]);
@@ -83,6 +83,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedShopkeeper, setSelectedShopkeeper] = useState<Shopkeeper | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [totalWatchlistCount, setTotalWatchlistCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -96,7 +97,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [orderPartner, setOrderPartner] = useState<Shopkeeper | null>(null);
 
   const [loginError, setLoginError] = useState(false);
-  const [monitorChannels, setMonitorChannels] = useState('deals');
+  const [monitorChannels, setMonitorChannels] = useState<string[]>(['deals']);
+  const [newChannelInput, setNewChannelInput] = useState('');
   const [_isBotActive, setIsBotActive] = useState(false);
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -123,13 +125,20 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       fetchOrders();
       fetchMatches();
       fetchTelegramConfig();
+      fetchTotalWatchlists();
     }
   }, [isAuthorized]);
+
+  async function fetchTotalWatchlists() {
+    const { count } = await supabase.from('watchlists').select('*', { count: 'exact', head: true });
+    setTotalWatchlistCount(count || 0);
+  }
 
   async function checkPin() {
     const { data } = await supabase.from('admin_settings').select('value').eq('key', 'admin_pin').single();
     if (data && data.value === pin) {
       setIsAuthorized(true);
+      sessionStorage.setItem('adminAuth', 'true');
       showToast('Welcome back, Admin!');
     }
     else {
@@ -146,7 +155,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       const active = data.find(c => c.key === 'is_active')?.value === 'true';
       const channels = data.find(c => c.key === 'monitor_channels')?.value || 'deals';
       setIsBotActive(active);
-      setMonitorChannels(channels);
+      setMonitorChannels(channels.split(',').map((c: string) => c.trim()).filter(Boolean));
     }
   }
 
@@ -154,7 +163,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   async function saveMonitorChannels() {
     setSaving(true);
     const { error } = await supabase.from('telegram_configs').upsert([
-      { key: 'monitor_channels', value: monitorChannels }
+      { key: 'monitor_channels', value: monitorChannels.join(',') }
     ]);
     if (error) showToast('Failed to save channels', 'error');
     else showToast('Spy Channels Updated!', 'success');
@@ -483,7 +492,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <div className="operator-name-sidebar">{operatorName}</div>
                 </div>
               </div>
-              <button onClick={onBack} className="btn-logout">
+              <button onClick={() => { sessionStorage.removeItem('adminAuth'); setIsAuthorized(false); }} className="btn-logout">
                 <LogOut size={16} /> Logout
               </button>
             </div>
@@ -607,16 +616,57 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                           <div className="step-content" style={{ width: '100%' }}>
                             <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Target Spy Channels</h4>
                             <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                              Comma-separated list of Telegram @usernames to scrape in real-time.
+                              Add Telegram @usernames to scrape in real-time.
                             </p>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. deals, prolooterzz, offerzone" 
-                              className="admin-input" 
-                              style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '0.5rem' }} 
-                              value={monitorChannels}
-                              onChange={e => setMonitorChannels(e.target.value)}
-                            />
+                            
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                              {monitorChannels.map(channel => (
+                                <div key={channel} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '0.4rem 0.75rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                                  <span>@{channel.replace('@', '')}</span>
+                                  <button 
+                                    onClick={() => setMonitorChannels(prev => prev.filter(c => c !== channel))}
+                                    style={{ background: 'transparent', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                              <input 
+                                type="text" 
+                                placeholder="Add new channel (e.g. deals)" 
+                                className="admin-input" 
+                                style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} 
+                                value={newChannelInput}
+                                onChange={e => setNewChannelInput(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && newChannelInput.trim()) {
+                                    const cleaned = newChannelInput.trim().replace('@', '');
+                                    if (!monitorChannels.includes(cleaned)) {
+                                      setMonitorChannels(prev => [...prev, cleaned]);
+                                    }
+                                    setNewChannelInput('');
+                                  }
+                                }}
+                              />
+                              <button 
+                                className="btn-pro-ghost" 
+                                style={{ padding: '0.75rem 1.25rem', borderRadius: '12px', background: '#f1f5f9', color: '#475569', fontWeight: 700 }}
+                                onClick={() => {
+                                  if (newChannelInput.trim()) {
+                                    const cleaned = newChannelInput.trim().replace('@', '');
+                                    if (!monitorChannels.includes(cleaned)) {
+                                      setMonitorChannels(prev => [...prev, cleaned]);
+                                    }
+                                    setNewChannelInput('');
+                                  }
+                                }}
+                              >
+                                Add
+                              </button>
+                            </div>
                             <button 
                                 className="btn-pro-primary" 
                                 style={{ width: '100%' }} 
@@ -639,7 +689,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         </div>
                         <div className="status-item" style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid #f1f5f9' }}>
                           <span className="label" style={{ color: '#64748b', fontSize: '0.9rem' }}>Watchlist Items</span>
-                          <span className="value" style={{ fontWeight: 700, color: '#0f172a' }}>{watchlist.length} Products</span>
+                          <span className="value" style={{ fontWeight: 700, color: '#0f172a' }}>{totalWatchlistCount} Products</span>
                         </div>
                       </div>
                       <div className="engine-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
