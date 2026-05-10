@@ -8,8 +8,7 @@ import {
   ChevronUp,
   Phone,
   AlertTriangle,
-  Bot,
-  Lock
+  Bot
 } from 'lucide-react'
 import './index.css'
 import AdminDashboard from './components/AdminDashboard'
