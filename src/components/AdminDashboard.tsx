@@ -1317,7 +1317,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     <div className="table-controls">
                       <div className="search-input-wrap"><Search size={18} /><input type="text" placeholder="Search partners..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
                     </div>
-                    <div className="sk-row header-row" style={{ '--grid-cols': '1.5fr 1fr 100px 140px 100px' } as any}>
+                    <div className="sk-row header-row" style={{ '--grid-cols': '1.5fr 1fr 100px 140px 140px' } as any}>
                       <span>Partner Info</span>
                       <span>Location</span>
                       <span>Status</span>
@@ -1328,7 +1328,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       {loading ? <div className="loading-state"><Loader2 className="animate-spin" size={32} /></div> : filteredShopkeepers.length === 0 ? (
                         <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No partners found</div>
                       ) : filteredShopkeepers.map(sk => (
-                        <motion.div layout key={sk.id} className="sk-row" style={{ '--grid-cols': '1.5fr 1fr 100px 140px 100px' } as any}>
+                        <motion.div layout key={sk.id} className="sk-row" style={{ '--grid-cols': '1.5fr 1fr 100px 140px 140px' } as any}>
                           <div className="sk-name-cell">
                             <div className="sk-avatar">{sk.name.charAt(0)}</div>
                             <div>
@@ -1343,7 +1343,10 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                               <ShoppingBag size={14} /> Log Order
                             </button>
                           </div>
-                          <div style={{ textAlign: 'right' }}><button className="btn-pro-ghost" onClick={() => { setSelectedShopkeeper(sk); fetchWatchlist(sk.id); }}>Manage <ChevronRight size={16} /></button></div>
+                          <div style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button className="btn-icon text-red-500" onClick={() => deleteShopkeeper(sk.id)} title="Delete Partner"><X size={14} /></button>
+                            <button className="btn-pro-ghost" onClick={() => { setSelectedShopkeeper(sk); fetchWatchlist(sk.id); }}>Manage <ChevronRight size={16} /></button>
+                          </div>
                         </motion.div>
                       ))}
                     </div>
