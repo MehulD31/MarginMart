@@ -224,15 +224,20 @@ async def run_monitor():
             for kw in kws:
                 save_match(shopkeeper_id, kw, kw, raw_text, post_url)
 
-        # Clean up ugly raw markdown from the preview
-        import re
-        clean_text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'\1: \2', raw_text) # [text](url) -> text: url
-        clean_text = clean_text.replace('**', '').replace('*', '') # Remove bold asterisks
-        
         # Build alert message
-        import html
-        preview = clean_text[:400] + "..." if len(clean_text) > 400 else clean_text
-        preview = html.escape(preview)  # Prevent raw < > from breaking Telegram HTML parser
+        import html, re
+        
+        # 1. Truncate preview
+        preview = raw_text[:600] + "..." if len(raw_text) > 600 else raw_text
+        
+        # 2. Escape HTML characters to prevent breaking the Telegram parser
+        preview = html.escape(preview)
+        
+        # 3. Convert Markdown links [text](url) -> HTML <a href="url">text</a>
+        preview = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', preview)
+        
+        # 4. Convert Markdown bold **text** -> HTML <b>text</b>
+        preview = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', preview)
         
         shopkeeper_lines = "\n".join(
             f"  \u2022 <b>{name}</b>  \u2192  {', '.join(kws)}"
