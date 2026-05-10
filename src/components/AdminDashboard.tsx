@@ -201,9 +201,10 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     setTotalWatchlistCount(count || 0);
   }
 
-  async function checkPin() {
+  async function checkPin(currentPin?: string) {
+    const pinToVerify = currentPin || pin;
     const { data } = await supabase.from('admin_settings').select('value').eq('key', 'admin_pin').single();
-    if (data && data.value === pin) {
+    if (data && data.value === pinToVerify) {
       setIsAuthorized(true);
       sessionStorage.setItem('adminAuth', 'true');
       showToast('Welcome back, Admin!');
@@ -634,12 +635,12 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     const val = e.target.value;
                     setPin(val);
                     if (val.length === 4) {
-                      setTimeout(() => checkPin(), 150);
+                      setTimeout(() => checkPin(val), 150);
                     }
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && pin.length === 4) {
-                      checkPin();
+                      checkPin(pin);
                     }
                   }}
                   style={{
@@ -681,7 +682,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             </div>
-            <button onClick={checkPin} className="btn-unlock" style={{ width: '100%', maxWidth: '320px', margin: '0 auto' }}>Unlock Dashboard</button>
+            <button onClick={() => checkPin()} className="btn-unlock" style={{ width: '100%', maxWidth: '320px', margin: '0 auto' }}>Unlock Dashboard</button>
             <button onClick={onBack} className="btn-cancel-login">Cancel</button>
           </motion.div>
         </div>
