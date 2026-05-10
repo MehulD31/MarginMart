@@ -1,1 +1,1 @@
-worker: python telegram-mcp/monitor.py
+web: python scripts/continuous_monitor.py
