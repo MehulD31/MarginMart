@@ -169,7 +169,7 @@ async def run_monitor():
 
         # Reload watchlists if stale
         now = asyncio.get_event_loop().time()
-        if now - last_reload > 300:
+        if now - last_reload > 30:
             try:
                 watchlists = fetch_watchlists()
                 last_reload = now
