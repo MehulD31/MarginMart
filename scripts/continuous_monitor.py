@@ -190,7 +190,14 @@ async def run_monitor():
         channel_title = getattr(event.chat, "title", None) or getattr(event.chat, "username", None) or "Private/Unknown"
         channel_username = getattr(event.chat, "username", None)
         post_id = event.message.id
-        post_url = f"https://t.me/{channel_username}/{post_id}" if channel_username else f"private||{channel_title}"
+        # Post URL for DB (analytics) vs UI (clickable link)
+        db_post_url = f"https://t.me/{channel_username}/{post_id}" if channel_username else f"private||{channel_title}"
+        
+        # UI Link: Use t.me/c/ for private channels if we can derive the ID
+        ui_post_url = f"https://t.me/{channel_username}/{post_id}" if channel_username else None
+        if not ui_post_url and str(event.chat_id).startswith("-100"):
+            clean_id = str(event.chat_id)[4:]
+            ui_post_url = f"https://t.me/c/{clean_id}/{post_id}"
 
         text_lower = raw_text.lower()
         log.info(f"[{channel_title}/{post_id}] New message: {raw_text[:80].replace(chr(10), ' ')}")
@@ -224,45 +231,40 @@ async def run_monitor():
 
         log.info(f"MATCH in [{channel_title}/{post_id}] for: {list(shopkeeper_matches.keys())}")
 
-        # Save matches to DB
+        # Save matches to DB (keep db_post_url for analytics parsing)
         for shopkeeper_name, kws in shopkeeper_matches.items():
             shopkeeper_id = shopkeeper_ids[shopkeeper_name]
             for kw in kws:
-                save_match(shopkeeper_id, kw, kw, raw_text, post_url)
+                save_match(shopkeeper_id, kw, kw, raw_text, db_post_url)
 
         # Build alert message
-        import html, re
-        
-        # 1. Truncate preview
-        preview = raw_text[:600] + "..." if len(raw_text) > 600 else raw_text
-        
-        # 2. Escape HTML characters to prevent breaking the Telegram parser
-        preview = html.escape(preview)
-        
-        # 3. Convert Markdown links [text](url) -> HTML <a href="url">text</a>
-        preview = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', preview)
-        
-        # 4. Convert Markdown bold **text** -> HTML <b>text</b>
-        preview = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', preview)
-        
         shopkeeper_lines = "\n".join(
             f"  \u2022 <b>{name}</b>  \u2192  {', '.join(kws)}"
             for name, kws in shopkeeper_matches.items()
         )
 
-        alert_text = "\n".join([
+        # Base alert parts
+        alert_parts = [
             "🚨 <b>DEAL MATCH FOUND!</b>",
             "",
             f"📣 <b>Source:</b> {channel_title}",
-            f"🔗 <a href='{post_url}'>View Original Post →</a>" if post_url else "",
+        ]
+        
+        if ui_post_url:
+            alert_parts.append(f"🔗 <a href='{ui_post_url}'>View Original Post →</a>")
+        else:
+            alert_parts.append("🔗 <i>(Private Group)</i>")
+
+        alert_parts.extend([
             "",
             f"👥 <b>Matched Partners:</b>",
             shopkeeper_lines,
             "",
             "━━━━━━━━━━━━━━━━━━",
-            f"📝 <b>Preview:</b>",
-            f"<i>{preview}</i>",
+            "<i>MarginMart Spy Engine Active \u2705</i>"
         ])
+
+        alert_text = "\n".join(alert_parts)
 
         try:
             result = send_alert(alert_text)
