@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 /* ADMIN PRO DASHBOARD STYLES handled at end of file */
 
@@ -765,17 +765,17 @@ img { max-width: 100%; display: block; }
   .final-cta { padding: 3rem 0; }
   .final-cta-box { padding: 2.5rem 1.25rem; }
 
-  /* Stats — 3 across still fits at 768 */
+  /* Stats â€” 3 across still fits at 768 */
   .stats-grid { gap: 1rem; }
   .stat-number { font-size: 2rem; }
 
-  /* Steps — 2 columns */
+  /* Steps â€” 2 columns */
   .steps-grid {
     grid-template-columns: 1fr 1fr;
     gap: 1.25rem;
   }
 
-  /* Price table — horizontal scroll, hide emoji */
+  /* Price table â€” horizontal scroll, hide emoji */
   .price-table-header,
   .price-row {
     grid-template-columns: 1.6fr 0.9fr 0.9fr 0.8fr;
@@ -785,23 +785,23 @@ img { max-width: 100%; display: block; }
   .product-emoji { display: none; }
   .cat-pill { display: none; }
 
-  /* Testimonials — single column */
+  /* Testimonials â€” single column */
   .testimonial-grid { grid-template-columns: 1fr; }
 
-  /* Hero badges — 2 per row */
+  /* Hero badges â€” 2 per row */
   .hero-badges {
     gap: 0.5rem 1rem;
     justify-content: center;
   }
   .hero-badge { font-size: 0.82rem; }
 
-  /* Platforms — 3 per row */
+  /* Platforms â€” 3 per row */
   .platform-card {
     min-width: 90px;
     padding: 1.1rem 1.2rem;
   }
 
-  /* Categories — 3 per row */
+  /* Categories â€” 3 per row */
   .categories-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.85rem;
@@ -810,7 +810,7 @@ img { max-width: 100%; display: block; }
   .category-emoji { font-size: 1.8rem; }
   .category-label { font-size: 0.8rem; }
 
-  /* Trust bar — wrap smaller */
+  /* Trust bar â€” wrap smaller */
   .trust-item { font-size: 0.8rem; }
 
   /* Calc */
@@ -818,7 +818,7 @@ img { max-width: 100%; display: block; }
   .calc-result-card { min-width: 120px; padding: 1rem; }
   .calc-result-num { font-size: 1.5rem; }
 
-  /* ── HIDE CLUTTER ON MOBILE ── */
+  /* â”€â”€ HIDE CLUTTER ON MOBILE â”€â”€ */
   /* Ticker: unreadable small text on phone */
   .ticker-wrap { display: none; }
 
@@ -837,7 +837,7 @@ img { max-width: 100%; display: block; }
   /* Social proof toast: overlaps sticky CTA, too distracting on small screen */
   .social-toast { display: none; }
 
-  /* Savings calculator: nice but secondary — hide on mobile to reduce scroll */
+  /* Savings calculator: nice but secondary â€” hide on mobile to reduce scroll */
   .calc-box .calc-results { flex-direction: column; }
 }
 
@@ -853,7 +853,7 @@ img { max-width: 100%; display: block; }
   .hero h1 { font-size: 1.9rem; line-height: 1.2; }
   .hero-sub { font-size: 0.95rem; margin-bottom: 2rem; }
 
-  /* Buttons — full width on mobile for max tap area */
+  /* Buttons â€” full width on mobile for max tap area */
   .btn-whatsapp-lg {
     width: 100%;
     justify-content: center;
@@ -862,11 +862,11 @@ img { max-width: 100%; display: block; }
     border-radius: 14px;
   }
 
-  /* Hero badges — 2 per row */
+  /* Hero badges â€” 2 per row */
   .hero-badges { gap: 0.4rem 0.75rem; }
   .hero-badge { font-size: 0.78rem; }
 
-  /* Stats — single column */
+  /* Stats â€” single column */
   .stats-grid {
     grid-template-columns: 1fr;
     gap: 1.25rem;
@@ -874,22 +874,22 @@ img { max-width: 100%; display: block; }
   }
   .stat-number { font-size: 2.4rem; }
 
-  /* Steps — single column */
+  /* Steps â€” single column */
   .steps-grid { grid-template-columns: 1fr; gap: 1rem; }
 
-  /* Categories — 2 per row */
+  /* Categories â€” 2 per row */
   .categories-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
   }
 
-  /* Platforms — wrap naturally */
+  /* Platforms â€” wrap naturally */
   .platforms-grid { gap: 0.75rem; }
   .platform-card { min-width: 80px; padding: 1rem; }
   .platform-emoji { font-size: 1.6rem; }
   .platform-name { font-size: 0.8rem; }
 
-  /* Price table — compact 3-col (hide Supplier col) */
+  /* Price table â€” compact 3-col (hide Supplier col) */
   .price-table-header {
     grid-template-columns: 2fr 1fr 0.8fr;
   }
@@ -899,7 +899,7 @@ img { max-width: 100%; display: block; }
   .price-table-header span:nth-child(2),
   .price-row .old-price { display: none; }
 
-  /* FAQ — bigger tap targets */
+  /* FAQ â€” bigger tap targets */
   .faq-question {
     padding: 1rem 1.25rem;
     font-size: 0.92rem;
@@ -920,7 +920,7 @@ img { max-width: 100%; display: block; }
   .final-cta-box p { font-size: 0.95rem; }
   .urgency-tag { font-size: 0.78rem; }
 
-  /* Trust bar — 2 per row */
+  /* Trust bar â€” 2 per row */
   .trust-grid { gap: 0.5rem 1.5rem; }
   .trust-item { font-size: 0.78rem; }
 
@@ -933,11 +933,11 @@ img { max-width: 100%; display: block; }
   .calc-result-num { font-size: 1.8rem; }
   .calc-divider { transform: rotate(90deg); }
 
-  /* Sticky CTA — taller touch target */
+  /* Sticky CTA â€” taller touch target */
   .sticky-cta { padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px)); }
   .sticky-cta-btn { font-size: 1.05rem; border-radius: 14px; padding: 0.95rem; }
 
-  /* Social toast — above sticky bar */
+  /* Social toast â€” above sticky bar */
   .social-toast { bottom: 5.5rem; left: 0.75rem; right: 0.75rem; max-width: unset; }
 
   /* Navbar */
@@ -2418,7 +2418,7 @@ img { max-width: 100%; display: block; }
   border: 1px solid #bbf7d0 !important;
 }
 
-/* ── ADMIN MOBILE RESPONSIVE ── */
+/* â”€â”€ ADMIN MOBILE RESPONSIVE â”€â”€ */
 .admin-mobile-header { display: none; }
 .admin-mobile-bottom-nav { display: none; }
 
@@ -2462,7 +2462,7 @@ img { max-width: 100%; display: block; }
   .admin-pro-theme .stat-card-mini { padding: 1rem !important; }
   .admin-pro-theme .stat-card-mini .val { font-size: 1.3rem !important; }
 
-  /* Tables → Cards */
+  /* Tables â†’ Cards */
   .admin-pro-theme .header-row { display: none !important; }
   .admin-pro-theme .sk-row {
     display: flex !important; flex-direction: column !important;
@@ -2476,7 +2476,7 @@ img { max-width: 100%; display: block; }
   }
   .admin-pro-theme .sk-row .sk-name-cell { justify-content: flex-start !important; }
 
-  /* Modals → Bottom sheets */
+  /* Modals â†’ Bottom sheets */
   .modal-overlay { align-items: flex-end !important; padding: 0 !important; }
   .modal {
     width: 100% !important; max-width: 100% !important;
@@ -2513,7 +2513,7 @@ img { max-width: 100%; display: block; }
   .add-product-row { flex-direction: column !important; gap: 0.6rem !important; }
   .add-product-row button { width: 100% !important; justify-content: center !important; }
 
-  /* Toast → top on mobile */
+  /* Toast â†’ top on mobile */
   .admin-pro-theme .toast-notification {
     bottom: auto !important; top: 80px !important;
     right: 1rem !important; left: 1rem !important;
@@ -2530,4 +2530,217 @@ img { max-width: 100%; display: block; }
 .mobile-drag-handle { display: none; }
 @media (max-width: 767px) {
   .mobile-drag-handle { display: block; }
+}
+
+/* -- UTILITY CLASSES (previously assumed Tailwind) -- */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin { animation: spin 1s linear infinite; }
+
+.text-green   { color: #22c55e !important; }
+.text-green-500 { color: #22c55e !important; }
+.text-orange  { color: #f59e0b !important; }
+.text-orange-500 { color: #f97316 !important; }
+.text-red-500 { color: #ef4444 !important; }
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 8px;
+  transition: all 0.15s;
+  color: inherit;
+}
+.btn-icon:hover { background: #f1f5f9; }
+.btn-icon.text-red-500:hover { background: #fee2e2; }
+
+.search-bar-premium {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.6rem 1rem;
+}
+.search-bar-premium input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #334155;
+  width: 100%;
+}
+.search-bar-premium input::placeholder { color: #94a3b8; }
+.search-bar-premium svg { color: #94a3b8; flex-shrink: 0; }
+
+@media (max-width: 767px) {
+  .orders-header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .orders-header-actions .search-bar-premium {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .orders-header-actions > div {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .billing-action-row {
+    flex-direction: column !important;
+    width: 100%;
+  }
+  .billing-action-row button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  /* Also stack the billing detail header */
+  .billing-detail-header {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    align-items: flex-start !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .mobile-nav-item span { display: none; }
+  .mobile-nav-item { padding: 0.75rem 0.25rem; }
+  .mobile-nav-item.active::after {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 4px;
+    background: #22c55e;
+    border-radius: 50%;
+    margin: 2px auto 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .engine-stats {
+    grid-template-columns: 1fr 1fr !important; /* keep 2-col, just reduce padding */
+  }
+  .engine-stats .stat {
+    padding: 1rem !important;
+  }
+  .engine-stats .num {
+    font-size: 1.25rem !important;
+  }
+}
+
+/* -- PRINT STYLES (for invoice) -- */
+@media print {
+  /* Hide everything except the invoice content */
+  .admin-sidebar,
+  .admin-mobile-header,
+  .admin-mobile-bottom-nav,
+  .modal-overlay > *:not(.invoice-modal),
+  .toast-notification,
+  .page-header,
+  .invoice-total-section .btn-pro-secondary,
+  .invoice-total-section .btn-pro-primary,
+  .invoice-header button,
+  .mobile-drag-handle {
+    display: none !important;
+  }
+
+  .modal-overlay {
+    position: static !important;
+    background: none !important;
+  }
+
+  .invoice-modal {
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    width: 100% !important;
+  }
+
+  .invoice-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body {
+    background: white !important;
+    padding: 0 !important;
+  }
+
+  .invoice-total-section {
+    border-top: 2px solid #000 !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Increase touch targets for mobile buttons */
+  .sk-row .btn-pro-primary, 
+  .sk-row .btn-pro-ghost,
+  .sk-row .btn-pro-secondary,
+  .sk-row .btn-icon {
+    min-height: 44px;
+    padding: 0.6rem 1rem !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 767px) {
+  .mobile-back-btn {
+    display: inline-flex !important;
+    width: 100%;
+    justify-content: flex-start !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 0.75rem 1rem !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    border-radius: 12px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* MOBILE 8 — Watchlist Card Padding */
+  .watchlist-card { padding: 1rem !important; }
+  .info-card { padding: 1.25rem !important; }
+  .data-table-container { padding: 0 !important; border-radius: 16px !important; }
+
+  /* MOBILE 9 — Partner Detail View: Buttons Stack */
+  .info-card > div:last-child {
+    flex-direction: row !important;
+    gap: 0.5rem !important;
+    width: 100%;
+  }
+  .info-card > div:last-child button {
+    flex: 1 !important;
+    justify-content: center !important;
+    font-size: 0.85rem !important;
+    padding: 0.6rem 0.5rem !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* MOBILE 7 — Status Update Buttons Are Undersized */
+  .admin-pro-theme .status-btn {
+    width: 44px !important;
+    height: 44px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }

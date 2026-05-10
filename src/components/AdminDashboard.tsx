@@ -28,7 +28,9 @@ import {
   ShoppingBag,
   FileText,
   Send,
-  RefreshCw
+  RefreshCw,
+  Filter,
+  MessageSquare
 } from 'lucide-react';
 
 interface Shopkeeper {
@@ -98,11 +100,20 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [operatorName, setOperatorName] = useState(localStorage.getItem('mm_operator_name') || '');
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const showConfirm = (message: string, onConfirm: () => void) => {
+    setConfirmDialog({ message, onConfirm });
+  };
   const [orderPartner, setOrderPartner] = useState<Shopkeeper | null>(null);
   const [visibleOrderCount, setVisibleOrderCount] = useState(10);
   const [visibleMatchCount, setVisibleMatchCount] = useState(10);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
-  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'delivered' | 'paid'>('all');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   const [loginError, setLoginError] = useState(false);
   const [monitorChannels, setMonitorChannels] = useState<string[]>(['deals']);
@@ -113,26 +124,37 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    const handleFocus = () => setIsInputFocused(true);
-    const handleBlur = () => setIsInputFocused(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    window.addEventListener('focusin', handleFocus);
-    window.addEventListener('focusout', handleBlur);
 
     const syncInterval = setInterval(() => {
-      fetchOrders();
-      fetchMatches();
+      if (sessionStorage.getItem('adminAuth') === 'true') {
+        fetchOrders();
+        fetchMatches();
+      }
     }, 60000); // Auto-sync every minute
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('focusin', handleFocus);
-      window.removeEventListener('focusout', handleBlur);
       clearInterval(syncInterval);
     };
+  }, []);
+
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    
+    const KEYBOARD_THRESHOLD = 150; // px
+    const initialHeight = window.visualViewport.height;
+    
+    const handleViewportResize = () => {
+      const currentHeight = window.visualViewport!.height;
+      setKeyboardOpen(initialHeight - currentHeight > KEYBOARD_THRESHOLD);
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportResize);
+    return () => window.visualViewport!.removeEventListener('resize', handleViewportResize);
   }, []);
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -223,16 +245,17 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     setLoading(false);
   }
 
-  const deleteShopkeeper = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this partner? This action cannot be undone.")) return;
-    try {
-      const { error } = await supabase.from('shopkeepers').delete().eq('id', id);
-      if (error) throw error;
-      fetchShopkeepers();
-      showToast('Partner deleted');
-    } catch (e) {
-      showToast('Error deleting partner', 'error');
-    }
+  const deleteShopkeeper = (id: string) => {
+    showConfirm("Are you sure you want to delete this partner? This action cannot be undone.", async () => {
+      try {
+        const { error } = await supabase.from('shopkeepers').delete().eq('id', id);
+        if (error) throw error;
+        fetchShopkeepers();
+        showToast('Partner deleted');
+      } catch (e) {
+        showToast('Error deleting partner', 'error');
+      }
+    });
   };
 
   async function fetchOrders() {
@@ -264,39 +287,42 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   }
 
   async function deleteOrder(orderId: string) {
-    if (!window.confirm("Are you sure you want to delete this order record?")) return;
-    const { error } = await supabase.from('orders').delete().eq('id', orderId);
-    if (!error) {
-      fetchOrders();
-      showToast('Order deleted');
-      setSelectedOrderIds(prev => prev.filter(id => id !== orderId));
-    } else {
-      showToast('Failed to delete order', 'error');
-    }
+    showConfirm("Are you sure you want to delete this order record?", async () => {
+      const { error } = await supabase.from('orders').delete().eq('id', orderId);
+      if (!error) {
+        fetchOrders();
+        showToast('Order deleted');
+        setSelectedOrderIds(prev => prev.filter(id => id !== orderId));
+      } else {
+        showToast('Failed to delete order', 'error');
+      }
+    });
   }
 
   async function bulkDeleteOrders() {
     if (selectedOrderIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedOrderIds.length} orders?`)) return;
-    const { error } = await supabase.from('orders').delete().in('id', selectedOrderIds);
-    if (!error) {
-      fetchOrders();
-      showToast(`${selectedOrderIds.length} orders deleted`);
-      setSelectedOrderIds([]);
-    } else {
-      showToast('Bulk delete failed', 'error');
-    }
+    showConfirm(`Are you sure you want to delete ${selectedOrderIds.length} orders?`, async () => {
+      const { error } = await supabase.from('orders').delete().in('id', selectedOrderIds);
+      if (!error) {
+        fetchOrders();
+        showToast(`${selectedOrderIds.length} orders deleted`);
+        setSelectedOrderIds([]);
+      } else {
+        showToast('Bulk delete failed', 'error');
+      }
+    });
   }
 
   async function markAllAsPaid(shopkeeperId: string) {
-    if (!window.confirm("Are you sure you want to mark all pending orders as paid?")) return;
-    const { error } = await supabase.from('orders').update({ status: 'paid' }).eq('shopkeeper_id', shopkeeperId).neq('status', 'paid');
-    if (!error) {
-      fetchOrders();
-      showToast('All orders marked as paid');
-    } else {
-      showToast('Error updating status', 'error');
-    }
+    showConfirm("Are you sure you want to mark all pending orders as paid?", async () => {
+      const { error } = await supabase.from('orders').update({ status: 'paid' }).eq('shopkeeper_id', shopkeeperId).neq('status', 'paid');
+      if (!error) {
+        fetchOrders();
+        showToast('All orders marked as paid');
+      } else {
+        showToast('Error updating status', 'error');
+      }
+    });
   }
 
   async function handleSaveShopkeeper(e: React.FormEvent) {
@@ -352,8 +378,21 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   async function addToWatchlist(product: string) {
     if (!selectedShopkeeper || !product.trim()) return;
 
-
     const keywords = product.split(',').map(k => k.trim()).filter(k => k);
+    const firstKeyword = (keywords[0] || product.trim()).toLowerCase();
+
+    // Check for existing duplicate
+    const alreadyExists = watchlist.some(item =>
+      (item.keywords || [item.product_name]).some(
+        kw => kw.toLowerCase() === firstKeyword
+      )
+    );
+
+    if (alreadyExists) {
+      showToast(`"${keywords[0]}" is already in the watchlist`, 'error');
+      return;
+    }
+
     const { error } = await supabase.from('watchlists').insert([{
       shopkeeper_id: selectedShopkeeper.id,
       product_name: keywords[0] || product.trim(),
@@ -363,32 +402,35 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
     if (!error) {
       showToast(`Added ${keywords[0]} to watchlist`);
-      setNewProduct(''); fetchWatchlist(selectedShopkeeper.id);
+      setNewProduct('');
+      fetchWatchlist(selectedShopkeeper.id);
     } else {
       showToast('Error adding product', 'error');
     }
   }
 
   async function clearWatchlist(shopkeeperId: string) {
-    if (!window.confirm("Are you sure you want to CLEAR the entire watchlist for this partner?")) return;
-    const { error } = await supabase.from('watchlists').delete().eq('shopkeeper_id', shopkeeperId);
-    if (!error) {
-      setWatchlist([]);
-      showToast('Watchlist cleared');
-    } else {
-      showToast('Failed to clear watchlist', 'error');
-    }
+    showConfirm("Are you sure you want to CLEAR the entire watchlist for this partner?", async () => {
+      const { error } = await supabase.from('watchlists').delete().eq('shopkeeper_id', shopkeeperId);
+      if (!error) {
+        setWatchlist([]);
+        showToast('Watchlist cleared');
+      } else {
+        showToast('Failed to clear watchlist', 'error');
+      }
+    });
   }
 
   async function removeFromWatchlist(id: string, productName: string) {
-    if (!window.confirm(`Remove "${productName}" from watchlist?`)) return;
-    const { error } = await supabase.from('watchlists').delete().eq('id', id);
-    if (!error) {
-      showToast('Product removed from watchlist');
-      if (selectedShopkeeper) fetchWatchlist(selectedShopkeeper.id);
-    } else {
-      showToast('Error removing product', 'error');
-    }
+    showConfirm(`Remove "${productName}" from watchlist?`, async () => {
+      const { error } = await supabase.from('watchlists').delete().eq('id', id);
+      if (!error) {
+        showToast('Product removed from watchlist');
+        if (selectedShopkeeper) fetchWatchlist(selectedShopkeeper.id);
+      } else {
+        showToast('Error removing product', 'error');
+      }
+    });
   }
 
   async function runSimulator() {
@@ -475,19 +517,48 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     document.body.removeChild(link);
   };
 
+  const downloadPartnersCSV = () => {
+    const headers = ['Name', 'Phone', 'Address', 'Onboarded By', 'Joined Date'];
+    const rows = shopkeepers.map(sk => [
+      `"${sk.name.replace(/"/g, '""')}"`,
+      `"${sk.phone}"`,
+      `"${(sk.address || '').replace(/"/g, '""')}"`,
+      `"${sk.operator_name || 'Admin'}"`,
+      `"${new Date(sk.created_at).toLocaleDateString()}"`
+    ]);
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `MarginMart_Partners_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const openWhatsApp = (phone: string, name: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const message = `Hello ${name}, this is MarginMart Admin.`;
+    window.open(`https://wa.me/${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
   const filteredShopkeepers = shopkeepers.filter(sk =>
     sk.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     sk.phone.includes(searchQuery)
   );
 
-  const filteredOrders = orders.filter(o =>
-    o.product_name.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-    o.shopkeeper?.name.toLowerCase().includes(orderSearchQuery.toLowerCase())
-  );
+  const filteredOrders = orders.filter(o => {
+    const matchesSearch = o.product_name.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+                          o.shopkeeper?.name.toLowerCase().includes(orderSearchQuery.toLowerCase());
+    const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   // Analytics Calculations
   const totalProfit = orders.reduce((sum, o) => sum + (o.selling_price - o.deal_price), 0);
   const pendingCollection = orders.filter(o => o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0);
+  const todayRevenue = orders.filter(o => new Date(o.created_at).toDateString() === new Date().toDateString()).reduce((sum, o) => sum + o.selling_price, 0);
 
 
   // Operator Performance
@@ -559,7 +630,18 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   type="password"
                   maxLength={4}
                   value={pin}
-                  onChange={(e) => setPin(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPin(val);
+                    if (val.length === 4) {
+                      setTimeout(() => checkPin(), 150);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && pin.length === 4) {
+                      checkPin();
+                    }
+                  }}
                   style={{
                     width: '100%',
                     background: 'transparent',
@@ -684,25 +766,23 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <div className="stats-overview">
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="stat-card-mini">
                       <h4>Total Net Profit</h4>
-                      <div className="val text-green">₹{totalProfit.toLocaleString()}</div>
+                      <div className="val text-green">₹{totalProfit.toLocaleString('en-IN')}</div>
                       <TrendingUp className="text-green" />
                     </motion.div>
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="stat-card-mini">
                       <h4>Pending Collection</h4>
-                      <div className="val text-orange">₹{pendingCollection.toLocaleString()}</div>
+                      <div className="val text-orange">₹{pendingCollection.toLocaleString('en-IN')}</div>
                       <Clock className="text-orange" />
                     </motion.div>
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="stat-card-mini">
-                      <h4>Active Partners</h4>
-                      <div className="val">{shopkeepers.length}</div>
-                      <Users />
+                      <h4>Today's Revenue</h4>
+                      <div className="val text-green">₹{todayRevenue.toLocaleString('en-IN')}</div>
+                      <IndianRupee className="text-green" size={20} />
                     </motion.div>
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="stat-card-mini">
-                      <h4>Profit Margin</h4>
-                      <div className="val text-green">
-                        {totalProfit > 0 ? ((totalProfit / orders.reduce((s,o) => s + o.deal_price, 0)) * 100).toFixed(1) : 0}%
-                      </div>
-                      <TrendingUp className="text-green" />
+                      <h4>Today's Orders</h4>
+                      <div className="val">{orders.filter(o => new Date(o.created_at).toDateString() === new Date().toDateString()).length}</div>
+                      <ShoppingBag />
                     </motion.div>
                   </div>
 
@@ -996,13 +1076,26 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 <motion.div key="orders" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <header className="page-header">
                     <div className="page-title"><h1>Order Logs</h1><p>Manage order status and payment collections.</p></div>
-                    <div className="header-actions">
+                    <div className="header-actions orders-header-actions">
                       {selectedOrderIds.length > 0 && (
                         <button className="btn-pro-ghost" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={bulkDeleteOrders}>
                           <X size={16} /> Delete ({selectedOrderIds.length})
                         </button>
                       )}
-                      <div className="search-bar-premium" style={{ width: '280px' }}>
+                      <div className="search-bar-premium" style={{ width: 'auto', paddingRight: '0.5rem' }}>
+                        <Filter size={18} />
+                        <select 
+                          value={orderStatusFilter} 
+                          onChange={(e) => setOrderStatusFilter(e.target.value as any)}
+                          style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer', padding: '0.2rem' }}
+                        >
+                          <option value="all">All Status</option>
+                          <option value="pending">Pending</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="paid">Paid</option>
+                        </select>
+                      </div>
+                      <div className="search-bar-premium" style={{ flex: 1, minWidth: '0', maxWidth: '280px' }}>
                         <Search size={18} />
                         <input placeholder="Search orders..." value={orderSearchQuery} onChange={(e) => setOrderSearchQuery(e.target.value)} />
                       </div>
@@ -1129,7 +1222,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                               </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                              <strong style={{ color: 'var(--admin-accent)' }}>₹{total}</strong>
+                              <strong style={{ color: 'var(--admin-accent)' }}>₹{total.toLocaleString('en-IN')}</strong>
                               <ChevronRight size={16} style={{ marginLeft: '8px', opacity: 0.3 }} />
                             </div>
                           </div>
@@ -1140,12 +1233,17 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     <div className="watchlist-card">
                       {selectedBillPartner ? (
                         <>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+                          <div className="mobile-back-bar">
+                            <button onClick={() => setSelectedBillPartner(null)} className="btn-pro-ghost">
+                              <ArrowLeft size={16} /> Back to List
+                            </button>
+                          </div>
+                          <div className="billing-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                             <div>
                               <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.name}</h2>
                               <p style={{ color: 'var(--text-muted)' }}>Statement for current period</p>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                             <div className="billing-action-row" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                               <button className="btn-pro-ghost" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => copyStatementText(selectedBillPartner)}>Copy Text</button>
                               <button className="btn-pro-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => markAllAsPaid(selectedBillPartner)}>Mark All Paid</button>
                               <button className="btn-pro-primary" onClick={() => setShowInvoiceModal(true)}><Zap size={16} /> Generate Statement</button>
@@ -1171,7 +1269,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                             <div style={{ padding: '1.5rem', textAlign: 'right', borderTop: '2px solid #f1f5f9', background: '#f8fafc' }}>
                               <span style={{ color: 'var(--text-muted)', marginRight: '1rem' }}>Total Amount Due:</span>
                               <strong style={{ fontSize: '1.5rem', color: '#1e293b' }}>
-                                ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0)}
+                                ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0).toLocaleString('en-IN')}
                               </strong>
                             </div>
                           </div>
@@ -1220,9 +1318,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   )}
                 </motion.div>
               ) : selectedShopkeeper ? (
-                <motion.div key="detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="detail-view">
-                  <div className="info-card">
-                    <button onClick={() => setSelectedShopkeeper(null)} className="btn-pro-ghost" style={{ marginBottom: '1.5rem' }}><ArrowLeft size={16} /> Back</button>
+                <>
+                  <div className="mobile-back-bar">
+                    <button onClick={() => setSelectedShopkeeper(null)} className="btn-pro-ghost">
+                      <ArrowLeft size={16} /> Back to Partners
+                    </button>
+                  </div>
+                  <motion.div key="detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="detail-view">
+                    <div className="info-card">
+                      <button onClick={() => setSelectedShopkeeper(null)} className="btn-pro-ghost mobile-back-btn" style={{ marginBottom: '1.5rem' }}><ArrowLeft size={16} /> Back</button>
                     <div className="sk-avatar-lg">{selectedShopkeeper.name.charAt(0)}</div>
                     <h2>{selectedShopkeeper.name}</h2>
                     {selectedShopkeeper.operator_name && (
@@ -1303,13 +1407,14 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                  </motion.div>
+                </>
               ) : (
                 <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <header className="page-header">
                     <div className="page-title"><h1>Partner Network</h1><p>Active shopkeepers and their watchlists.</p></div>
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                      <button onClick={downloadCSV} className="btn-pro-secondary"><Download size={18} /> CSV</button>
+                      <button onClick={downloadPartnersCSV} className="btn-pro-secondary"><Download size={18} /> CSV</button>
                       <button onClick={() => { setFormState({ id: '', name: '', phone: '', address: '' }); setShowAddModal(true); }} className="btn-pro-primary"><Plus size={20} /> Add Partner</button>
                     </div>
                   </header>
@@ -1333,8 +1438,19 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                             <div className="sk-avatar">{sk.name.charAt(0)}</div>
                             <div>
                               <h4>{sk.name}</h4>
-                              <p>{sk.phone} {sk.operator_name && <span style={{ opacity: 0.5 }}>• By {sk.operator_name}</span>}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              {sk.phone}
+                              <button 
+                                className="btn-icon" 
+                                style={{ color: '#25d366', padding: '2px', height: '24px', width: '24px' }} 
+                                onClick={() => openWhatsApp(sk.phone, sk.name)}
+                                title="Chat on WhatsApp"
+                              >
+                                <MessageSquare size={14} />
+                              </button>
                             </div>
+                            {sk.operator_name && <span style={{ opacity: 0.5 }}>• By {sk.operator_name}</span>}
+                          </div>
                           </div>
                           <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{sk.address}</div>
                           <div><span className="status-pill active">Verified</span></div>
@@ -1353,11 +1469,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   </div>
                 </motion.div>
               )}
-            </AnimatePresence>
+          </AnimatePresence>
           </main>
 
           {/* Mobile Bottom Nav */}
-          {!isInputFocused && (
+          {!keyboardOpen && (
             <div className="admin-mobile-bottom-nav">
             {[
               { tab: 'automation', icon: <Zap size={18} />, label: 'Auto' },
@@ -1501,7 +1617,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               <div className="modal-header"><h2>Log Order — {orderPartner?.name || selectedShopkeeper?.name}</h2><button onClick={() => { setShowOrderModal(false); setOrderPartner(null); }}><X size={24} /></button></div>
               <form onSubmit={logOrder}>
                 <div className="form-group"><label>Product Name</label><input required className="form-input-premium" value={orderForm.product_name} onChange={(e) => setOrderForm({ ...orderForm, product_name: e.target.value })} /></div>
-                <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div><label>Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} onChange={(e) => setOrderForm({ ...orderForm, deal_price: e.target.value })} /></div>
                   <div><label>Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
                 </div>
@@ -1540,6 +1656,42 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Custom Confirm Dialog */}
+      {confirmDialog && (
+        <div className="modal-overlay" style={{ zIndex: 100001 }}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="modal"
+            style={{ maxWidth: '360px', textAlign: 'center', padding: '2rem' }}
+          >
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+            <p style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              {confirmDialog.message}
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                className="btn-pro-ghost"
+                style={{ flex: 1 }}
+                onClick={() => setConfirmDialog(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-pro-primary"
+                style={{ flex: 1, background: '#ef4444', borderColor: '#ef4444' }}
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
