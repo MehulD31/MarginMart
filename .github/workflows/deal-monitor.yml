@@ -36,4 +36,4 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           MONITOR_CHANNELS: deals
           FETCH_LIMIT: "30"
-        run: python telegram-mcp/poll_monitor.py
+        run: python scripts/poll_monitor.py
