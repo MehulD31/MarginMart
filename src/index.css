@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 /* ADMIN PRO DASHBOARD STYLES handled at end of file */
 
@@ -2098,7 +2098,7 @@ img { max-width: 100%; display: block; }
 
 .admin-pro-theme .invoice-table-header {
   display: grid !important;
-  grid-template-columns: 2fr 1fr 1fr !important;
+  grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
   padding: 1rem !important;
   background: #f8fafc !important;
   border-radius: 12px !important;
@@ -2112,7 +2112,7 @@ img { max-width: 100%; display: block; }
 
 .admin-pro-theme .invoice-item-row {
   display: grid !important;
-  grid-template-columns: 2fr 1fr 1fr !important;
+  grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
   padding: 1.25rem 1rem !important;
   border-bottom: 1px solid #f1f5f9 !important;
   font-size: 0.95rem !important;
@@ -2643,48 +2643,9 @@ img { max-width: 100%; display: block; }
   }
 }
 
-/* -- PRINT STYLES (for invoice) -- */
-@media print {
-  /* Hide everything except the invoice content */
-  .admin-sidebar,
-  .admin-mobile-header,
-  .admin-mobile-bottom-nav,
-  .modal-overlay > *:not(.invoice-modal),
-  .toast-notification,
-  .page-header,
-  .invoice-total-section .btn-pro-secondary,
-  .invoice-total-section .btn-pro-primary,
-  .invoice-header button,
-  .mobile-drag-handle {
-    display: none !important;
-  }
+.print-only { display: none !important; }
+.no-print { display: flex !important; }
 
-  .modal-overlay {
-    position: static !important;
-    background: none !important;
-  }
-
-  .invoice-modal {
-    max-height: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    width: 100% !important;
-  }
-
-  .invoice-body {
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  body {
-    background: white !important;
-    padding: 0 !important;
-  }
-
-  .invoice-total-section {
-    border-top: 2px solid #000 !important;
-  }
-}
 
 @media (max-width: 767px) {
   /* Increase touch targets for mobile buttons */
@@ -2742,5 +2703,132 @@ img { max-width: 100%; display: block; }
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+}
+
+/* -- PRINT STYLES (for invoice) -- */
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Hide dashboard specific elements only */
+  .admin-sidebar,
+  .admin-mobile-header,
+  .admin-mobile-bottom-nav,
+  .admin-content,
+  .page-header,
+  .dashboard-stats-grid,
+  .search-container,
+  .toast-notification,
+  .mobile-drag-handle,
+  .invoice-header button,
+  .invoice-total-section button {
+    display: none !important;
+  }
+
+  .admin-pro-theme {
+    background: white !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .modal-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    display: block !important;
+    padding: 0 !important;
+    z-index: 999999 !important;
+    visibility: visible !important;
+  }
+
+  .invoice-modal {
+    position: relative !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    transform: none !important;
+    background: white !important;
+    visibility: visible !important;
+  }
+
+  .invoice-header {
+    background: white !important;
+    color: black !important;
+    border-bottom: 2px solid black !important;
+    padding: 1rem 0 !important;
+  }
+
+  .invoice-body {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 2rem 0 !important;
+  }
+
+  .invoice-table-header {
+    display: grid !important;
+    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+    background: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    border: 1px solid black !important;
+    color: black !important;
+  }
+
+  .invoice-item-row {
+    display: grid !important;
+    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+    border: 1px solid #e2e8f0 !important;
+    border-top: none !important;
+    page-break-inside: avoid;
+  }
+
+  .invoice-total-section {
+    border: 1px solid black !important;
+    background: #f8fafc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    margin-top: 2rem !important;
+  }
+
+  h1, h2, h3, h4 {
+    color: black !important;
+  }
+
+  .text-green, .text-green-500 {
+    color: #15803d !important;
+  }
+
+  /* Ensure the Zap icon and other lucide icons print well */
+  svg {
+    color: black !important;
+  }
+
+  .print-only {
+    display: flex !important;
+  }
+
+  .no-print, .close-btn-no-print {
+    display: none !important;
+  }
+
+  .invoice-title-print {
+    color: black !important;
   }
 }
