@@ -2491,9 +2491,16 @@ img { max-width: 100%; display: block; }
   .admin-pro-theme .invoice-body { padding: 1.25rem !important; }
   .admin-pro-theme .invoice-header { padding: 1rem 1.25rem !important; }
   .admin-pro-theme .invoice-total-section { padding: 1rem 1.25rem !important; }
-  .admin-pro-theme .invoice-table-header { display: none !important; }
+  .admin-pro-theme .invoice-table-header { 
+    display: grid !important; 
+    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+    font-size: 0.7rem !important;
+    padding: 0.5rem !important;
+  }
   .admin-pro-theme .invoice-item-row { 
-    grid-template-columns: 1fr !important; gap: 0.25rem !important;
+    display: grid !important;
+    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+    gap: 0.25rem !important;
     padding: 0.75rem 0.5rem !important;
   }
 
