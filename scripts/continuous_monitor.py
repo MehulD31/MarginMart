@@ -177,16 +177,17 @@ async def run_monitor():
             except Exception as e:
                 log.warning(f"Watchlist reload failed: {e}")
 
-        text = event.message.text or event.message.message or ""
-        if not text.strip():
+        raw_text = event.message.message or ""
+        if not raw_text.strip():
             return  # Skip media-only messages
 
-        channel = getattr(event.chat, "username", None) or "unknown"
+        channel_title = getattr(event.chat, "title", None) or getattr(event.chat, "username", None) or "Private/Unknown"
+        channel_username = getattr(event.chat, "username", None)
         post_id = event.message.id
-        post_url = f"https://t.me/{channel}/{post_id}" if channel != "unknown" else None
+        post_url = f"https://t.me/{channel_username}/{post_id}" if channel_username else None
 
-        text_lower = text.lower()
-        log.info(f"[{channel}/{post_id}] New message: {text[:80].replace(chr(10), ' ')}")
+        text_lower = raw_text.lower()
+        log.info(f"[{channel_title}/{post_id}] New message: {raw_text[:80].replace(chr(10), ' ')}")
 
         # Match against all watchlist items — build shopkeeper → keywords map
         shopkeeper_matches: dict[str, list[str]] = {}
@@ -215,32 +216,36 @@ async def run_monitor():
         if not shopkeeper_matches:
             return  # No match, skip
 
-        log.info(f"MATCH in [{channel}/{post_id}] for: {list(shopkeeper_matches.keys())}")
+        log.info(f"MATCH in [{channel_title}/{post_id}] for: {list(shopkeeper_matches.keys())}")
 
         # Save matches to DB
         for shopkeeper_name, kws in shopkeeper_matches.items():
             shopkeeper_id = shopkeeper_ids[shopkeeper_name]
             for kw in kws:
-                save_match(shopkeeper_id, kw, kw, text, post_url)
+                save_match(shopkeeper_id, kw, kw, raw_text, post_url)
 
         # Build alert message
-        preview = text[:350] + "..." if len(text) > 350 else text
+        import html
+        preview = raw_text[:400] + "..." if len(raw_text) > 400 else raw_text
+        preview = html.escape(preview)  # Prevent raw < > from breaking Telegram HTML parser
+        
         shopkeeper_lines = "\n".join(
             f"  \u2022 <b>{name}</b>  \u2192  {', '.join(kws)}"
             for name, kws in shopkeeper_matches.items()
         )
 
         alert_text = "\n".join([
-            "\U0001f6a8 <b>Deal Alert!</b>",
+            "🚨 <b>DEAL MATCH FOUND!</b>",
             "",
-            f"\U0001f4e2 Channel: <code>{channel}</code>",
-            f"\U0001f517 <a href='{post_url}'>View Original Post \u2192</a>" if post_url else "",
+            f"📣 <b>Source:</b> {channel_title}",
+            f"🔗 <a href='{post_url}'>View Original Post →</a>" if post_url else "",
             "",
-            f"\U0001f465 <b>Interested Shopkeepers:</b>",
+            f"👥 <b>Matched Partners:</b>",
             shopkeeper_lines,
             "",
-            f"\U0001f4dd <b>Deal:</b>",
-            preview,
+            "━━━━━━━━━━━━━━━━━━",
+            f"📝 <b>Preview:</b>",
+            f"<i>{preview}</i>",
         ])
 
         try:
