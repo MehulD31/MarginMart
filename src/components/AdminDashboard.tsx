@@ -129,6 +129,17 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     }
   }, [isAuthorized]);
 
+  useEffect(() => {
+    if (isAuthorized) {
+      if (activeTab === 'automation' || activeTab === 'matches') {
+        fetchMatches();
+      }
+      if (activeTab === 'automation') {
+        fetchTotalWatchlists();
+      }
+    }
+  }, [activeTab, isAuthorized]);
+
   async function fetchTotalWatchlists() {
     const { count } = await supabase.from('watchlists').select('*', { count: 'exact', head: true });
     setTotalWatchlistCount(count || 0);
