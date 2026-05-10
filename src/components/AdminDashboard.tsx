@@ -615,39 +615,10 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <div className="setup-step" style={{ display: 'flex', gap: '1rem' }}>
                           <div className="step-num" style={{ width: '24px', height: '24px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0 }}>2</div>
                           <div className="step-content">
-                            <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Bot Configuration</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                              <div className="input-group">
-                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Bot Token</label>
-                                <input 
-                                  type="password" 
-                                  placeholder="••••••••••••••••" 
-                                  className="admin-input" 
-                                  style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} 
-                                  value={botToken}
-                                  onChange={e => setBotToken(e.target.value)}
-                                />
-                              </div>
-                              <div className="input-group">
-                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Admin Chat ID</label>
-                                <input 
-                                  type="text" 
-                                  placeholder="e.g. 123456789" 
-                                  className="admin-input" 
-                                  style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} 
-                                  value={adminChatId}
-                                  onChange={e => setAdminChatId(e.target.value)}
-                                />
-                              </div>
-                              <button 
-                                className="btn-pro" 
-                                style={{ marginTop: '0.5rem' }} 
-                                onClick={saveTelegramConfig}
-                                disabled={saving}
-                              >
-                                {saving ? 'Saving...' : 'Save Configuration'}
-                              </button>
-                            </div>
+                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Bot Configuration</h4>
+                            <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                              Bot tokens and Chat IDs are securely managed via Render Environment Variables for 24/7 cloud stability.
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -667,7 +638,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       </div>
                       <div className="engine-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div className="stat" style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', textAlign: 'center' }}>
-                          <span className="num" style={{ display: 'block', fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>0</span>
+                          <span className="num" style={{ display: 'block', fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
+                            {matches.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString()).length}
+                          </span>
                           <span className="lbl" style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Matches Today</span>
                         </div>
                         <div className="stat" style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', textAlign: 'center' }}>
