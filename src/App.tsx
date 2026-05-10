@@ -747,15 +747,35 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    // Check if URL ends with /admin
+    // Initial check
     if (window.location.pathname === '/admin') {
       setIsAdmin(true)
     }
 
     const handleToggle = () => setIsAdmin(prev => !prev)
+    const handlePopState = () => {
+      setIsAdmin(window.location.pathname === '/admin')
+    }
+
     window.addEventListener('toggle-admin', handleToggle)
-    return () => window.removeEventListener('toggle-admin', handleToggle)
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('toggle-admin', handleToggle)
+      window.removeEventListener('popstate', handlePopState)
+    }
   }, [])
+
+  useEffect(() => {
+    if (isAdmin) {
+      if (window.location.pathname !== '/admin') {
+        window.history.pushState({ admin: true }, '', '/admin')
+      }
+    } else {
+      if (window.location.pathname === '/admin') {
+        window.history.pushState({ admin: false }, '', '/')
+      }
+    }
+  }, [isAdmin])
 
   if (isAdmin) {
     return <AdminDashboard onBack={() => setIsAdmin(false)} />
