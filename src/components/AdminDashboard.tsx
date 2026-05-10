@@ -1259,7 +1259,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                           </div>
 
                           <div className="data-table-container" style={{ boxShadow: 'none', border: '1px solid #f1f5f9' }}>
-                            <div className="sk-row header-row" style={{ '--grid-cols': '2.5fr 1fr 0.6fr 1fr 1fr', padding: '1rem' } as any}>
+                            <div className="invoice-table-header">
                               <div>Item</div>
                               <div>Date</div>
                               <div style={{ textAlign: 'center' }}>Qty</div>
@@ -1270,9 +1270,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                               const qty = order.quantity || 1;
                               const rate = order.selling_price / qty;
                               return (
-                                <div key={order.id} className="sk-row" style={{ '--grid-cols': '2.5fr 1fr 0.6fr 1fr 1fr', padding: '1rem' } as any}>
+                                <div key={order.id} className="invoice-item-row">
                                   <div>
-                                    <strong>{order.product_name}</strong>
+                                    <div style={{ fontWeight: 700 }}>{order.product_name}</div>
                                     {order.operator_name && <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>By {order.operator_name}</div>}
                                   </div>
                                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString()}</div>
@@ -1558,8 +1558,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     <h4 style={{ color: '#1e293b', marginBottom: '0.25rem', fontSize: '1.1rem', fontWeight: 900 }}>MARGINMART</h4>
                     <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.25rem 0' }}>Har Category Ka Sasta Maal</p>
                     <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8' }} className="print-only">
-                      <p style={{ margin: 0 }}>GSTIN: 29AAAAA0000A1Z5</p>
-                      <p style={{ margin: 0 }}>Bangalore, Karnataka, India</p>
+                      <p style={{ margin: 0 }}>Pune, Maharashtra, India</p>
                     </div>
                   </div>
                 </div>
@@ -1596,9 +1595,10 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       <li>Interest @ 18% p.a. will be charged for delayed payments.</li>
                     </ul>
                   </div>
-                  <div style={{ textAlign: 'center', borderTop: '1px solid #1e293b', paddingTop: '1rem', minWidth: '220px' }}>
-                    <p style={{ margin: 0, fontWeight: 900, fontSize: '0.8rem', color: '#1e293b', textTransform: 'uppercase' }}>Authorized Signatory</p>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.7rem', color: '#64748b' }}>For MarginMart Pvt Ltd</p>
+                  <div style={{ textAlign: 'right', minWidth: '220px' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
+                      This is a computer-generated invoice and does not require a physical signature.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1612,9 +1612,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     </strong>
                   </div>
                 </div>
-                <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                  <button className="btn-pro-secondary" onClick={() => window.print()}><Download size={18} /> Print PDF</button>
-                  <button className="btn-pro-primary" onClick={() => {
+                <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }} className="no-print">
+                  <button className="btn-pro-secondary no-print" onClick={() => window.print()}><Download size={18} /> Print PDF</button>
+                  <button className="btn-pro-primary no-print" onClick={() => {
                     const sk = shopkeepers.find(s => s.id === selectedBillPartner);
                     const total = orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0);
                     const text = `Hi ${sk?.name}, your MarginMart statement for this week is ready. Total due: ₹${total}. Please check the attached invoice.`;
@@ -1678,16 +1678,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   }} /></div>
                 </div>
                 <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div><label>Total Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} readOnly /></div>
-                  <div><label>Total Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
-                </div>
-                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                   <div><label>Platform Fee (Fixed ₹)</label><input type="number" className="form-input-premium" value={orderForm.platform_fee} onChange={(e) => {
                     const fee = e.target.value;
                     const rate = orderForm.unit_rate;
                     const qty = orderForm.quantity;
                     setOrderForm({ ...orderForm, platform_fee: fee, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
                   }} /></div>
+                  <div><label>Total Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} readOnly /></div>
+                </div>
+                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                  <div><label>Total Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
                   <div className="profit-preview" style={{ marginTop: '0' }}>
                     <span>Est. Profit: </span>
                     <strong>₹{(parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0')).toFixed(0)}</strong>
