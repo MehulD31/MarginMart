@@ -147,7 +147,7 @@ async def run_monitor():
     # Start the dummy web server so Render doesn't crash the deployment
     await start_web_server()
     
-    await client.start()
+    await client.start() # type: ignore
 
     me = await client.get_me()
     log.info(f"Logged in as: {me.first_name} (@{me.username})")
