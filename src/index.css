@@ -818,27 +818,66 @@ img { max-width: 100%; display: block; }
   .calc-result-card { min-width: 120px; padding: 1rem; }
   .calc-result-num { font-size: 1.5rem; }
 
-  /* â”€â”€ HIDE CLUTTER ON MOBILE â”€â”€ */
-  /* Ticker: unreadable small text on phone */
-  .ticker-wrap { display: none; }
+  /* â”€â”€ MOBILE OPTIMIZATION â”€â”€ */
+  .hero { padding: 4rem 0 3rem; }
+  .hero h1 { font-size: 1.85rem !important; line-height: 1.2; margin-bottom: 1rem; }
+  .hero-sub { font-size: 1rem; margin-bottom: 1.5rem; line-height: 1.5; }
+  .hero-badges { margin-top: 1rem; }
 
-  /* Trust bar: merges with hero badges, redundant */
-  .trust-bar { display: none; }
+  .stats-bar { padding: 1.5rem 0; display: block; }
+  .stats-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .stat-number { font-size: 2.2rem; }
 
-  /* Stats bar: too wide, stat numbers say little to first-time mobile visitor */
-  .stats-bar { display: none; }
+  .ticker-wrap { display: block; font-size: 0.75rem; padding: 0.4rem 0; }
+  .trust-bar { display: block; padding: 1rem 0; border-bottom: 1px solid #eee; }
 
-  /* Categories grid: 8 cards overwhelming, info covered in TwoWays */
-  .section-categories { display: none; }
+  /* Sticky CTA Bar */
+  .sticky-cta {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #e2e8f0;
+    z-index: 1000;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
 
-  /* Platforms grid: covered in HowItWorks text, saves full section */
-  .section-platforms { display: none; }
+  .sticky-cta-btn {
+    width: 100%;
+    background: var(--whatsapp);
+    color: white;
+    padding: 0.85rem;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+  }
 
-  /* Social proof toast: overlaps sticky CTA, too distracting on small screen */
-  .social-toast { display: none; }
+  /* Desktop elements to hide on mobile to keep it simple */
+  .floating-wa { display: none; } /* Replaced by sticky bar */
+  .navbar-actions .btn-whatsapp { display: none; } /* Redundant on mobile */
 
-  /* Savings calculator: nice but secondary â€” hide on mobile to reduce scroll */
-  .calc-box .calc-results { flex-direction: column; }
+  /* Show categories in 2 columns instead of hiding */
+  .section-categories { display: block; padding: 2rem 0; }
+  .categories-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .category-card { padding: 1rem 0.5rem; }
+
+  /* Show platforms in a tighter grid instead of hiding */
+  .section-platforms { display: block; padding: 2rem 0; }
+  .platforms-grid { gap: 0.75rem; }
+  .platform-card { padding: 0.75rem 0.5rem; min-width: 80px; }
+
+  /* Keep it simple but useful */
+  .social-toast { display: none; } /* Still too distracting near sticky bar */
+  .calc-box .calc-results { flex-direction: column; gap: 1rem; }
 }
 
 /* --- 480px: standard phones --- */

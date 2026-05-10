@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   TrendingUp,
@@ -20,7 +20,7 @@ import AdminDashboard from './components/AdminDashboard'
    Goal: Get them to WhatsApp us
    ============================================ */
 
-const WA_LINK = "https://wa.me/918871565551?text=Hi%2C%20I%20want%20today's%20price%20list"
+const WA_LINK = "https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20get%20become%20a%20MarginMart%20Partner"
 
 // ─── Ticker ───
 const Ticker = () => {
@@ -64,12 +64,6 @@ const Navbar = () => (
         <span>Margin<span className="logo-green">Mart</span></span>
       </div>
       <div className="navbar-actions">
-        <button 
-          onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin'))} 
-          className="admin-trigger-btn"
-        >
-          <Lock size={16} /> Admin
-        </button>
         <a href={WA_LINK} className="btn-whatsapp btn-whatsapp-nav" target="_blank" rel="noopener">
           <Phone size={16} />
           Contact Us
@@ -80,53 +74,79 @@ const Navbar = () => (
 )
 
 // ─── Hero ───
-const Hero = () => (
-  <section className="hero">
-    <div className="container">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.4rem 1rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--green)', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          <Bot size={14} /> AI-Powered Deal Sourcing — 7 Platforms
-        </div>
-        <h1>
-          Har category ka <span className="highlight-green">sasta maal</span>,<br />
-          seedha aapki <span className="highlight-orange">dukaan</span> pe
-        </h1>
-        <p className="hero-sub">
-          Grocery, Fashion, Electronics, Beauty — rozana WhatsApp Community pe deals aati hain product photo ke saath. Ya apni zaroorat batao — hum 7+ platforms scan karke best price dhundh denge.
-        </p>
-        <motion.a
-          href={WA_LINK}
-          className="btn-whatsapp btn-whatsapp-lg"
-          target="_blank"
-          rel="noopener"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
+const Hero = () => {
+  const adminClicks = useRef(0)
+  
+  const handleSecretClick = () => {
+    adminClicks.current += 1
+    if (adminClicks.current >= 3) {
+      window.dispatchEvent(new CustomEvent('toggle-admin'))
+      adminClicks.current = 0
+    }
+    
+    // Auto-reset counter after 2 seconds of inactivity
+    setTimeout(() => {
+      adminClicks.current = 0
+    }, 2000)
+  }
+
+  return (
+    <section className="hero">
+      <div className="container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
         >
-          <MessageCircle size={22} fill="white" />
-          Aaj Ki Deals WhatsApp Pe Mangao
-        </motion.a>
-        <div className="hero-badges">
-          <div className="hero-badge">
-            <CheckCircle2 size={16} /> Koi Signup Fee Nahi
+          <div 
+            onClick={handleSecretClick}
+            style={{ 
+              display: 'inline-flex', alignItems: 'center', gap: '0.4rem', 
+              background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.4rem 1rem', 
+              borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--green)', 
+              marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+              cursor: 'default', userSelect: 'none'
+            }}
+          >
+            <Bot size={14} /> AI-Powered Deal Sourcing — 7 Platforms
           </div>
-          <div className="hero-badge">
-            <CheckCircle2 size={16} /> COD / Online Payment
+          <h1>
+            Har category ka <span className="highlight-green">sasta maal</span>,<br />
+            seedha aapki <span className="highlight-orange">dukaan</span> pe
+          </h1>
+          <p className="hero-sub">
+            Grocery, Fashion, Electronics, Beauty — rozana WhatsApp Community pe deals aati hain product photo ke saath. Ya apni zaroorat batao — hum 7+ platforms scan karke best price dhundh denge.
+          </p>
+          <motion.a
+            href={WA_LINK}
+            className="btn-whatsapp btn-whatsapp-lg"
+            target="_blank"
+            rel="noopener"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <Phone size={22} fill="white" />
+            Contact Us to Become a Partner
+          </motion.a>
+          <div className="hero-badges">
+            <div className="hero-badge">
+              <CheckCircle2 size={16} /> Koi Signup Fee Nahi
+            </div>
+            <div className="hero-badge">
+              <CheckCircle2 size={16} /> COD / Online Payment
+            </div>
+            <div className="hero-badge">
+              <CheckCircle2 size={16} /> 10+ Categories Covered
+            </div>
+            <div className="hero-badge">
+              <CheckCircle2 size={16} /> AI-Verified Deals
+            </div>
           </div>
-          <div className="hero-badge">
-            <CheckCircle2 size={16} /> 10+ Categories Covered
-          </div>
-          <div className="hero-badge">
-            <CheckCircle2 size={16} /> AI-Verified Deals
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  </section>
-)
+        </motion.div>
+      </div>
+    </section>
+  )
+}
 
 // ─── Stats Bar ───
 const StatsBar = () => (
@@ -240,24 +260,15 @@ const TwoWays = () => (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
             Hamare WhatsApp Community mein shamil ho jao. Rozana product photos aur prices aate hain — jo deal pasand aaye, us message pe reply karo. Hum order place karke aapki dukaan pe deliver kar denge.
           </p>
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {['Community mein join karo — free', 'Daily deals: photo + price milega', 'Deal pasand aaya? Bas reply karo', 'Hum order place karke deliver karenge'].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
-                  <CheckCircle2 size={15} color="var(--green)" /> {item}
-                </div>
-              ))}
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                {['Community mein join karo — free', 'Daily deals: photo + price milega', 'Deal pasand aaya? Bas reply karo', 'Hum order place karke deliver karenge'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
+                    <CheckCircle2 size={15} color="var(--green)" /> {item}
+                  </div>
+                ))}
+              </div>
             </div>
-            <a
-              href="https://wa.me/918871565551?text=Hi%2C%20I%20want%20to%20join%20the%20MarginMart%20WhatsApp%20Community"
-              className="btn-whatsapp"
-              style={{ padding: '0.6rem 1rem', fontSize: '0.9rem', justifyContent: 'center' }}
-              target="_blank"
-              rel="noopener"
-            >
-              Community Mein Join Karo
-            </a>
-          </div>
         </motion.div>
 
         <motion.div
@@ -272,24 +283,15 @@ const TwoWays = () => (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
             Jo product chahiye uska naam WhatsApp pe bhejo. Hum Amazon, Flipkart, Myntra, Ajio, Zepto, Blinkit aur JioMart — sabhi jagah scan karke sabse sasta option aapko batayenge.
           </p>
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {['Product ka naam bhejo', 'Hum 7+ platforms scan karenge', 'Best price confirm hone ke baad order', 'Seedha dukaan pe delivery'].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
-                  <CheckCircle2 size={15} color="var(--orange)" /> {item}
-                </div>
-              ))}
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                {['Product ka naam bhejo', 'Hum 7+ platforms scan karenge', 'Best price confirm hone ke baad order', 'Seedha dukaan pe delivery'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>
+                    <CheckCircle2 size={15} color="var(--orange)" /> {item}
+                  </div>
+                ))}
+              </div>
             </div>
-            <a
-              href="https://wa.me/918871565551?text=Hi%2C%20mujhe%20kuch%20products%20chahiye%2C%20kya%20aap%20best%20price%20dhundh%20sakte%20ho%3F"
-              className="btn-whatsapp"
-              style={{ background: 'var(--orange)', padding: '0.6rem 1rem', fontSize: '0.9rem', justifyContent: 'center' }}
-              target="_blank"
-              rel="noopener"
-            >
-              Apni Zaroorat Bhejo
-            </a>
-          </div>
         </motion.div>
       </div>
     </div>
@@ -349,10 +351,6 @@ const PriceTable = () => {
           <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.95rem' }}>
             Sirf 8 items pe <strong style={{ color: 'var(--green)' }}>₹5,123 saved</strong> — grocery se lekar fashion tak, sab sasta
           </p>
-          <a href={WA_LINK} className="btn-whatsapp" target="_blank" rel="noopener">
-            <MessageCircle size={18} fill="white" />
-            Full Price List WhatsApp pe Mangao
-          </a>
         </div>
       </div>
     </section>
@@ -599,10 +597,6 @@ const SavingsCalculator = () => {
               <div className="calc-result-label">Yearly Extra Profit</div>
             </div>
           </div>
-          <a href={WA_LINK} className="btn-whatsapp" style={{ justifyContent: 'center', marginTop: '1.5rem' }} target="_blank" rel="noopener">
-            <MessageCircle size={18} fill="white" />
-            Yeh Savings Shuru Karo — WhatsApp Pe
-          </a>
         </motion.div>
       </div>
     </section>
@@ -695,8 +689,8 @@ const FinalCTA = () => (
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
-          <MessageCircle size={22} fill="white" />
-          WhatsApp Pe Price List Lo
+          <Phone size={22} fill="white" />
+          Contact Us to Become a Partner
         </motion.a>
       </motion.div>
     </div>
@@ -715,12 +709,6 @@ const Footer = () => (
       </div>
       <p>Aapka maal sasta, margin zyada.</p>
       <p style={{ marginTop: '0.5rem' }}>© 2026 MarginMart. All rights reserved.</p>
-      <button 
-        onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin'))}
-        style={{ marginTop: '1.5rem', background: 'none', color: '#ccc', fontSize: '0.7rem', cursor: 'pointer' }}
-      >
-        Admin Portal
-      </button>
     </div>
   </footer>
 )
