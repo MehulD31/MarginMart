@@ -614,6 +614,32 @@ img { max-width: 100%; display: block; }
   margin-bottom: 1.5rem;
 }
 
+/* ---- Invoice/Billing Table Base ---- */
+.invoice-table-header {
+  display: grid !important;
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  align-items: center;
+}
+
+.invoice-item-row {
+  display: grid !important;
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.invoice-item-row:hover {
+  background: #fdfdfd;
+}
+
 /* ---- Categories Grid ---- */
 .categories-grid {
   display: grid;
@@ -2137,7 +2163,7 @@ img { max-width: 100%; display: block; }
 
 .admin-pro-theme .invoice-table-header {
   display: grid !important;
-  grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+  grid-template-columns: 2fr 1fr 60px 80px 80px 100px 100px !important;
   padding: 1rem !important;
   background: #f8fafc !important;
   border-radius: 12px !important;
@@ -2151,7 +2177,7 @@ img { max-width: 100%; display: block; }
 
 .admin-pro-theme .invoice-item-row {
   display: grid !important;
-  grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+  grid-template-columns: 2fr 1fr 60px 80px 80px 100px 100px !important;
   padding: 1.25rem 1rem !important;
   border-bottom: 1px solid #f1f5f9 !important;
   font-size: 0.95rem !important;
@@ -2532,15 +2558,18 @@ img { max-width: 100%; display: block; }
   .admin-pro-theme .invoice-total-section { padding: 1rem 1.25rem !important; }
   .admin-pro-theme .invoice-table-header { 
     display: grid !important; 
-    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
-    font-size: 0.7rem !important;
-    padding: 0.5rem !important;
+    grid-template-columns: 180px 100px 60px 80px 80px 100px 100px !important;
+    font-size: 0.75rem !important;
+    padding: 0.75rem 1rem !important;
+    min-width: 850px;
   }
   .admin-pro-theme .invoice-item-row { 
     display: grid !important;
-    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
-    gap: 0.25rem !important;
-    padding: 0.75rem 0.5rem !important;
+    grid-template-columns: 180px 100px 60px 80px 80px 100px 100px !important;
+    gap: 0 !important;
+    padding: 1rem !important;
+    min-width: 850px;
+    align-items: center;
   }
 
   /* Billing detail */
@@ -2725,7 +2754,7 @@ img { max-width: 100%; display: block; }
   /* MOBILE 8 — Watchlist Card Padding */
   .watchlist-card { padding: 1rem !important; }
   .info-card { padding: 1.25rem !important; }
-  .data-table-container { padding: 0 !important; border-radius: 16px !important; }
+  .data-table-container { padding: 0 !important; border-radius: 16px !important; overflow-x: auto !important; }
 
   /* MOBILE 9 — Partner Detail View: Buttons Stack */
   .info-card > div:last-child {
@@ -2829,20 +2858,23 @@ img { max-width: 100%; display: block; }
 
   .invoice-table-header {
     display: grid !important;
-    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+    grid-template-columns: 2fr 1fr 60px 80px 80px 100px 100px !important;
     background: #f1f5f9 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     border: 1px solid black !important;
     color: black !important;
+    padding: 0.5rem 1rem !important;
   }
 
   .invoice-item-row {
     display: grid !important;
-    grid-template-columns: 2.5fr 1fr 0.6fr 1fr 1fr !important;
+    grid-template-columns: 2fr 1fr 60px 80px 80px 100px 100px !important;
     border: 1px solid #e2e8f0 !important;
     border-top: none !important;
     page-break-inside: avoid;
+    padding: 0.75rem 1rem !important;
+    align-items: center;
   }
 
   .invoice-total-section {

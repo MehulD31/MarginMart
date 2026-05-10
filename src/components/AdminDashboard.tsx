@@ -9,7 +9,6 @@ import {
   Loader2,
   ArrowLeft,
   Bell,
-  Phone,
   ChevronRight,
   Edit2,
   Zap,
@@ -32,6 +31,7 @@ import {
   Filter,
   MessageSquare
 } from 'lucide-react';
+import { generateInvoice, fetchPartnerInvoices, type InvoiceRecord } from '../utils/invoiceGenerator';
 
 interface Shopkeeper {
   id: string;
@@ -69,6 +69,7 @@ interface Order {
   product_name: string;
   deal_price: number;
   selling_price: number;
+  mrp?: number;
   status: 'ordered' | 'delivered' | 'paid';
   created_at: string;
   quantity?: number;
@@ -79,6 +80,33 @@ interface Order {
 }
 
 const TEMPLATE_KEYWORDS = ["Dove", "Maggi", "Pampers", "Atta", "Surf Excel", "Cooking Oil", "Rice", "Sugar", "Shampoo", "Soap"];
+
+// ─── Sitewide Brand Logo (matches landing page) ───────────────────────────────
+const BrandLogo = ({ dark = true, badge }: { dark?: boolean; badge?: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div style={{
+      width: 32, height: 32,
+      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+      borderRadius: '8px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+      boxShadow: '0 2px 8px rgba(34,197,94,0.35)'
+    }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white"
+           strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+        <polyline points="17 6 23 6 23 12" />
+      </svg>
+    </div>
+    <div style={{ lineHeight: 1.1 }}>
+      <div style={{ fontWeight: 900, fontSize: '1rem', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+        <span style={{ color: dark ? '#ffffff' : '#0f172a' }}>Margin</span>
+        <span style={{ color: '#22c55e' }}>Mart</span>
+      </div>
+      {badge && <div style={{ fontSize: '0.52rem', fontWeight: 800, color: '#22c55e', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: '1px' }}>{badge}</div>}
+    </div>
+  </div>
+);
 
 export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [isAuthorized, setIsAuthorized] = useState(() => sessionStorage.getItem('adminAuth') === 'true');
@@ -97,7 +125,6 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedBillPartner, setSelectedBillPartner] = useState<string | null>(null);
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [viewingMessage, setViewingMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
@@ -117,6 +144,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'delivered' | 'paid'>('all');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [invoiceHistory, setInvoiceHistory] = useState<InvoiceRecord[]>([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
 
   const [loginError, setLoginError] = useState(false);
   const [monitorChannels, setMonitorChannels] = useState<string[]>(['deals']);
@@ -166,7 +195,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   }
 
   // Order Form
-  const [orderForm, setOrderForm] = useState({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0' });
+  const [orderForm, setOrderForm] = useState({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0', mrp: '' });
 
   // Simulator State
   const [simText, setSimText] = useState('');
@@ -202,6 +231,24 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   async function fetchTotalWatchlists() {
     const { count } = await supabase.from('watchlists').select('*', { count: 'exact', head: true });
     setTotalWatchlistCount(count || 0);
+  }
+
+  useEffect(() => {
+    if (selectedBillPartner) {
+      loadInvoiceHistory(selectedBillPartner);
+    }
+  }, [selectedBillPartner]);
+
+  async function loadInvoiceHistory(partnerId: string) {
+    setInvoiceLoading(true);
+    try {
+      const history = await fetchPartnerInvoices(partnerId);
+      setInvoiceHistory(history || []);
+    } catch (error) {
+      console.error('Failed to load invoice history:', error);
+    } finally {
+      setInvoiceLoading(false);
+    }
   }
 
   async function checkPin(currentPin?: string) {
@@ -359,6 +406,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       product_name: orderForm.product_name,
       deal_price: parseFloat(orderForm.deal_price),
       selling_price: parseFloat(orderForm.selling_price),
+      mrp: parseFloat(orderForm.mrp || '0'),
       quantity: parseFloat(orderForm.quantity || '1'),
       unit_rate: parseFloat(orderForm.unit_rate || '0'),
       platform_fee: parseFloat(orderForm.platform_fee || '0'),
@@ -369,7 +417,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     if (!error) {
       showToast(`Logged order for ${orderForm.product_name}`);
       setShowOrderModal(false); setOrderPartner(null);
-      setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0' });
+      setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0', mrp: '' });
       fetchOrders();
     } else {
       showToast('Failed to log fulfillment', 'error');
@@ -493,26 +541,40 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     const partnerOrders = orders.filter(o => o.shopkeeper_id === shopkeeperId && o.status !== 'paid');
     const partner = shopkeepers.find(s => s.id === shopkeeperId);
     let text = `Statement for ${partner?.name}\n\n`;
+    let totalSavings = 0;
     partnerOrders.forEach(o => {
-      text += `${o.product_name}: ₹${o.selling_price}\n`;
+      const qty = o.quantity || 1;
+      const rate = o.selling_price / qty;
+      const savingPerPc = o.mrp ? (o.mrp - rate) : 0;
+      totalSavings += (savingPerPc * qty);
+      text += `${o.product_name}: ₹${o.selling_price}${savingPerPc > 0 ? ` (Saving: ₹${savingPerPc}/pc)` : ''}\n`;
     });
     text += `\nTotal Due: ₹${partnerOrders.reduce((sum, o) => sum + o.selling_price, 0)}`;
+    if (totalSavings > 0) text += `\nTotal Savings: ₹${totalSavings.toFixed(0)}`;
     navigator.clipboard.writeText(text);
-    showToast('Statement copied to clipboard');
+    showToast('Statement text copied');
   };
 
   const downloadCSV = () => {
-    const headers = ['Order ID', 'Product', 'Deal Price', 'Selling Price', 'Profit', 'Shopkeeper', 'Status', 'Date'];
-    const rows = orders.map(o => [
-      o.id,
-      `"${o.product_name.replace(/"/g, '""')}"`,
-      o.deal_price,
-      o.selling_price,
-      o.selling_price - o.deal_price,
-      `"${shopkeepers.find(s => s.id === o.shopkeeper_id)?.name?.replace(/"/g, '""') || 'Unknown'}"`,
-      o.status,
-      new Date(o.created_at).toLocaleDateString()
-    ]);
+    const headers = ['Order ID', 'Product', 'Qty', 'MRP/Pc', 'Deal Price', 'Selling Price', 'Saving/pc', 'Our Profit', 'Shopkeeper', 'Status', 'Date'];
+    const rows = orders.map(o => {
+      const qty = o.quantity || 1;
+      const rate = o.selling_price / qty;
+      const savingPerPc = o.mrp ? (o.mrp - rate) : 0;
+      return [
+        o.id,
+        `"${o.product_name.replace(/"/g, '""')}"`,
+        qty,
+        o.mrp || 0,
+        o.deal_price,
+        o.selling_price,
+        savingPerPc,
+        o.selling_price - o.deal_price,
+        `"${shopkeepers.find(s => s.id === o.shopkeeper_id)?.name?.replace(/"/g, '""') || 'Unknown'}"`,
+        o.status,
+        new Date(o.created_at).toLocaleDateString()
+      ];
+    });
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -586,7 +648,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             exit={{ height: 0, opacity: 0 }}
             style={{ background: '#ef4444', color: 'white', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, padding: '0.5rem', position: 'sticky', top: 0, zIndex: 1000, textTransform: 'uppercase', letterSpacing: '0.05em' }}
           >
-            Offline Mode • Changes may not sync
+            Offline Mode â€¢ Changes may not sync
           </motion.div>
         )}
       </AnimatePresence>
@@ -682,7 +744,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       fontWeight: 700,
                       transition: 'all 0.2s'
                     }}>
-                      {pin.length > i ? '•' : ''}
+                      {pin.length > i ? 'â€¢' : ''}
                     </div>
                   ))}
                 </div>
@@ -696,10 +758,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
         <div className="admin-layout">
           {/* Mobile Top Header */}
           <div className="admin-mobile-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 900 }}>
-              <Zap size={18} fill="currentColor" color="#22c55e" />
-              <span style={{ color: 'white', fontSize: '1rem' }}>MarginMart <span style={{ color: '#22c55e', fontSize: '0.65rem' }}>ADMIN</span></span>
-            </div>
+            <BrandLogo dark badge="Admin" />
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <button onClick={() => { fetchOrders(); fetchMatches(); fetchShopkeepers(); showToast('Data Refreshed'); }} 
                 style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', 
@@ -718,8 +777,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           {/* Sidebar */}
           <aside className="admin-sidebar">
             <div className="sidebar-logo">
-              <Zap className="text-green-500" fill="currentColor" />
-              <span>MarginMart <span className="pro-badge">ADMIN PRO</span></span>
+              <BrandLogo dark badge="Admin Pro" />
             </div>
             <nav className="sidebar-nav">
               <button 
@@ -806,7 +864,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <div key={o.id} className="sk-row" style={{ '--grid-cols': '2.4fr 1fr 1fr' } as any}>
                           <div className="sk-name-cell">
                             <h4>{o.shopkeeper?.name}</h4>
-                            <p>{o.product_name} {o.operator_name && <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>• Handled by {o.operator_name}</span>}</p>
+                            <p>{o.product_name} {o.operator_name && <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>â€¢ Handled by {o.operator_name}</span>}</p>
                           </div>
                           <div className={`status-badge ${o.status}`} style={{ fontSize: '0.6rem' }}>{o.status}</div>
                           <div style={{ textAlign: 'right', fontWeight: 700 }}>₹{o.selling_price}</div>
@@ -1004,7 +1062,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                               let source = 'Legacy / Test Matches';
                               if (m.telegram_link) {
                                 if (m.telegram_link.startsWith('private||')) {
-                                  source = `🔒 ${m.telegram_link.split('private||')[1]}`;
+                                  source = `ðŸ”’ ${m.telegram_link.split('private||')[1]}`;
                                 } else if (m.telegram_link.includes('t.me/c/')) {
                                   source = 'Private Group';
                                 } else {
@@ -1175,7 +1233,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Qty: {order.quantity || 1} × ₹{(order.unit_rate || (order.deal_price / (order.quantity || 1))).toLocaleString()}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Qty: {order.quantity || 1} Ã— ₹{(order.unit_rate || (order.deal_price / (order.quantity || 1))).toLocaleString()}</div>
                           <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -1204,7 +1262,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     </div>
                   </header>
 
-                  <div className="detail-view" style={{ gridTemplateColumns: '1fr 1.5fr' }}>
+                  <div className="detail-view" style={{ gridTemplateColumns: '350px 1fr', alignItems: 'start' }}>
                     <div className="data-table-container">
                       <div className="table-controls">
                         <div className="search-input-wrap">
@@ -1238,7 +1296,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       })}
                     </div>
 
-                    <div className="watchlist-card">
+                    <div className="watchlist-card" style={{ minWidth: 0 }}>
                       {selectedBillPartner ? (
                         <>
                           <div className="mobile-back-bar">
@@ -1254,40 +1312,125 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                              <div className="billing-action-row" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                               <button className="btn-pro-ghost" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => copyStatementText(selectedBillPartner)}>Copy Text</button>
                               <button className="btn-pro-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => markAllAsPaid(selectedBillPartner)}>Mark All Paid</button>
-                              <button className="btn-pro-primary" onClick={() => setShowInvoiceModal(true)}><Zap size={16} /> Generate Statement</button>
+                              <button className="btn-pro-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={async () => {
+                                const partner = shopkeepers.find(s => s.id === selectedBillPartner);
+                                const partnerOrders = orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid');
+                                if (partner && partnerOrders.length > 0) {
+                                  try {
+                                    await generateInvoice(partner, partnerOrders, operatorName, true);
+                                  } catch (err) {
+                                    showToast('Failed to preview invoice', 'error');
+                                  }
+                                }
+                              }}><FileText size={16} /> Preview PDF</button>
+                              <button className="btn-pro-primary" disabled={invoiceLoading} onClick={async () => {
+                                const partner = shopkeepers.find(s => s.id === selectedBillPartner);
+                                const partnerOrders = orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid');
+                                if (partner && partnerOrders.length > 0) {
+                                  setInvoiceLoading(true);
+                                  try {
+                                    await generateInvoice(partner, partnerOrders, operatorName, false);
+                                    await loadInvoiceHistory(partner.id);
+                                    showToast('Official Invoice generated successfully');
+                                  } catch (err) {
+                                    showToast('Failed to generate official invoice', 'error');
+                                  } finally {
+                                    setInvoiceLoading(false);
+                                  }
+                                }
+                              }}>
+                                {invoiceLoading ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
+                                {invoiceLoading ? 'Generating...' : 'Issue Official Invoice'}
+                              </button>
                             </div>
                           </div>
 
-                          <div className="data-table-container" style={{ boxShadow: 'none', border: '1px solid #f1f5f9' }}>
-                            <div className="invoice-table-header">
+                          <div className="data-table-container" style={{ boxShadow: 'none', border: '1px solid #f1f5f9', overflowX: 'auto', borderRadius: '12px' }}>
+                            <div className="invoice-table-header" style={{ gridTemplateColumns: '2fr 1fr 60px 80px 80px 100px 100px', minWidth: '850px' }}>
                               <div>Item</div>
                               <div>Date</div>
                               <div style={{ textAlign: 'center' }}>Qty</div>
+                              <div style={{ textAlign: 'right' }}>MRP</div>
                               <div style={{ textAlign: 'right' }}>Rate</div>
+                              <div style={{ textAlign: 'right' }}>Saving/pc</div>
                               <div style={{ textAlign: 'right' }}>Total</div>
                             </div>
                             {orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').map(order => {
                               const qty = order.quantity || 1;
                               const rate = order.selling_price / qty;
+                              const savingsPerPiece = order.mrp ? (order.mrp - rate) : 0;
                               return (
-                                <div key={order.id} className="invoice-item-row">
+                                <div key={order.id} className="invoice-item-row" style={{ gridTemplateColumns: '2fr 1fr 60px 80px 80px 100px 100px', minWidth: '850px' }}>
                                   <div>
                                     <div style={{ fontWeight: 700 }}>{order.product_name}</div>
                                     {order.operator_name && <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>By {order.operator_name}</div>}
                                   </div>
                                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString()}</div>
                                   <div style={{ textAlign: 'center' }}>{qty}</div>
+                                  <div style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{order.mrp || '-'}</div>
                                   <div style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{rate.toLocaleString()}</div>
+                                  <div style={{ textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>₹{savingsPerPiece > 0 ? savingsPerPiece.toLocaleString() : '0'}</div>
                                   <div style={{ textAlign: 'right', fontWeight: 600 }}>₹{order.selling_price.toLocaleString()}</div>
                                 </div>
                               );
                             })}
-                            <div style={{ padding: '1.5rem', textAlign: 'right', borderTop: '2px solid #f1f5f9', background: '#f8fafc' }}>
-                              <span style={{ color: 'var(--text-muted)', marginRight: '1rem' }}>Total Amount Due:</span>
-                              <strong style={{ fontSize: '1.5rem', color: '#1e293b' }}>
-                                ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0).toLocaleString('en-IN')}
-                              </strong>
+                            <div style={{ padding: '1.5rem', borderTop: '2px solid #f1f5f9', background: '#f8fafc' }}>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '2rem', alignItems: 'center' }}>
+                                <div>
+                                  <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Total Savings:</span>
+                                  <strong style={{ color: '#16a34a' }}>
+                                    ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + (o.mrp ? (o.mrp * (o.quantity || 1)) - o.selling_price : 0), 0).toLocaleString('en-IN')}
+                                  </strong>
+                                </div>
+                                <div>
+                                  <span style={{ color: 'var(--text-muted)', marginRight: '1rem' }}>Total Amount Due:</span>
+                                  <strong style={{ fontSize: '1.5rem', color: '#1e293b' }}>
+                                    ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0).toLocaleString('en-IN')}
+                                  </strong>
+                                </div>
+                              </div>
                             </div>
+                          </div>
+
+                          {/* Invoice History Section */}
+                          <div style={{ marginTop: '3rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                              <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Invoice History</h3>
+                            </div>
+                            
+                            {invoiceLoading ? (
+                              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <Loader2 className="animate-spin" size={24} style={{ margin: '0 auto 1rem' }} />
+                                <p>Loading history...</p>
+                              </div>
+                            ) : invoiceHistory.length > 0 ? (
+                              <div className="data-table-container" style={{ boxShadow: 'none', border: '1px solid #f1f5f9', overflowX: 'auto', borderRadius: '12px' }}>
+                                <div className="invoice-table-header" style={{ gridTemplateColumns: '1.5fr 2fr 1fr 1fr', minWidth: '600px' }}>
+                                  <div>Invoice No.</div>
+                                  <div>Date</div>
+                                  <div style={{ textAlign: 'right' }}>Amount</div>
+                                  <div style={{ textAlign: 'right' }}>Savings</div>
+                                </div>
+                                {invoiceHistory.map(invoice => (
+                                  <div key={invoice.id} className="invoice-item-row" style={{ gridTemplateColumns: '1.5fr 2fr 1fr 1fr', minWidth: '600px', alignItems: 'center' }}>
+                                    <div style={{ fontWeight: 600 }}>{invoice.invoice_no}</div>
+                                    <div style={{ color: 'var(--text-muted)' }}>
+                                      {new Date(invoice.generated_at).toLocaleDateString('en-IN', {
+                                        year: 'numeric', month: 'short', day: 'numeric',
+                                        hour: '2-digit', minute: '2-digit'
+                                      })}
+                                    </div>
+                                    <div style={{ textAlign: 'right', fontWeight: 600 }}>₹{invoice.total_amount.toLocaleString('en-IN')}</div>
+                                    <div style={{ textAlign: 'right', color: '#16a34a' }}>₹{invoice.total_savings.toLocaleString('en-IN')}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ padding: '3rem 2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                                <History size={32} style={{ margin: '0 auto 1rem', color: '#94a3b8' }} />
+                                <p style={{ color: 'var(--text-muted)' }}>No past invoices found for this partner.</p>
+                              </div>
+                            )}
                           </div>
                         </>
                       ) : (
@@ -1465,7 +1608,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 <MessageSquare size={14} />
                               </button>
                             </div>
-                            {sk.operator_name && <span style={{ opacity: 0.5 }}>• By {sk.operator_name}</span>}
+                            {sk.operator_name && <span style={{ opacity: 0.5 }}>â€¢ By {sk.operator_name}</span>}
                           </div>
                           </div>
                           <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{sk.address}</div>
@@ -1513,123 +1656,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* Invoice Modal */}
-      <AnimatePresence>
-        {showInvoiceModal && selectedBillPartner && (
-          <div className="modal-overlay">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="invoice-modal"
-            >
-              {/* Mobile Drag Handle */}
-              <div className="mobile-drag-handle" style={{ 
-                width: '40px', height: '4px', background: 'rgba(255,255,255,0.2)', 
-                borderRadius: '2px', margin: '0.75rem auto 0.25rem' 
-              }} />
-              <div className="invoice-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
-                  <div>
-                    <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em' }} className="invoice-title-print">TAX INVOICE</h1>
-                    <p style={{ margin: 0, opacity: 0.8, fontSize: '0.8rem' }}>Statement for {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }} className="print-store-details">
-                    <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.8 }}>#INV-{new Date().getTime().toString().slice(-6)}</p>
-                  </div>
-                </div>
-                <button className="close-btn-no-print" onClick={() => setShowInvoiceModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', marginLeft: '1rem' }}><X size={20} /></button>
-              </div>
-
-              <div className="invoice-body custom-scrollbar" id="invoice-content">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem', gap: '2rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '2rem' }}>
-                  <div>
-                    <h4 style={{ color: 'var(--admin-accent)', marginBottom: '0.75rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>BILL TO:</h4>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '0.5rem', color: '#1e293b', letterSpacing: '-0.02em' }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.name}</h2>
-                    <div style={{ color: '#64748b', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <p style={{ margin: 0, maxWidth: '300px', lineHeight: 1.4 }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.address}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontWeight: 600 }}>
-                        <Phone size={14} className="no-print" /> <span>{shopkeepers.find(s => s.id === selectedBillPartner)?.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div className="login-icon no-print" style={{ margin: '0 0 1rem auto', width: '48px', height: '48px' }}><Zap size={24} /></div>
-                    <h4 style={{ color: '#1e293b', marginBottom: '0.25rem', fontSize: '1.1rem', fontWeight: 900 }}>MARGINMART</h4>
-                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.25rem 0' }}>Har Category Ka Sasta Maal</p>
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8' }} className="print-only">
-                      <p style={{ margin: 0 }}>Pune, Maharashtra, India</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="invoice-table-header">
-                  <div>ITEM DESCRIPTION</div>
-                  <div>DATE</div>
-                  <div style={{ textAlign: 'center' }}>QTY</div>
-                  <div style={{ textAlign: 'right' }}>RATE</div>
-                  <div style={{ textAlign: 'right' }}>TOTAL</div>
-                </div>
-
-                {orders.filter(o => o.status !== 'paid' && o.shopkeeper_id === selectedBillPartner).map(order => {
-                  const qty = order.quantity || 1;
-                  const rate = order.selling_price / qty;
-                  return (
-                    <div key={order.id} className="invoice-item-row">
-                      <div style={{ fontWeight: 700, color: '#334155' }}>{order.product_name}</div>
-                      <div style={{ color: '#64748b' }}>{new Date(order.created_at).toLocaleDateString()}</div>
-                      <div style={{ textAlign: 'center', fontWeight: 600 }}>{qty}</div>
-                      <div style={{ textAlign: 'right', color: '#64748b' }}>₹{rate.toLocaleString()}</div>
-                      <div style={{ textAlign: 'right', fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
-                    </div>
-                  );
-                })}
-
-                {/* Print Only Footer */}
-                <div style={{ marginTop: '4rem', display: 'none', justifyContent: 'space-between', alignItems: 'flex-end' }} className="print-only">
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    <h4 style={{ color: '#1e293b', marginBottom: '0.25rem', fontWeight: 800 }}>Terms & Conditions:</h4>
-                    <ul style={{ margin: 0, paddingLeft: '1.2rem', listStyle: 'decimal' }}>
-                      <li>Goods once sold will not be taken back or exchanged.</li>
-                      <li>Payment is due within 7 days of invoice date.</li>
-                      <li>Interest @ 18% p.a. will be charged for delayed payments.</li>
-                    </ul>
-                  </div>
-                  <div style={{ textAlign: 'right', minWidth: '220px' }}>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
-                      This is a computer-generated invoice and does not require a physical signature.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="invoice-total-section">
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '2rem' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Amount Due</p>
-                    <strong style={{ fontSize: '2.5rem', fontWeight: 900, color: '#1e293b', letterSpacing: '-0.04em' }}>
-                      ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0).toLocaleString()}
-                    </strong>
-                  </div>
-                </div>
-                <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }} className="no-print">
-                  <button className="btn-pro-secondary no-print" onClick={() => window.print()}><Download size={18} /> Print PDF</button>
-                  <button className="btn-pro-primary no-print" onClick={() => {
-                    const sk = shopkeepers.find(s => s.id === selectedBillPartner);
-                    const total = orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0);
-                    const text = `Hi ${sk?.name}, your MarginMart statement for this week is ready. Total due: ₹${total}. Please check the attached invoice.`;
-                    const cleanPhone = sk?.phone.replace(/\D/g, '');
-                    const finalPhone = cleanPhone?.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-                    window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`);
-                  }}>
-                    <Phone size={18} /> Send to WhatsApp
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Invoice modal replaced by InvoiceGenerator utility (src/utils/invoiceGenerator.ts) */}
 
       {/* Modals */}
       <AnimatePresence>
@@ -1660,22 +1687,29 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 width: '40px', height: '4px', background: '#e2e8f0', 
                 borderRadius: '2px', margin: '0 auto 1.25rem' 
               }} />
-              <div className="modal-header"><h2>Log Order — {orderPartner?.name || selectedShopkeeper?.name}</h2><button onClick={() => { setShowOrderModal(false); setOrderPartner(null); }}><X size={24} /></button></div>
+              <div className="modal-header"><h2>Log Order â€” {orderPartner?.name || selectedShopkeeper?.name}</h2><button onClick={() => { setShowOrderModal(false); setOrderPartner(null); }}><X size={24} /></button></div>
               <form onSubmit={logOrder}>
                 <div className="form-group"><label>Product Name</label><input required className="form-input-premium" value={orderForm.product_name} onChange={(e) => setOrderForm({ ...orderForm, product_name: e.target.value })} /></div>
-                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div><label>Rate (₹)</label><input type="number" required className="form-input-premium" value={orderForm.unit_rate} onChange={(e) => {
-                    const rate = e.target.value;
-                    const qty = orderForm.quantity;
-                    const fee = orderForm.platform_fee;
-                    setOrderForm({ ...orderForm, unit_rate: rate, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
-                  }} /></div>
+                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div><label>MRP per Piece (₹)</label><input type="number" required className="form-input-premium" value={orderForm.mrp} onChange={(e) => setOrderForm({ ...orderForm, mrp: e.target.value })} /></div>
                   <div><label>Quantity</label><input type="number" required className="form-input-premium" value={orderForm.quantity} onChange={(e) => {
                     const qty = e.target.value;
                     const rate = orderForm.unit_rate;
                     const fee = orderForm.platform_fee;
                     setOrderForm({ ...orderForm, quantity: qty, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
                   }} /></div>
+                </div>
+                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div><label>Our Rate per Piece (₹)</label><input type="number" required className="form-input-premium" value={orderForm.unit_rate} onChange={(e) => {
+                    const rate = e.target.value;
+                    const qty = orderForm.quantity;
+                    const fee = orderForm.platform_fee;
+                    setOrderForm({ ...orderForm, unit_rate: rate, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
+                  }} /></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '10px' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Savings/Pc: </span>
+                    <strong style={{ color: '#16a34a' }}>₹{(parseFloat(orderForm.mrp || '0') - parseFloat(orderForm.unit_rate || '0')).toFixed(0)}</strong>
+                  </div>
                 </div>
                 <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div><label>Platform Fee (Fixed ₹)</label><input type="number" className="form-input-premium" value={orderForm.platform_fee} onChange={(e) => {
@@ -1734,7 +1768,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             className="modal"
             style={{ maxWidth: '360px', textAlign: 'center', padding: '2rem' }}
           >
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>âš ï¸</div>
             <p style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem', lineHeight: 1.5 }}>
               {confirmDialog.message}
             </p>
