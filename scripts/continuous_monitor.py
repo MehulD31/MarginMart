@@ -20,6 +20,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
 import urllib.request
 import json
@@ -134,7 +135,11 @@ async def run_monitor():
         sys.exit(1)
 
     # Use string session if available, otherwise file-based
-    session = SESSION_STRING if SESSION_STRING else "marginmart_monitor"
+    if SESSION_STRING:
+        session = StringSession(SESSION_STRING)
+    else:
+        session = "marginmart_monitor"
+        
     client = TelegramClient(session, API_ID, API_HASH)
 
     log.info("Starting MarginMart Monitor...")
