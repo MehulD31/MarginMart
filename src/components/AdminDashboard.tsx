@@ -440,7 +440,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       fontWeight: 700,
                       transition: 'all 0.2s'
                     }}>
-                      {pin.length > i ? 'ΓÇó' : ''}
+                      {pin.length > i ? '•' : ''}
                     </div>
                   ))}
                 </div>
@@ -510,12 +510,12 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <div className="stats-overview">
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="stat-card-mini">
                       <h4>Total Net Profit</h4>
-                      <div className="val text-green">Γé╣{totalProfit.toLocaleString()}</div>
+                      <div className="val text-green">₹{totalProfit.toLocaleString()}</div>
                       <TrendingUp className="text-green" />
                     </motion.div>
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="stat-card-mini">
                       <h4>Pending Collection</h4>
-                      <div className="val text-orange">Γé╣{pendingCollection.toLocaleString()}</div>
+                      <div className="val text-orange">₹{pendingCollection.toLocaleString()}</div>
                       <Clock className="text-orange" />
                     </motion.div>
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="stat-card-mini">
@@ -537,10 +537,10 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <div key={o.id} className="sk-row" style={{ '--grid-cols': '2.4fr 1fr 1fr' } as any}>
                           <div className="sk-name-cell">
                             <h4>{o.shopkeeper?.name}</h4>
-                            <p>{o.product_name} {o.operator_name && <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>ΓÇó Handled by {o.operator_name}</span>}</p>
+                            <p>{o.product_name} {o.operator_name && <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>• Handled by {o.operator_name}</span>}</p>
                           </div>
                           <div className={`status-badge ${o.status}`} style={{ fontSize: '0.6rem' }}>{o.status}</div>
-                          <div style={{ textAlign: 'right', fontWeight: 700 }}>Γé╣{o.selling_price}</div>
+                          <div style={{ textAlign: 'right', fontWeight: 700 }}>₹{o.selling_price}</div>
                         </div>
                       ))}
                     </div>
@@ -621,7 +621,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Bot Token</label>
                                 <input 
                                   type="password" 
-                                  placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" 
+                                  placeholder="••••••••••••••••" 
                                   className="admin-input" 
                                   style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} 
                                   value={botToken}
@@ -754,8 +754,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 700, color: '#15803d' }}>Γé╣{order.selling_price}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#16a34a' }}>Profit: Γé╣{order.selling_price - order.deal_price}</div>
+                          <div style={{ fontWeight: 700, color: '#15803d' }}>₹{order.selling_price}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#16a34a' }}>Profit: ₹{order.selling_price - order.deal_price}</div>
                           <div style={{ fontSize: '0.65rem', color: '#059669', opacity: 0.8 }}>
                             {(((order.selling_price - order.deal_price) / order.deal_price) * 100).toFixed(0)}% Margin
                           </div>
@@ -799,7 +799,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                               </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                              <strong style={{ color: 'var(--admin-accent)' }}>Γé╣{total}</strong>
+                              <strong style={{ color: 'var(--admin-accent)' }}>₹{total}</strong>
                               <ChevronRight size={16} style={{ marginLeft: '8px', opacity: 0.3 }} />
                             </div>
                           </div>
@@ -833,13 +833,13 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                   {order.operator_name && <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>By {order.operator_name}</div>}
                                 </div>
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString()}</div>
-                                <div style={{ textAlign: 'right', fontWeight: 600 }}>Γé╣{order.selling_price}</div>
+                                <div style={{ textAlign: 'right', fontWeight: 600 }}>₹{order.selling_price}</div>
                               </div>
                             ))}
                             <div style={{ padding: '1.5rem', textAlign: 'right', borderTop: '2px solid #f1f5f9', background: '#f8fafc' }}>
                               <span style={{ color: 'var(--text-muted)', marginRight: '1rem' }}>Total Amount Due:</span>
                               <strong style={{ fontSize: '1.5rem', color: '#1e293b' }}>
-                                Γé╣{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0)}
+                                ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0)}
                               </strong>
                             </div>
                           </div>
@@ -987,7 +987,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                             <div className="sk-avatar">{sk.name.charAt(0)}</div>
                             <div>
                               <h4>{sk.name}</h4>
-                              <p>{sk.phone} {sk.operator_name && <span style={{ opacity: 0.5 }}>ΓÇó By {sk.operator_name}</span>}</p>
+                              <p>{sk.phone} {sk.operator_name && <span style={{ opacity: 0.5 }}>• By {sk.operator_name}</span>}</p>
                             </div>
                           </div>
                           <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{sk.address}</div>
@@ -1022,7 +1022,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               <div className="invoice-header">
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900 }}>Weekly Statement</h3>
-                  <p style={{ margin: 0, opacity: 0.6, fontSize: '0.8rem' }}>MarginMart Operations ΓÇó {new Date().toLocaleDateString()}</p>
+                  <p style={{ margin: 0, opacity: 0.6, fontSize: '0.8rem' }}>MarginMart Operations • {new Date().toLocaleDateString()}</p>
                 </div>
                 <button onClick={() => setShowInvoiceModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }}><X size={20} /></button>
               </div>
@@ -1054,7 +1054,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <div key={order.id} className="invoice-item-row">
                     <div style={{ fontWeight: 700, color: '#334155' }}>{order.product_name}</div>
                     <div style={{ color: '#64748b' }}>{new Date(order.created_at).toLocaleDateString()}</div>
-                    <div style={{ textAlign: 'right', fontWeight: 800, color: '#1e293b' }}>Γé╣{order.selling_price.toLocaleString()}</div>
+                    <div style={{ textAlign: 'right', fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
                   </div>
                 ))}
               </div>
@@ -1064,7 +1064,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Amount Due</p>
                     <strong style={{ fontSize: '2.5rem', fontWeight: 900, color: '#1e293b', letterSpacing: '-0.04em' }}>
-                      Γé╣{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0).toLocaleString()}
+                      ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0).toLocaleString()}
                     </strong>
                   </div>
                 </div>
@@ -1073,7 +1073,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <button className="btn-pro-primary" onClick={() => {
                     const sk = shopkeepers.find(s => s.id === selectedBillPartner);
                     const total = orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0);
-                    const text = `Hi ${sk?.name}, your MarginMart statement for this week is ready. Total due: Γé╣${total}. Please check the attached invoice.`;
+                    const text = `Hi ${sk?.name}, your MarginMart statement for this week is ready. Total due: ₹${total}. Please check the attached invoice.`;
                     window.open(`https://wa.me/${sk?.phone}?text=${encodeURIComponent(text)}`);
                   }}>
                     <Phone size={18} /> Send to WhatsApp
@@ -1104,16 +1104,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
         {showOrderModal && (
           <div className="modal-overlay">
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="modal">
-              <div className="modal-header"><h2>Log Order ΓÇö {orderPartner?.name || selectedShopkeeper?.name}</h2><button onClick={() => { setShowOrderModal(false); setOrderPartner(null); }}><X size={24} /></button></div>
+              <div className="modal-header"><h2>Log Order — {orderPartner?.name || selectedShopkeeper?.name}</h2><button onClick={() => { setShowOrderModal(false); setOrderPartner(null); }}><X size={24} /></button></div>
               <form onSubmit={logOrder}>
                 <div className="form-group"><label>Product Name</label><input required className="form-input-premium" value={orderForm.product_name} onChange={(e) => setOrderForm({ ...orderForm, product_name: e.target.value })} /></div>
                 <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div><label>Deal Price (Γé╣)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} onChange={(e) => setOrderForm({ ...orderForm, deal_price: e.target.value })} /></div>
-                  <div><label>Selling Price (Γé╣)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
+                  <div><label>Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} onChange={(e) => setOrderForm({ ...orderForm, deal_price: e.target.value })} /></div>
+                  <div><label>Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
                 </div>
                 <div className="profit-preview">
                   <span>Est. Profit: </span>
-                  <strong>Γé╣{(parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0')).toFixed(0)}</strong>
+                  <strong>₹{(parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0')).toFixed(0)}</strong>
                 </div>
                 <button type="submit" disabled={saving} className="btn-pro-primary" style={{ width: '100%' }}><IndianRupee size={16} /> Log Order</button>
               </form>
