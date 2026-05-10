@@ -661,9 +661,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                           {(() => {
                             const stats: Record<string, number> = {};
                             matches.forEach(m => {
-                              // extract channel from telegram link (e.g., https://t.me/prolooterzz/123 -> prolooterzz)
-                              const matchObj = m.telegram_link ? m.telegram_link.match(/t\.me\/([^\/]+)/) : null;
-                              const source = matchObj ? `@${matchObj[1]}` : 'Unknown Source';
+                              let source = 'Legacy / Test Matches';
+                              if (m.telegram_link) {
+                                if (m.telegram_link.includes('t.me/c/')) {
+                                  source = 'Private Group';
+                                } else {
+                                  const matchObj = m.telegram_link.match(/t\.me\/([^\/]+)/);
+                                  if (matchObj) source = `@${matchObj[1]}`;
+                                }
+                              }
                               stats[source] = (stats[source] || 0) + 1;
                             });
                             
