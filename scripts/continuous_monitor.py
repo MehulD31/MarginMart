@@ -58,12 +58,33 @@ def fetch_watchlists():
     url = f"{SUPABASE_URL}/rest/v1/watchlists?select=product_name,keywords,shopkeeper_id,shopkeepers(name)"
     req = urllib.request.Request(url, headers={
         "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Authorization": f"Bearer {SUPABASE_KEY}"
     })
-    with urllib.request.urlopen(req, timeout=10) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode())
+    except Exception as e:
+        log.warning(f"Failed to fetch watchlists: {e}")
+        return []
 
-def save_match(shopkeeper_id, product_name, keyword, text, link):
+def fetch_monitor_channels():
+    """Fetch dynamic monitor channels from Supabase telegram_configs."""
+    url = f"{SUPABASE_URL}/rest/v1/telegram_configs?select=value&key=eq.monitor_channels"
+    req = urllib.request.Request(url, headers={
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            if data and data[0].get("value"):
+                channels = data[0]["value"].split(",")
+                return [c.strip() for c in channels if c.strip()]
+    except Exception as e:
+        log.warning(f"Failed to fetch monitor channels: {e}")
+    return []
+
+def save_match(shopkeeper_id: str, product_name: str, keyword: str, text: str, link: str):
     """Save a match to the matches table."""
     try:
         payload = json.dumps({
@@ -153,29 +174,14 @@ async def run_monitor():
     log.info(f"Logged in as: {me.first_name} (@{me.username})")
 
     # Load watchlists
-    try:
-        watchlists = fetch_watchlists()
-        log.info(f"Loaded {len(watchlists)} watchlist items")
-    except Exception as e:
-        log.error(f"Failed to load watchlists: {e}")
-        watchlists = []
+    watchlists = fetch_watchlists()
+    log.info(f"Loaded {len(watchlists)} watchlist items")
+    
+    active_channels = fetch_monitor_channels() or MONITOR_CHANNELS
+    log.info(f"Loaded {len(active_channels)} active spy channels: {active_channels}")
 
-    # Reload watchlists every 5 minutes to pick up changes
-    last_reload = asyncio.get_event_loop().time()
-
-    @client.on(events.NewMessage(chats=MONITOR_CHANNELS))
     async def on_new_message(event):
-        nonlocal watchlists, last_reload
-
-        # Reload watchlists if stale
-        now = asyncio.get_event_loop().time()
-        if now - last_reload > 30:
-            try:
-                watchlists = fetch_watchlists()
-                last_reload = now
-                log.info(f"Reloaded watchlists: {len(watchlists)} items")
-            except Exception as e:
-                log.warning(f"Watchlist reload failed: {e}")
+        nonlocal watchlists
 
         raw_text = event.message.message or ""
         if not raw_text.strip():
@@ -263,19 +269,39 @@ async def run_monitor():
             if result.get("ok"):
                 log.info(f"Alert sent! Message ID: {result['result']['message_id']}")
         except Exception as e:
-            log.error(f"Failed to send alert: {e}")
+            log.error(f"Error handling message: {e}")
 
-    log.info(f"Monitoring channels: {', '.join(MONITOR_CHANNELS)}")
-    log.info("Waiting for new messages... (Press Ctrl+C to stop)")
+    # Register initial handler
+    msg_handler = events.NewMessage(chats=active_channels)
+    client.add_event_handler(on_new_message, msg_handler)
 
-    # Keep running until interrupted
+    # Background task to refresh config dynamically
+    async def config_updater():
+        nonlocal active_channels, watchlists, msg_handler
+        while True:
+            await asyncio.sleep(30)
+            try:
+                watchlists = fetch_watchlists()
+                new_channels = fetch_monitor_channels()
+                if new_channels and set(new_channels) != set(active_channels):
+                    log.info(f"Spy Channels updated to {new_channels}. Re-registering listener.")
+                    client.remove_event_handler(on_new_message, msg_handler)
+                    active_channels = new_channels
+                    msg_handler = events.NewMessage(chats=active_channels)
+                    client.add_event_handler(on_new_message, msg_handler)
+            except Exception as e:
+                log.warning(f"Config update failed: {e}")
+
+    # Run updater in the background
+    client.loop.create_task(config_updater())
+
+    log.info("Listening for new messages...")
     try:
-        await client.run_until_disconnected()
+        await client.run_until_disconnected() # type: ignore
     except KeyboardInterrupt:
         log.info("Shutting down monitor...")
     finally:
         await client.disconnect()
-
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
