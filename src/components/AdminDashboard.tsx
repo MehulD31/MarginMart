@@ -603,11 +603,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <div className="setup-step" style={{ display: 'flex', gap: '1rem' }}>
                           <div className="step-num" style={{ width: '24px', height: '24px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0 }}>1</div>
                           <div className="step-content">
-                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Webhook Endpoint</h4>
-                            <code style={{ display: 'block', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid #e2e8f0', marginBottom: '0.5rem', overflowX: 'auto' }}>https://oaqdmffxgqjnpfdqejtf.supabase.co/functions/v1/telegram-bot</code>
+                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Cloud Engine Endpoint (Render)</h4>
+                            <code style={{ display: 'block', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid #e2e8f0', marginBottom: '0.5rem', overflowX: 'auto' }}>https://marginmart-bot.onrender.com</code>
                             <button className="btn-pro-ghost" style={{ fontSize: '0.8rem' }} onClick={() => {
-                              navigator.clipboard.writeText('https://oaqdmffxgqjnpfdqejtf.supabase.co/functions/v1/telegram-bot');
-                              showToast('Webhook URL Copied!', 'success');
+                              navigator.clipboard.writeText('https://marginmart-bot.onrender.com');
+                              showToast('Cloud Endpoint Copied!', 'success');
                             }}>Copy URL</button>
                           </div>
                         </div>
