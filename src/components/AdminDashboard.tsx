@@ -71,6 +71,8 @@ interface Order {
   selling_price: number;
   status: 'ordered' | 'delivered' | 'paid';
   created_at: string;
+  quantity?: number;
+  unit_rate?: number;
   operator_name?: string;
   shopkeeper?: { name: string };
 }
@@ -163,7 +165,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   }
 
   // Order Form
-  const [orderForm, setOrderForm] = useState({ product_name: '', deal_price: '', selling_price: '' });
+  const [orderForm, setOrderForm] = useState({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '' });
 
   // Simulator State
   const [simText, setSimText] = useState('');
@@ -356,6 +358,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       product_name: orderForm.product_name,
       deal_price: parseFloat(orderForm.deal_price),
       selling_price: parseFloat(orderForm.selling_price),
+      quantity: parseFloat(orderForm.quantity || '1'),
+      unit_rate: parseFloat(orderForm.unit_rate || '0'),
       status: 'ordered',
       operator_name: operatorName || 'Admin'
     }]);
@@ -363,7 +367,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     if (!error) {
       showToast(`Logged order for ${orderForm.product_name}`);
       setShowOrderModal(false); setOrderPartner(null);
-      setOrderForm({ product_name: '', deal_price: '', selling_price: '' });
+      setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '' });
       fetchOrders();
     } else {
       showToast('Failed to log fulfillment', 'error');
@@ -1169,6 +1173,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Qty: {order.quantity || 1} × ₹{(order.unit_rate || (order.deal_price / (order.quantity || 1))).toLocaleString()}</div>
                           <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -1252,21 +1257,29 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                           </div>
 
                           <div className="data-table-container" style={{ boxShadow: 'none', border: '1px solid #f1f5f9' }}>
-                            <div className="sk-row header-row" style={{ '--grid-cols': '2fr 1fr 1fr', padding: '1rem' } as any}>
+                            <div className="sk-row header-row" style={{ '--grid-cols': '2.5fr 1fr 0.6fr 1fr 1fr', padding: '1rem' } as any}>
                               <div>Item</div>
                               <div>Date</div>
-                              <div style={{ textAlign: 'right' }}>Price</div>
+                              <div style={{ textAlign: 'center' }}>Qty</div>
+                              <div style={{ textAlign: 'right' }}>Rate</div>
+                              <div style={{ textAlign: 'right' }}>Total</div>
                             </div>
-                            {orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').map(order => (
-                              <div key={order.id} className="sk-row" style={{ '--grid-cols': '2fr 1fr 1fr', padding: '1rem' } as any}>
-                                <div>
-                                  <strong>{order.product_name}</strong>
-                                  {order.operator_name && <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>By {order.operator_name}</div>}
+                            {orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').map(order => {
+                              const qty = order.quantity || 1;
+                              const rate = order.selling_price / qty;
+                              return (
+                                <div key={order.id} className="sk-row" style={{ '--grid-cols': '2.5fr 1fr 0.6fr 1fr 1fr', padding: '1rem' } as any}>
+                                  <div>
+                                    <strong>{order.product_name}</strong>
+                                    {order.operator_name && <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>By {order.operator_name}</div>}
+                                  </div>
+                                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString()}</div>
+                                  <div style={{ textAlign: 'center' }}>{qty}</div>
+                                  <div style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{rate.toLocaleString()}</div>
+                                  <div style={{ textAlign: 'right', fontWeight: 600 }}>₹{order.selling_price.toLocaleString()}</div>
                                 </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString()}</div>
-                                <div style={{ textAlign: 'right', fontWeight: 600 }}>₹{order.selling_price}</div>
-                              </div>
-                            ))}
+                              );
+                            })}
                             <div style={{ padding: '1.5rem', textAlign: 'right', borderTop: '2px solid #f1f5f9', background: '#f8fafc' }}>
                               <span style={{ color: 'var(--text-muted)', marginRight: '1rem' }}>Total Amount Due:</span>
                               <strong style={{ fontSize: '1.5rem', color: '#1e293b' }}>
@@ -1514,48 +1527,78 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 borderRadius: '2px', margin: '0.75rem auto 0.25rem' 
               }} />
               <div className="invoice-header">
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900 }}>Weekly Statement</h3>
-                  <p style={{ margin: 0, opacity: 0.6, fontSize: '0.8rem' }}>MarginMart Operations • {new Date().toLocaleDateString()}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
+                  <div>
+                    <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em' }} className="invoice-title-print">TAX INVOICE</h1>
+                    <p style={{ margin: 0, opacity: 0.8, fontSize: '0.8rem' }}>Statement for {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }} className="print-store-details">
+                    <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.8 }}>#INV-{new Date().getTime().toString().slice(-6)}</p>
+                  </div>
                 </div>
-                <button onClick={() => setShowInvoiceModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer' }}><X size={20} /></button>
+                <button className="close-btn-no-print" onClick={() => setShowInvoiceModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', marginLeft: '1rem' }}><X size={20} /></button>
               </div>
 
               <div className="invoice-body custom-scrollbar" id="invoice-content">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem', gap: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem', gap: '2rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '2rem' }}>
                   <div>
-                    <h4 style={{ color: '#22c55e', marginBottom: '0.75rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>BILL TO:</h4>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem', color: '#1e293b' }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.name}</h2>
-                    <div style={{ color: '#64748b', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <p style={{ margin: 0 }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.address}</p>
-                      <button className="btn-icon" onClick={() => {
-                        const sk = shopkeepers.find(s => s.id === selectedBillPartner);
-                        const cleanPhone = sk?.phone.replace(/\D/g, '');
-                        const finalPhone = cleanPhone?.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-                        window.open(`https://wa.me/${finalPhone}`);
-                      }} title="WhatsApp">{shopkeepers.find(s => s.id === selectedBillPartner)?.phone} <Phone size={14} /></button>
+                    <h4 style={{ color: 'var(--admin-accent)', marginBottom: '0.75rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>BILL TO:</h4>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '0.5rem', color: '#1e293b', letterSpacing: '-0.02em' }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.name}</h2>
+                    <div style={{ color: '#64748b', fontSize: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <p style={{ margin: 0, maxWidth: '300px', lineHeight: 1.4 }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.address}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontWeight: 600 }}>
+                        <Phone size={14} className="no-print" /> <span>{shopkeepers.find(s => s.id === selectedBillPartner)?.phone}</span>
+                      </div>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div className="login-icon" style={{ margin: '0 0 1rem auto', width: '48px', height: '48px' }}><Zap size={24} /></div>
-                    <h4 style={{ color: '#64748b', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 800 }}>MARGINMART</h4>
-                    <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0 }}>Operations Dashboard</p>
+                    <div className="login-icon no-print" style={{ margin: '0 0 1rem auto', width: '48px', height: '48px' }}><Zap size={24} /></div>
+                    <h4 style={{ color: '#1e293b', marginBottom: '0.25rem', fontSize: '1.1rem', fontWeight: 900 }}>MARGINMART</h4>
+                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '0.25rem 0' }}>Har Category Ka Sasta Maal</p>
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8' }} className="print-only">
+                      <p style={{ margin: 0 }}>GSTIN: 29AAAAA0000A1Z5</p>
+                      <p style={{ margin: 0 }}>Bangalore, Karnataka, India</p>
+                    </div>
                   </div>
                 </div>
 
                 <div className="invoice-table-header">
-                  <div>Product Description</div>
-                  <div>Order Date</div>
-                  <div style={{ textAlign: 'right' }}>Price</div>
+                  <div>ITEM DESCRIPTION</div>
+                  <div>DATE</div>
+                  <div style={{ textAlign: 'center' }}>QTY</div>
+                  <div style={{ textAlign: 'right' }}>RATE</div>
+                  <div style={{ textAlign: 'right' }}>TOTAL</div>
                 </div>
 
-                {orders.filter(o => o.status !== 'paid' && o.shopkeeper_id === selectedBillPartner).map(order => (
-                  <div key={order.id} className="invoice-item-row">
-                    <div style={{ fontWeight: 700, color: '#334155' }}>{order.product_name}</div>
-                    <div style={{ color: '#64748b' }}>{new Date(order.created_at).toLocaleDateString()}</div>
-                    <div style={{ textAlign: 'right', fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
+                {orders.filter(o => o.status !== 'paid' && o.shopkeeper_id === selectedBillPartner).map(order => {
+                  const qty = order.quantity || 1;
+                  const rate = order.selling_price / qty;
+                  return (
+                    <div key={order.id} className="invoice-item-row">
+                      <div style={{ fontWeight: 700, color: '#334155' }}>{order.product_name}</div>
+                      <div style={{ color: '#64748b' }}>{new Date(order.created_at).toLocaleDateString()}</div>
+                      <div style={{ textAlign: 'center', fontWeight: 600 }}>{qty}</div>
+                      <div style={{ textAlign: 'right', color: '#64748b' }}>₹{rate.toLocaleString()}</div>
+                      <div style={{ textAlign: 'right', fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
+                    </div>
+                  );
+                })}
+
+                {/* Print Only Footer */}
+                <div style={{ marginTop: '4rem', display: 'none', justifyContent: 'space-between', alignItems: 'flex-end' }} className="print-only">
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    <h4 style={{ color: '#1e293b', marginBottom: '0.25rem', fontWeight: 800 }}>Terms & Conditions:</h4>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', listStyle: 'decimal' }}>
+                      <li>Goods once sold will not be taken back or exchanged.</li>
+                      <li>Payment is due within 7 days of invoice date.</li>
+                      <li>Interest @ 18% p.a. will be charged for delayed payments.</li>
+                    </ul>
                   </div>
-                ))}
+                  <div style={{ textAlign: 'center', borderTop: '1px solid #1e293b', paddingTop: '1rem', minWidth: '220px' }}>
+                    <p style={{ margin: 0, fontWeight: 900, fontSize: '0.8rem', color: '#1e293b', textTransform: 'uppercase' }}>Authorized Signatory</p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.7rem', color: '#64748b' }}>For MarginMart Pvt Ltd</p>
+                  </div>
+                </div>
               </div>
 
               <div className="invoice-total-section">
@@ -1618,9 +1661,21 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               <div className="modal-header"><h2>Log Order — {orderPartner?.name || selectedShopkeeper?.name}</h2><button onClick={() => { setShowOrderModal(false); setOrderPartner(null); }}><X size={24} /></button></div>
               <form onSubmit={logOrder}>
                 <div className="form-group"><label>Product Name</label><input required className="form-input-premium" value={orderForm.product_name} onChange={(e) => setOrderForm({ ...orderForm, product_name: e.target.value })} /></div>
+                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div><label>Rate (₹)</label><input type="number" required className="form-input-premium" value={orderForm.unit_rate} onChange={(e) => {
+                    const rate = e.target.value;
+                    const qty = orderForm.quantity;
+                    setOrderForm({ ...orderForm, unit_rate: rate, deal_price: (parseFloat(rate || '0') * parseFloat(qty || '1')).toString() });
+                  }} /></div>
+                  <div><label>Quantity</label><input type="number" required className="form-input-premium" value={orderForm.quantity} onChange={(e) => {
+                    const qty = e.target.value;
+                    const rate = orderForm.unit_rate;
+                    setOrderForm({ ...orderForm, quantity: qty, deal_price: (parseFloat(rate || '0') * parseFloat(qty || '1')).toString() });
+                  }} /></div>
+                </div>
                 <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div><label>Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} onChange={(e) => setOrderForm({ ...orderForm, deal_price: e.target.value })} /></div>
-                  <div><label>Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
+                  <div><label>Total Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} readOnly /></div>
+                  <div><label>Total Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
                 </div>
                 <div className="profit-preview">
                   <span>Est. Profit: </span>
