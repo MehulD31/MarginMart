@@ -2,7 +2,7 @@
 GitHub Actions monitor - polls @deals every run using Telethon session string.
 Tracks last_post_id in Supabase, sends alerts for keyword matches.
 """
-import asyncio, os, sys, json
+import asyncio, os, sys, json, time
 import urllib.request, urllib.error
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -134,6 +134,13 @@ async def run():
                     result = send_alert(alert)
                     if result.get("ok"):
                         print(f"    Alert sent (msg_id={result['result']['message_id']})")
+                        time.sleep(3)  # Telegram limits group messages to ~20/min
+                except urllib.error.HTTPError as e:
+                    if e.code == 429:
+                        print(f"    Rate limited (HTTP 429). Waiting 10s...")
+                        time.sleep(10)
+                    else:
+                        print(f"    Alert failed (HTTP {e.code}): {e.reason}")
                 except Exception as e:
                     print(f"    Alert failed: {e}")
             else:
