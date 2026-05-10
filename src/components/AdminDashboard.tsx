@@ -656,7 +656,23 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       </div>
 
                       <div className="channel-analytics" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a' }}>Match Sources Breakdown</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Match Sources Breakdown</h4>
+                          <button 
+                            onClick={fetchMatches}
+                            className="btn-pro-ghost"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                            title="Refresh Analytics"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                              <path d="M3 3v5h5"></path>
+                              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                              <path d="M16 21v-5h5"></path>
+                            </svg>
+                            Refresh
+                          </button>
+                        </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {(() => {
                             const stats: Record<string, number> = {};
