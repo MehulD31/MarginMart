@@ -679,7 +679,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                             matches.forEach(m => {
                               let source = 'Legacy / Test Matches';
                               if (m.telegram_link) {
-                                if (m.telegram_link.includes('t.me/c/')) {
+                                if (m.telegram_link.startsWith('private||')) {
+                                  source = `🔒 ${m.telegram_link.split('private||')[1]}`;
+                                } else if (m.telegram_link.includes('t.me/c/')) {
                                   source = 'Private Group';
                                 } else {
                                   const matchObj = m.telegram_link.match(/t\.me\/([^\/]+)/);

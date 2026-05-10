@@ -190,7 +190,7 @@ async def run_monitor():
         channel_title = getattr(event.chat, "title", None) or getattr(event.chat, "username", None) or "Private/Unknown"
         channel_username = getattr(event.chat, "username", None)
         post_id = event.message.id
-        post_url = f"https://t.me/{channel_username}/{post_id}" if channel_username else None
+        post_url = f"https://t.me/{channel_username}/{post_id}" if channel_username else f"private||{channel_title}"
 
         text_lower = raw_text.lower()
         log.info(f"[{channel_title}/{post_id}] New message: {raw_text[:80].replace(chr(10), ' ')}")
