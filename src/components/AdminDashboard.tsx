@@ -618,7 +618,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                               onChange={e => setMonitorChannels(e.target.value)}
                             />
                             <button 
-                                className="btn-pro" 
+                                className="btn-pro-primary" 
                                 style={{ width: '100%' }} 
                                 onClick={saveMonitorChannels}
                                 disabled={saving}
