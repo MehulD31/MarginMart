@@ -11,12 +11,12 @@ test.describe('MarginMart Admin E2E Flow', () => {
     await adminBtn.click();
     
     // 3. Login with PIN
-    page.on('dialog', dialog => dialog.dismiss()); 
     await expect(page.locator('h2:has-text("Admin Access")')).toBeVisible();
     await page.locator('input[type="password"]').fill('3377');
     await page.locator('button:has-text("Unlock Dashboard")').click();
     
     // 4. Verify successful login
+    await page.waitForLoadState('networkidle');
     await expect(page.locator('h1:has-text("Business Overview")')).toBeVisible({ timeout: 15000 });
   });
 
@@ -78,7 +78,7 @@ test.describe('MarginMart Admin E2E Flow', () => {
     const saveBtn = page.locator('button:has-text("Save to Log")').first();
     await expect(saveBtn).toBeVisible();
     
-    page.on('dialog', dialog => dialog.accept());
+    page.once('dialog', dialog => dialog.accept());
     await saveBtn.click();
 
     // 3. Verify it appears in Match Log

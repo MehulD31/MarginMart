@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { X, IndianRupee } from 'lucide-react';
+import { X, IndianRupee, Search } from 'lucide-react';
 
 interface LogOrderModalProps {
   isOpen: boolean;
@@ -19,6 +19,8 @@ interface LogOrderModalProps {
   onSubmit: (e: React.FormEvent) => void;
   saving: boolean;
   isMobile: boolean;
+  partners?: any[];
+  onPartnerSelect?: (p: any) => void;
 }
 
 export const LogOrderModal: React.FC<LogOrderModalProps> = ({
@@ -29,9 +31,16 @@ export const LogOrderModal: React.FC<LogOrderModalProps> = ({
   setOrderForm,
   onSubmit,
   saving,
-  isMobile
+  isMobile,
+  partners,
+  onPartnerSelect
 }) => {
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [showDropdown, setShowDropdown] = React.useState(false);
+
   if (!isOpen) return null;
+
+  const filteredPartners = partners?.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())) || [];
 
   return (
     <div className="modal-overlay">
@@ -39,23 +48,54 @@ export const LogOrderModal: React.FC<LogOrderModalProps> = ({
         initial={isMobile ? { y: '100%' } : { scale: 0.9, opacity: 0 }} 
         animate={isMobile ? { y: 0 } : { scale: 1, opacity: 1 }} 
         exit={isMobile ? { y: '100%' } : { scale: 0.9, opacity: 0 }}
-        drag={isMobile ? "y" : false}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.5 }}
-        onDragEnd={(_, info) => {
-          if (isMobile && info.offset.y > 100) onClose();
-        }}
         className={`modal ${isMobile ? 'is-bottom-sheet' : ''}`}
       >
         <div className="modal-header">
-          <h2>Log Order — {partner?.name}</h2>
-          <button onClick={onClose}><X size={24} /></button>
+          <h2>{partner ? `Log Order — ${partner.name}` : 'Log New Order'}</h2>
+          <button type="button" onClick={onClose}><X size={24} /></button>
         </div>
         <form onSubmit={onSubmit}>
+          {!partner && partners && (
+            <div className="form-group">
+              <label>Select Partner</label>
+              <div style={{ position: 'relative' }}>
+                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, zIndex: 1 }} />
+                <input 
+                  placeholder="Type to search partner..."
+                  className="form-input-premium search-pad"
+                  autoComplete="off"
+                  value={searchQuery}
+                  onFocus={() => setShowDropdown(true)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setShowDropdown(true);
+                  }}
+                />
+                {showDropdown && filteredPartners.length > 0 && (
+                  <ul className="premium-autocomplete-list custom-scrollbar">
+                    {filteredPartners.map(p => (
+                      <li 
+                        key={p.id}
+                        className="premium-autocomplete-item"
+                        onClick={() => {
+                          setSearchQuery(p.name);
+                          setShowDropdown(false);
+                          if (onPartnerSelect) onPartnerSelect(p);
+                        }}
+                      >
+                        {p.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
           <div className="form-group">
             <label>Product Name</label>
             <input 
               required 
+              autoComplete="off"
               placeholder="e.g. Dove Soap 100g"
               className="form-input-premium" 
               value={orderForm.product_name} 
@@ -76,32 +116,26 @@ export const LogOrderModal: React.FC<LogOrderModalProps> = ({
             />
           </div>
 
-          <div className="form-group order-price-grid">
-            <div>
-              <label>Our Purchase Rate (₹)</label>
-              <input 
-                type="number" 
-                inputMode="decimal"
-                placeholder="0.00"
-                required 
-                className="form-input-premium" 
-                value={orderForm.unit_rate} 
-                onChange={(e) => {
-                  const rate = e.target.value;
-                  const qty = orderForm.quantity;
-                  const fee = orderForm.platform_fee;
-                  setOrderForm({ 
-                    ...orderForm, 
-                    unit_rate: rate, 
-                    deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() 
-                  });
-                }} 
-              />
-            </div>
-            <div className="calc-display-box highlight">
-              <span className="label">Savings / Pc</span>
-              <span className="value">₹{(parseFloat(orderForm.mrp || '0') - parseFloat(orderForm.unit_rate || '0')).toFixed(0)}</span>
-            </div>
+          <div className="form-group">
+            <label>Our Purchase Rate (₹)</label>
+            <input 
+              type="number" 
+              inputMode="decimal"
+              placeholder="0.00"
+              required 
+              className="form-input-premium" 
+              value={orderForm.unit_rate} 
+              onChange={(e) => {
+                const rate = e.target.value;
+                const qty = orderForm.quantity;
+                const fee = orderForm.platform_fee;
+                setOrderForm({ 
+                  ...orderForm, 
+                  unit_rate: rate, 
+                  deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() 
+                });
+              }} 
+            />
           </div>
 
           <div className="form-group order-price-grid">

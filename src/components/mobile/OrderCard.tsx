@@ -20,10 +20,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
 }) => {
   const getStatusClass = (status: string) => {
     switch(status?.toLowerCase()) {
-      case 'delivered': return 'status-delivered';
-      case 'paid': return 'status-paid';
-      case 'ordered': return 'status-pending';
-      default: return 'status-pending';
+      case 'delivered': return 'delivered';
+      case 'paid': return 'paid';
+      case 'ordered': return 'ordered';
+      default: return 'ordered';
     }
   };
 
@@ -43,68 +43,88 @@ const OrderCard: React.FC<OrderCardProps> = ({
       className={`mobile-order-card ${isSelected ? 'selected' : ''}`}
       onClick={() => onSelect?.(order.id)}
     >
-      <div className="order-card-header">
-        <div className="order-selection-area">
-          <div className={`selection-circle ${isSelected ? 'active' : ''}`}>
-            {isSelected && <Check size={12} />}
+      <div className="card-top">
+        <div className="card-info" style={{ marginLeft: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 800 }}>{order.product_name}</h4>
           </div>
-          <div className="order-main-info">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Package className="package-icon" size={18} />
-              <h3>{order.product_name}</h3>
-            </div>
-            <span className="order-timestamp">
-              <Clock size={12} /> {formatDate(order.created_at)}
-            </span>
+          <div className="card-meta" style={{ gap: '0.25rem', marginTop: '4px' }}>
+            {formatDate(order.created_at)}
           </div>
         </div>
-        <div className={`status-badge-compact ${getStatusClass(order.status)}`}>
+        <div className={`status-badge ${getStatusClass(order.status)}`}>
           {order.status}
         </div>
       </div>
 
-      <div className="order-card-metrics">
-        <div className="metric-box">
-          <label>Partner</label>
-          <span>{order.shopkeeper?.name || 'Unknown'}</span>
+      <div className="card-details">
+        <div className="detail-item">
+          <span className="label">Partner</span>
+          <span className="value">{order.shopkeeper?.name || 'Unknown'}</span>
         </div>
-        <div className="metric-box">
-          <label>Qty</label>
-          <span>{order.quantity}</span>
+        {order.operator_name && (
+          <div className="detail-item">
+            <span className="label">Ordered By</span>
+            <span className="value">{order.operator_name}</span>
+          </div>
+        )}
+        <div className="detail-item">
+          <span className="label">Quantity</span>
+          <span className="value">{order.quantity} pcs</span>
         </div>
-        <div className="metric-box">
-          <label>Profit</label>
-          <span className="profit-value">₹{(order.selling_price - order.deal_price).toLocaleString('en-IN')}</span>
+        <div className="detail-item">
+          <span className="label">Total Amount</span>
+          <span className="value" style={{ color: 'var(--primary-main)', fontWeight: 800 }}>
+            ₹{order.selling_price.toLocaleString('en-IN')}
+          </span>
         </div>
       </div>
 
-      <div className="order-card-footer" onClick={e => e.stopPropagation()}>
-        <div className="price-total">
-          <IndianRupee size={14} />
-          <strong>{order.selling_price.toLocaleString('en-IN')}</strong>
-        </div>
-        <div className="order-actions-mini">
-          <select 
-            value={order.status} 
-            onChange={(e) => onUpdateStatus(order.id, e.target.value as any)}
-            className="status-select-minimal"
+      <div className="card-actions">
+        <button 
+          className="btn-pro-ghost" 
+          style={{ 
+            flex: 1,
+            background: order.status === 'delivered' ? '#dcfce7' : 'transparent',
+            color: order.status === 'delivered' ? '#15803d' : '#64748b',
+            border: `1px solid ${order.status === 'delivered' ? '#15803d' : '#e2e8f0'}`,
+            fontSize: '0.8rem'
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdateStatus(order.id, order.status === 'delivered' ? 'ordered' : 'delivered');
+          }}
+        >
+          {order.status === 'delivered' ? 'Delivered' : 'Delivered'}
+        </button>
+        <button 
+          className="btn-pro-ghost" 
+          style={{ 
+            flex: 1,
+            background: order.status === 'paid' ? '#dcfce7' : 'transparent',
+            color: order.status === 'paid' ? '#15803d' : '#64748b',
+            border: `1px solid ${order.status === 'paid' ? '#15803d' : '#e2e8f0'}`,
+            fontSize: '0.8rem'
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdateStatus(order.id, order.status === 'paid' ? 'delivered' : 'paid');
+          }}
+        >
+          {order.status === 'paid' ? 'Paid' : 'Mark Paid'}
+        </button>
+        {onDelete && (
+          <button 
+            className="btn-pro-ghost" 
+            style={{ color: '#ef4444', borderColor: '#fee2e2', width: '44px', flex: 'none', justifyContent: 'center' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(order.id);
+            }}
           >
-            <option value="ordered">Ordered</option>
-            <option value="delivered">Delivered</option>
-            <option value="paid">Paid</option>
-          </select>
-          {onDelete && (
-            <button 
-              className="action-btn-delete"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(order.id);
-              }}
-            >
-              <Trash2 size={16} />
-            </button>
-          )}
-        </div>
+            <Trash2 size={18} />
+          </button>
+        )}
       </div>
     </motion.div>
   );

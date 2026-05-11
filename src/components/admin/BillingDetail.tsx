@@ -43,9 +43,9 @@ export const BillingDetail: React.FC<BillingDetailProps> = ({
   return (
     <div className={isMobile ? "billing-mobile-container" : "billing-desktop-container"}>
       {isMobile && (
-        <div className="mobile-back-bar" style={{ display: 'flex', marginBottom: '1.5rem' }}>
-          <button onClick={onBack} className="btn-pro-ghost">
-            <ArrowLeft size={16} /> Back to List
+        <div className="mobile-back-bar">
+          <button onClick={onBack} className="btn-pro-ghost" style={{ padding: 0 }}>
+            <ArrowLeft size={18} /> Back to Partners
           </button>
         </div>
       )}
