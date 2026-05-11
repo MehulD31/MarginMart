@@ -1,83 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Plus,
-  Users,
-  X,
-  Search,
-  Loader2,
-  ArrowLeft,
-  Bell,
-  ChevronRight,
-  Edit2,
-  Zap,
-  Target,
-  CheckCircle,
-  AlertCircle,
-  Lock,
-  Download,
-  History,
-  IndianRupee,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  LayoutDashboard,
-  LogOut,
-  ShoppingBag,
-  FileText,
-  Send,
-  RefreshCw,
-  Filter,
-  MessageSquare
+import { 
+  Users, Package, TrendingUp, Search, Plus, Filter, MoreHorizontal, 
+  Trash2, Edit2, CheckCircle, AlertCircle, X, ChevronRight, MessageSquare, 
+  Settings, Database, Play, Share2, Clipboard, Download, History,
+  LayoutDashboard, ShoppingCart, CreditCard, Menu, Phone, MapPin, PlusCircle,
+  IndianRupee, Clock, Zap, Target, Bell, ArrowLeft, FileText, Loader2, ShoppingBag,
+  CheckCircle2, LogOut, Send, RefreshCw, Lock, UserPlus
 } from 'lucide-react';
+import PartnerCard from './mobile/PartnerCard';
+import OrderCard from './mobile/OrderCard';
+import { LogOrderModal } from './admin/modals/LogOrderModal';
+import { PartnerFormModal } from './admin/modals/PartnerFormModal';
+import { ConfirmModal } from './admin/modals/ConfirmModal';
+import { MessageModal } from './admin/modals/MessageModal';
+import { BillingDetail } from './admin/BillingDetail';
 import { generateInvoice, fetchPartnerInvoices, type InvoiceRecord } from '../utils/invoiceGenerator';
 
-interface Shopkeeper {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  created_at: string;
-  updated_at: string;
-  operator_name?: string;
-}
+const DetectionCard = ({ match, onViewMsg }: { match: Match; onViewMsg: (text: string) => void }) => (
+  <div className="mobile-statement-item">
+    <div className="item-title" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.4rem' }}>
+      {match.shopkeeper?.name}
+    </div>
+    <div className="item-meta" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+       <div style={{ fontSize: '0.9rem', color: '#64748b' }}>
+         <span style={{ fontWeight: 600 }}>Product:</span> {match.product_name}
+       </div>
+       <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+         <span className="status-pill active" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>"{match.matched_keyword}"</span>
+         {match.telegram_link && (
+           <span style={{ opacity: 0.8 }}>• {match.telegram_link.includes('deals') ? '@deals' : 'Private'}</span>
+         )}
+       </div>
+       <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+         <div>
+           {new Date(match.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+         </div>
+         <button onClick={() => onViewMsg(match.original_text || '')} className="btn-pro-ghost" style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '8px' }}>
+           View Msg →
+         </button>
+       </div>
+    </div>
+  </div>
+);
 
-interface WatchlistItem {
-  id: string;
-  shopkeeper_id: string;
-  product_name: string;
-  keywords: string[];
-  operator_name?: string;
-}
+const SimulatorResultCard = ({ res, onViewMsg, onSave, isMobile }: { res: any, onViewMsg: (t: string) => void, onSave: () => void, isMobile: boolean }) => (
+  <div className={isMobile ? "mobile-statement-item" : "simulator-row"}>
+    <div className="sk-name-cell">
+      <h4>{res.name}</h4>
+      {isMobile && <p className="status-pill active" style={{ display: 'inline-block', marginTop: '0.5rem' }}>Matched: "{res.match}"</p>}
+    </div>
+    {!isMobile && <div style={{ textAlign: 'left' }}><span className="status-pill active">Matches: "{res.match}"</span></div>}
+    <div style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+      <button className="btn-pro-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => onViewMsg(res.raw_message || '')}>View Text</button>
+      <button className="btn-pro-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={onSave}>Save</button>
+    </div>
+  </div>
+);
 
-interface Match {
-  id: string;
-  shopkeeper_id: string;
-  product_name: string;
-  matched_keyword: string;
-  original_text: string;
-  telegram_link?: string;
-  created_at: string;
-  operator_name?: string;
-  shopkeeper?: { name: string };
-}
+const EmptyState = ({ icon: Icon, title, description }: { icon: any, title: string, description: string }) => (
+  <div className="empty-state-premium">
+    <div className="empty-icon-wrapper">
+      <Icon size={40} />
+    </div>
+    <h3>{title}</h3>
+    <p>{description}</p>
+  </div>
+);
 
-interface Order {
-  id: string;
-  shopkeeper_id: string;
-  product_name: string;
-  deal_price: number;
-  selling_price: number;
-  mrp?: number;
-  status: 'ordered' | 'delivered' | 'paid';
-  created_at: string;
-  quantity?: number;
-  unit_rate?: number;
-  platform_fee?: number;
-  operator_name?: string;
-  shopkeeper?: { name: string };
-}
+import type { Shopkeeper, WatchlistItem, Match, Order } from '../types/database';
 
 const TEMPLATE_KEYWORDS = ["Dove", "Maggi", "Pampers", "Atta", "Surf Excel", "Cooking Oil", "Rice", "Sugar", "Shampoo", "Soap"];
 
@@ -135,6 +127,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     onConfirm: () => void;
   } | null>(null);
 
+  const [showMoreDrawer, setShowMoreDrawer] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
   const showConfirm = (message: string, onConfirm: () => void) => {
     setConfirmDialog({ message, onConfirm });
   };
@@ -152,6 +147,10 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [newChannelInput, setNewChannelInput] = useState('');
   const [isBotActive, setIsBotActive] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const pullThreshold = 80;
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -174,20 +173,38 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!window.visualViewport) return;
-    
-    const KEYBOARD_THRESHOLD = 150; // px
-    const initialHeight = window.visualViewport.height;
-    
-    const handleViewportResize = () => {
-      const currentHeight = window.visualViewport!.height;
-      setKeyboardOpen(initialHeight - currentHeight > KEYBOARD_THRESHOLD);
-    };
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    if (navigator.vibrate) navigator.vibrate(20);
+    await Promise.all([fetchOrders(), fetchMatches(), fetchShopkeepers()]);
+    setTimeout(() => setIsRefreshing(false), 800);
+    showToast('Dashboard updated', 'success');
+  };
 
-    window.visualViewport.addEventListener('resize', handleViewportResize);
-    return () => window.visualViewport!.removeEventListener('resize', handleViewportResize);
-  }, []);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      setStartY(e.touches[0].clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (startY > 0 && window.scrollY === 0) {
+      const moveY = e.touches[0].clientY;
+      const diff = moveY - startY;
+      if (diff > 0) {
+        setPullDistance(Math.min(diff * 0.5, pullThreshold + 20));
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > pullThreshold) {
+      handleRefresh();
+    }
+    setPullDistance(0);
+    setStartY(0);
+  };
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     setNotification({ message, type });
@@ -330,6 +347,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   async function updateOrderStatus(orderId: string, status: 'ordered' | 'delivered' | 'paid') {
     const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
     if (!error) {
+      if (navigator.vibrate) navigator.vibrate(40);
       fetchOrders();
       showToast(`Order status updated to ${status}`);
     } else {
@@ -415,6 +433,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     }]);
 
     if (!error) {
+      if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
       showToast(`Logged order for ${orderForm.product_name}`);
       setShowOrderModal(false); setOrderPartner(null);
       setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0', mrp: '' });
@@ -540,22 +559,74 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const copyStatementText = (shopkeeperId: string) => {
     const partnerOrders = orders.filter(o => o.shopkeeper_id === shopkeeperId && o.status !== 'paid');
     const partner = shopkeepers.find(s => s.id === shopkeeperId);
-    let text = `Statement for ${partner?.name}\n\n`;
+    let text = `*Statement for ${partner?.name}*\n\n`;
     let totalSavings = 0;
     partnerOrders.forEach(o => {
       const qty = o.quantity || 1;
       const rate = o.selling_price / qty;
       const savingPerPc = o.mrp ? (o.mrp - rate) : 0;
       totalSavings += (savingPerPc * qty);
-      text += `${o.product_name}: ₹${o.selling_price}${savingPerPc > 0 ? ` (Saving: ₹${savingPerPc}/pc)` : ''}\n`;
+      text += `• ${o.product_name}: ₹${o.selling_price.toLocaleString('en-IN')}${savingPerPc > 0 ? ` (Saved ₹${savingPerPc}/pc)` : ''}\n`;
     });
-    text += `\nTotal Due: ₹${partnerOrders.reduce((sum, o) => sum + o.selling_price, 0)}`;
-    if (totalSavings > 0) text += `\nTotal Savings: ₹${totalSavings.toFixed(0)}`;
+    text += `\n*Total Due: ₹${partnerOrders.reduce((sum, o) => sum + o.selling_price, 0).toLocaleString('en-IN')}*`;
+    if (totalSavings > 0) text += `\n*Total Savings: ₹${totalSavings.toFixed(0)}*`;
     navigator.clipboard.writeText(text);
+    if (navigator.vibrate) navigator.vibrate(50);
     showToast('Statement text copied');
   };
 
-  const downloadCSV = () => {
+  const shareStatement = async (shopkeeperId: string) => {
+    const partnerOrders = orders.filter(o => o.shopkeeper_id === shopkeeperId && o.status !== 'paid');
+    const partner = shopkeepers.find(s => s.id === shopkeeperId);
+    let text = `*Statement for ${partner?.name}*\n\n`;
+    let totalSavings = 0;
+    partnerOrders.forEach(o => {
+      const qty = o.quantity || 1;
+      const rate = o.selling_price / qty;
+      const savingPerPc = o.mrp ? (o.mrp - rate) : 0;
+      totalSavings += (savingPerPc * qty);
+      text += `• ${o.product_name}: *₹${o.selling_price.toLocaleString('en-IN')}*${savingPerPc > 0 ? ` (Saved ₹${savingPerPc}/pc)` : ''}\n`;
+    });
+    text += `\n*Total Due: ₹${partnerOrders.reduce((sum, o) => sum + o.selling_price, 0).toLocaleString('en-IN')}*`;
+    if (totalSavings > 0) text += `\n*Total Savings: ₹${totalSavings.toFixed(0)}*`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Statement - ${partner?.name}`,
+          text: text,
+        });
+        if (navigator.vibrate) navigator.vibrate(50);
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          copyStatementText(shopkeeperId);
+        }
+      }
+    } else {
+      copyStatementText(shopkeeperId);
+    }
+  };
+
+  const emailStatement = (shopkeeperId: string) => {
+    const partnerOrders = orders.filter(o => o.shopkeeper_id === shopkeeperId && o.status !== 'paid');
+    const partner = shopkeepers.find(s => s.id === shopkeeperId);
+    if (!partner) return;
+
+    const total = partnerOrders.reduce((sum, o) => sum + o.selling_price, 0);
+    let body = `Statement for ${partner.name}\n\n`;
+    partnerOrders.forEach(o => {
+      const qty = o.quantity || 1;
+      body += `• ${o.product_name} (x${qty}): ₹${o.selling_price.toLocaleString('en-IN')}\n`;
+    });
+    body += `\nTotal Due: ₹${total.toLocaleString('en-IN')}`;
+    body += `\n\nGenerated by MarginMart Administrative Portal`;
+
+    const subject = encodeURIComponent(`MarginMart Statement - ${partner.name}`);
+    const mailBody = encodeURIComponent(body);
+    window.location.href = `mailto:?subject=${subject}&body=${mailBody}`;
+  };
+
+  const downloadOrdersCSV = () => {
     const headers = ['Order ID', 'Product', 'Qty', 'MRP/Pc', 'Deal Price', 'Selling Price', 'Saving/pc', 'Our Profit', 'Shopkeeper', 'Status', 'Date'];
     const rows = orders.map(o => {
       const qty = o.quantity || 1;
@@ -639,7 +710,34 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   }, {});
 
   return (
-    <div className="admin-pro-theme">
+    <div 
+      className="admin-pro-theme"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <AnimatePresence>
+        {isRefreshing && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 60, opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            style={{ 
+              background: 'rgba(34, 197, 94, 0.1)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: '#22c55e',
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              gap: '0.5rem',
+              overflow: 'hidden'
+            }}
+          >
+            <RefreshCw size={18} className="spin" />
+            UPDATING...
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {!isOnline && (
           <motion.div 
@@ -648,7 +746,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             exit={{ height: 0, opacity: 0 }}
             style={{ background: '#ef4444', color: 'white', textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, padding: '0.5rem', position: 'sticky', top: 0, zIndex: 1000, textTransform: 'uppercase', letterSpacing: '0.05em' }}
           >
-            Offline Mode â€¢ Changes may not sync
+            Offline Mode • Changes may not sync
           </motion.div>
         )}
       </AnimatePresence>
@@ -678,32 +776,52 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               )}
             </AnimatePresence>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '320px', margin: '0 auto 1.5rem' }}>
-              <input
-                type="text"
-                list="operators"
-                placeholder="Operator Name"
-                value={operatorName}
-                onChange={(e) => {
-                  setOperatorName(e.target.value);
-                  localStorage.setItem('mm_operator_name', e.target.value);
-                }}
-                className="form-input-premium"
-                style={{ textAlign: 'center' }}
-              />
-              <datalist id="operators">
-                <option value="Admin" />
-                <option value={localStorage.getItem('mm_operator_name') || ''} />
-              </datalist>
+              {operatorName ? (
+                <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operator</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-main)' }}>{operatorName}</div>
+                  <button 
+                    onClick={() => { setOperatorName(''); localStorage.removeItem('mm_operator_name'); }} 
+                    className="btn-pro-ghost" 
+                    style={{ fontSize: '0.65rem', marginTop: '4px', padding: '2px 12px', borderColor: 'rgba(0,0,0,0.1)' }}
+                  >
+                    Change Operator
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    list="operators"
+                    placeholder="Operator Name"
+                    value={operatorName}
+                    onChange={(e) => {
+                      setOperatorName(e.target.value);
+                      localStorage.setItem('mm_operator_name', e.target.value);
+                    }}
+                    className="form-input-premium"
+                    style={{ textAlign: 'center' }}
+                  />
+                  <datalist id="operators">
+                    <option value="Admin" />
+                    <option value="Rahul" />
+                    <option value="Priya" />
+                  </datalist>
+                </>
+              )}
               <div style={{ position: 'relative', width: '200px', margin: '0 auto' }}>
                 <input
                   type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
                   maxLength={4}
                   value={pin}
                   onChange={(e) => {
-                    const val = e.target.value;
+                    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
                     setPin(val);
                     if (val.length === 4) {
-                      setTimeout(() => checkPin(val), 150);
+                      checkPin(val);
                     }
                   }}
                   onKeyDown={(e) => {
@@ -725,6 +843,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     top: 0,
                     left: 0,
                     zIndex: 2,
+                    opacity: 0
                   }}
                   autoFocus
                 />
@@ -744,38 +863,100 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       fontWeight: 700,
                       transition: 'all 0.2s'
                     }}>
-                      {pin.length > i ? 'â€¢' : ''}
+                      {pin.length > i ? '•' : ''}
                     </div>
                   ))}
                 </div>
               </div>
             </div>
             <button onClick={() => checkPin()} className="btn-unlock" style={{ width: '100%', maxWidth: '320px', margin: '0 auto' }}>Unlock Dashboard</button>
-            <button onClick={onBack} className="btn-cancel-login">Cancel</button>
+            <button onClick={onBack} className="btn-cancel-login">← Back to Site</button>
           </motion.div>
         </div>
       ) : (
-        <div className="admin-layout">
-          {/* Mobile Top Header */}
+        <>
+          <AnimatePresence>
+            {isRefreshing && (
+              <motion.div 
+                initial={{ y: -50, opacity: 0 }}
+                animate={{ y: 20, opacity: 1 }}
+                exit={{ y: -50, opacity: 0 }}
+                className="refresh-indicator"
+                style={{ 
+                  position: 'fixed', 
+                  top: '100px', 
+                  left: '50%', 
+                  x: '-50%',
+                  zIndex: 2000,
+                  background: 'white',
+                  padding: '0.6rem 1.25rem',
+                  borderRadius: '999px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 800,
+                  color: 'var(--admin-accent)',
+                  border: '1px solid #f1f5f9'
+                }}
+              >
+                <Loader2 className="animate-spin" size={18} /> Updating...
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {isMobile && pullDistance > 0 && (
+              <div 
+                className="pull-to-refresh-indicator"
+                style={{ 
+                  height: `${pullDistance}px`,
+                  opacity: pullDistance / pullThreshold,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  background: 'var(--bg-main)',
+                  transition: pullDistance === 0 ? 'height 0.3s ease, opacity 0.3s ease' : 'none'
+                }}
+              >
+                <div className={`refresh-icon-wrapper ${pullDistance > pullThreshold ? 'ready' : ''}`}>
+                  <Loader2 className={isRefreshing ? "animate-spin" : ""} size={20} style={{ transform: `rotate(${pullDistance * 2}deg)` }} />
+                </div>
+              </div>
+            )}
+            
+          <div 
+            className={`admin-layout ${isMobile ? 'mobile' : ''}`}
+            onTouchStart={isMobile ? handleTouchStart : undefined}
+            onTouchMove={isMobile ? handleTouchMove : undefined}
+            onTouchEnd={isMobile ? handleTouchEnd : undefined}
+            style={pullDistance > 0 ? { transform: `translateY(${pullDistance}px)`, transition: 'none' } : { transition: 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)' }}
+          >
+          {/* Mobile Top Header - Simplified for Section 1.2 */}
           <div className="admin-mobile-header">
             <BrandLogo dark badge="Admin" />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <button onClick={() => { fetchOrders(); fetchMatches(); fetchShopkeepers(); showToast('Data Refreshed'); }} 
-                style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', 
-                         padding: '0.35rem', borderRadius: '8px', display: 'flex', alignItems: 'center' }}>
-                <RefreshCw size={14} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <button 
+                onClick={() => { fetchOrders(); fetchMatches(); fetchShopkeepers(); showToast('Data Refreshed'); }} 
+                className="btn-refresh-mobile"
+                aria-label="Refresh Data"
+              >
+                <RefreshCw size={18} />
               </button>
-              <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{operatorName}</span>
-              <button onClick={() => { sessionStorage.removeItem('adminAuth'); setIsAuthorized(false); }} 
-                style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: 'none', 
-                         padding: '0.35rem 0.6rem', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700 }}>
-                <LogOut size={12} />
+              <button 
+                onClick={() => { sessionStorage.removeItem('adminAuth'); setIsAuthorized(false); }} 
+                className="btn-logout-mobile"
+                aria-label="Logout"
+              >
+                <LogOut size={18} />
               </button>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <aside className="admin-sidebar">
+          {/* Sidebar - Desktop Only */}
+          {!isMobile && (
+            <aside className="admin-sidebar">
             <div className="sidebar-logo">
               <BrandLogo dark badge="Admin Pro" />
             </div>
@@ -819,12 +1000,13 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               </button>
             </div>
           </aside>
+          )}
 
           {/* Main Content */}
           <main className="admin-main">
             <AnimatePresence mode="wait">
-              {activeTab === 'overview' ? (
-                <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              {activeTab === 'overview' && (
+                <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <header className="page-header">
                     <div className="page-title"><h1>Business Overview</h1><p>Real-time health of your order network.</p></div>
                   </header>
@@ -853,26 +1035,43 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
                   <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: 'clamp(200px, 60%, 1.5fr) 1fr',
+                    gridTemplateColumns: isMobile ? '1fr' : 'clamp(200px, 60%, 1.5fr) 1fr',
                     gap: '2rem', marginTop: '2rem' 
                   }} className="overview-two-col">
-                    <div className="data-table-container">
+                    <div className="data-table-container" style={{ order: isMobile ? 1 : 0 }}>
                       <div className="table-controls"><h3>Recent Orders</h3></div>
                       {orders.length === 0 ? (
                         <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.5 }}>No orders yet</div>
-                      ) : orders.slice(0, 5).map(o => (
-                        <div key={o.id} className="sk-row" style={{ '--grid-cols': '2.4fr 1fr 1fr' } as any}>
-                          <div className="sk-name-cell">
-                            <h4>{o.shopkeeper?.name}</h4>
-                            <p>{o.product_name} {o.operator_name && <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>â€¢ Handled by {o.operator_name}</span>}</p>
-                          </div>
-                          <div className={`status-badge ${o.status}`} style={{ fontSize: '0.6rem' }}>{o.status}</div>
-                          <div style={{ textAlign: 'right', fontWeight: 700 }}>₹{o.selling_price}</div>
+                      ) : (
+                        <div className={isMobile ? "mobile-list-container" : "table-body"}>
+                          {orders.slice(0, 5).map(o => (
+                            isMobile ? (
+                              <div key={o.id} className="mobile-statement-item">
+                                <div className="item-header">
+                                  <div className="item-title">{o.shopkeeper?.name}</div>
+                                  <div className={`status-badge ${o.status}`} style={{ fontSize: '0.6rem' }}>{o.status}</div>
+                                </div>
+                                <div className="item-meta">
+                                  <span style={{ fontWeight: 600 }}>{o.product_name}</span>
+                                  <span style={{ fontWeight: 800 }}>₹{o.selling_price.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div key={o.id} className="sk-row" style={{ '--grid-cols': '2.4fr 1fr 1fr' } as any}>
+                                <div className="sk-name-cell">
+                                  <h4>{o.shopkeeper?.name}</h4>
+                                  <p>{o.product_name} {o.operator_name && <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>• Handled by {o.operator_name}</span>}</p>
+                                </div>
+                                <div className={`status-badge ${o.status}`} style={{ fontSize: '0.6rem' }}>{o.status}</div>
+                                <div style={{ textAlign: 'right', fontWeight: 700 }}>₹{o.selling_price}</div>
+                              </div>
+                            )
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
 
-                    <div className="watchlist-card">
+                    <div className="watchlist-card" style={{ order: isMobile ? 2 : 0 }}>
                       <div className="table-controls"><h3>Team Contribution</h3></div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1rem' }}>
                         {Object.entries(operatorStats).map(([name, count]: [string, any]) => (
@@ -903,8 +1102,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     </div>
                   </div>
                 </motion.div>
-              ) : activeTab === 'automation' ? (
-                <motion.div key="automation" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              )}
+              {activeTab === 'automation' && (
+                <motion.div 
+                    key="automation" 
+                    initial={{ opacity: 0, x: -10 }} 
+                    animate={{ opacity: 1, x: 0 }} 
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ duration: 0.2 }}
+                  >
                   <header className="page-header">
                     <div className="page-title">
                       <h1>Automation Center</h1>
@@ -920,7 +1126,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
                   <div className="automation-grid" style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(350px, 1fr))', 
                     gap: '1.5rem', marginTop: '2rem' 
                   }}>
                     <div className="automation-card premium" style={{ background: 'white', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
@@ -970,6 +1176,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 type="text" 
                                 placeholder="Add new channel (e.g. deals)" 
                                 className="admin-input" 
+                                inputMode="text"
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                autoComplete="off"
+                                spellCheck={false}
                                 style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} 
                                 value={newChannelInput}
                                 onChange={e => setNewChannelInput(e.target.value)}
@@ -1062,7 +1273,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                               let source = 'Legacy / Test Matches';
                               if (m.telegram_link) {
                                 if (m.telegram_link.startsWith('private||')) {
-                                  source = `ðŸ”’ ${m.telegram_link.split('private||')[1]}`;
+                                  source = `🔒 ${m.telegram_link.split('private||')[1]}`;
                                 } else if (m.telegram_link.includes('t.me/c/')) {
                                   source = 'Private Group';
                                 } else {
@@ -1090,40 +1301,53 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     </div>
                   </div>
                 </motion.div>
-              ) : activeTab === 'matches' ? (
-                <motion.div key="matches" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              )}
+
+              {activeTab === 'matches' && (
+                <motion.div 
+                  key="matches" 
+                  initial={{ opacity: 0, x: -10 }} 
+                  animate={{ opacity: 1, x: 0 }} 
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                >
                   <header className="page-header"><div className="page-title"><h1>Detections Log</h1><p>Persistent record of matches found by the engine.</p></div></header>
                   <div className="data-table-container">
-                    <div className="sk-row header-row" style={{ '--grid-cols': '2fr 1.5fr 1.5fr 1fr 100px' } as any}>
-                      <span>Partner & Product</span>
-                      <span>Detection Date</span>
-                      <span>Operator</span>
-                      <span>Matched Keyword</span>
-                      <span style={{ textAlign: 'right' }}>Source</span>
-                    </div>
-                    {matches.slice(0, visibleMatchCount).map(match => (
-                      <div key={match.id} className="sk-row" style={{ '--grid-cols': '2fr 1.5fr 1.5fr 1fr 100px' } as any}>
-                        <div className="sk-name-cell">
-                          <h4>{match.shopkeeper?.name}</h4>
-                          <p>{match.product_name}</p>
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(match.created_at).toLocaleString()}</div>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div className="sk-avatar" style={{ width: '24px', height: '24px', fontSize: '0.6rem' }}>
-                              {match.operator_name?.[0] || 'A'}
-                            </div>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
-                              {match.operator_name || 'Admin'}
-                            </span>
-                          </div>
-                        </div>
-                        <div><span className="status-pill active">{match.matched_keyword}</span></div>
-                        <div style={{ textAlign: 'right' }}>
-                          <button onClick={() => setViewingMessage(match.original_text)} className="btn-pro-ghost">View Msg</button>
-                        </div>
+                    {!isMobile && (
+                      <div className="sk-row header-row" style={{ '--grid-cols': '2fr 1.5fr 1fr 100px' } as any}>
+                        <span>Partner & Product</span>
+                        <span>Detection Date</span>
+                        <span>Matched Keyword</span>
+                        <span style={{ textAlign: 'right' }}>Source</span>
                       </div>
-                    ))}
+                    )}
+                    {matches.length === 0 ? (
+                      <EmptyState 
+                        icon={Zap} 
+                        title="No Detections Yet" 
+                        description="The engine will log matches here as soon as they are found in Telegram groups."
+                      />
+                    ) : (
+                      <div className={isMobile ? "mobile-list-container" : ""}>
+                        {matches.slice(0, visibleMatchCount).map(match => (
+                          isMobile ? (
+                            <DetectionCard key={match.id} match={match} onViewMsg={setViewingMessage} />
+                          ) : (
+                            <div key={match.id} className="sk-row" style={{ '--grid-cols': '2fr 1.5fr 1fr 100px' } as any}>
+                              <div className="sk-name-cell">
+                                <h4>{match.shopkeeper?.name}</h4>
+                                <p>{match.product_name}</p>
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(match.created_at).toLocaleString()}</div>
+                              <div><span className="status-pill active">{match.matched_keyword}</span></div>
+                              <div style={{ textAlign: 'right' }}>
+                                <button onClick={() => setViewingMessage(match.original_text || '')} className="btn-pro-ghost">View Msg</button>
+                              </div>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    )}
                     {matches.length > visibleMatchCount && (
                       <div style={{ padding: '2rem', textAlign: 'center' }}>
                         <button 
@@ -1134,15 +1358,36 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         </button>
                       </div>
                     )}
-                    {matches.length === 0 && <div style={{ padding: '4rem', textAlign: 'center', color: '#94a3b8' }}>No matches recorded yet.</div>}
                   </div>
                 </motion.div>
-              ) : activeTab === 'orders' ? (
-                <motion.div key="orders" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              )}
+
+              {activeTab === 'orders' && (
+                <motion.div 
+                  key="orders" 
+                  initial={{ opacity: 0, x: -10 }} 
+                  animate={{ opacity: 1, x: 0 }} 
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                >
                   <header className="page-header">
                     <div className="page-title"><h1>Order Logs</h1><p>Manage order status and payment collections.</p></div>
-                    <div className="header-actions orders-header-actions">
-                      {selectedOrderIds.length > 0 && (
+                    <div className={isMobile ? "header-actions-mobile-stack" : "header-actions orders-header-actions"}>
+                      {isMobile && (
+                        <button 
+                          className="btn-pro-ghost" 
+                          onClick={() => {
+                            if (selectedOrderIds.length === filteredOrders.length) {
+                              setSelectedOrderIds([]);
+                            } else {
+                              setSelectedOrderIds(filteredOrders.map(o => o.id));
+                            }
+                          }}
+                        >
+                          {selectedOrderIds.length === filteredOrders.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      )}
+                      {!isMobile && selectedOrderIds.length > 0 && (
                         <button className="btn-pro-ghost" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={bulkDeleteOrders}>
                           <X size={16} /> Delete ({selectedOrderIds.length})
                         </button>
@@ -1164,83 +1409,97 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <Search size={18} />
                         <input placeholder="Search orders..." value={orderSearchQuery} onChange={(e) => setOrderSearchQuery(e.target.value)} />
                       </div>
-                      <button className="btn-pro-secondary" onClick={downloadCSV}><Download size={18} /> Export</button>
+                      <button className="btn-pro-secondary" onClick={downloadOrdersCSV}><Download size={18} /> Export</button>
                     </div>
                   </header>
                   <div className="data-table-container">
-                    <div className="sk-row header-row" style={{ '--grid-cols': '50px 2fr 1fr 1fr 1.5fr 1fr 50px' } as any}>
-                      <span>
-                        <input 
-                          type="checkbox" 
-                          checked={selectedOrderIds.length > 0 && selectedOrderIds.length === filteredOrders.slice(0, visibleOrderCount).length}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedOrderIds(filteredOrders.slice(0, visibleOrderCount).map(o => o.id));
-                            } else {
-                              setSelectedOrderIds([]);
-                            }
-                          }}
-                        />
-                      </span>
-                      <span>Partner & Product</span>
-                      <span>Order Date</span>
-                      <span>Operator</span>
-                      <span style={{ textAlign: 'center' }}>Status Update</span>
-                      <span style={{ textAlign: 'right' }}>Financials</span>
-                      <span></span>
-                    </div>
-                    {filteredOrders.length === 0 ? (
-                      <div style={{ padding: '4rem', textAlign: 'center', color: '#94a3b8' }}>No orders found.</div>
-                    ) : filteredOrders.slice(0, visibleOrderCount).map(order => (
-                      <div key={order.id} className="sk-row" style={{ '--grid-cols': '50px 2fr 1fr 1fr 1.5fr 1fr 50px' } as any}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {!isMobile && (
+                      <div className="sk-row header-row" style={{ '--grid-cols': '50px 2fr 1fr 1.5fr 1fr 50px' } as any}>
+                        <span>
                           <input 
                             type="checkbox" 
-                            checked={selectedOrderIds.includes(order.id)}
+                            checked={selectedOrderIds.length > 0 && selectedOrderIds.length === filteredOrders.slice(0, visibleOrderCount).length}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedOrderIds(prev => [...prev, order.id]);
+                                setSelectedOrderIds(filteredOrders.slice(0, visibleOrderCount).map(o => o.id));
                               } else {
-                                setSelectedOrderIds(prev => prev.filter(id => id !== order.id));
+                                setSelectedOrderIds([]);
                               }
                             }}
                           />
-                        </div>
-                        <div className="sk-name-cell">
-                          <h4>{order.shopkeeper?.name}</h4>
-                          <p>{order.product_name}</p>
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(order.created_at).toLocaleDateString()}</div>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div className="sk-avatar" style={{ width: '24px', height: '24px', fontSize: '0.6rem' }}>
-                              {order.operator_name?.[0]?.toUpperCase() || 'A'}
-                            </div>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
-                              {order.operator_name || 'Admin'}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'center' }}>
-                          <div className={`status-badge ${order.status}`}>
-                            {order.status === 'ordered' ? 'Ordered' : order.status === 'delivered' ? 'Delivered' : 'Paid'}
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.4rem' }}>
-                            <button onClick={() => updateOrderStatus(order.id, 'ordered')} className={`status-btn ordered ${order.status === 'ordered' ? 'active' : ''}`} title="Mark as Ordered"><Clock size={14} /></button>
-                            <button onClick={() => updateOrderStatus(order.id, 'delivered')} className={`status-btn delivered ${order.status === 'delivered' ? 'active' : ''}`} title="Mark as Delivered"><ShoppingBag size={14} /></button>
-                            <button onClick={() => updateOrderStatus(order.id, 'paid')} className={`status-btn paid ${order.status === 'paid' ? 'active' : ''}`} title="Mark as Paid"><CheckCircle2 size={14} /></button>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Qty: {order.quantity || 1} Ã— ₹{(order.unit_rate || (order.deal_price / (order.quantity || 1))).toLocaleString()}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <button className="btn-icon text-red-500" onClick={() => deleteOrder(order.id)} title="Delete Order"><X size={14} /></button>
-                        </div>
+                        </span>
+                        <span>Partner & Product</span>
+                        <span>Order Date</span>
+                        <span style={{ textAlign: 'center' }}>Status Update</span>
+                        <span style={{ textAlign: 'right' }}>Financials</span>
+                        <span></span>
                       </div>
-                    ))}
+                    )}
+{filteredOrders.length === 0 ? (
+                      <EmptyState 
+                        icon={History} 
+                        title="No Orders Found" 
+                        description="Try adjusting your search or filters to find specific orders."
+                      />
+                    ) : (
+                      <div className="table-body">
+                        {isMobile ? (
+                          <div className="mobile-list-container">
+                            {filteredOrders.slice(0, visibleOrderCount).map(order => (
+                              <OrderCard 
+                                key={order.id} 
+                                order={order} 
+                                isSelected={selectedOrderIds.includes(order.id)}
+                                onSelect={(id) => setSelectedOrderIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                                onUpdateStatus={updateOrderStatus}
+                                onDelete={(id) => showConfirm('Delete this order?', () => deleteOrder(id))}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          filteredOrders.slice(0, visibleOrderCount).map(order => (
+                            <div key={order.id} className="sk-row" style={{ '--grid-cols': '50px 2fr 1fr 1.5fr 1fr 50px' } as any}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedOrderIds.includes(order.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedOrderIds(prev => [...prev, order.id]);
+                                    } else {
+                                      setSelectedOrderIds(prev => prev.filter(id => id !== order.id));
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <div className="sk-name-cell">
+                                <h4>{order.shopkeeper?.name}</h4>
+                                <p>{order.product_name}</p>
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(order.created_at).toLocaleDateString()}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'center' }}>
+                                <div className={`status-badge ${order.status}`}>
+                                  {order.status === 'ordered' ? 'Ordered' : order.status === 'delivered' ? 'Delivered' : 'Paid'}
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  <button onClick={() => updateOrderStatus(order.id, 'ordered')} className={`status-btn ordered ${order.status === 'ordered' ? 'active' : ''}`} title="Mark as Ordered"><Clock size={14} /></button>
+                                  <button onClick={() => updateOrderStatus(order.id, 'delivered')} className={`status-btn delivered ${order.status === 'delivered' ? 'active' : ''}`} title="Mark as Delivered"><ShoppingBag size={14} /></button>
+                                  <button onClick={() => updateOrderStatus(order.id, 'paid')} className={`status-btn paid ${order.status === 'paid' ? 'active' : ''}`} title="Mark as Paid"><CheckCircle2 size={14} /></button>
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Qty: {order.quantity || 1} × ₹{(order.unit_rate || (order.deal_price / (order.quantity || 1))).toLocaleString()}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}</div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <button className="btn-icon text-red-500" onClick={() => showConfirm('Delete this order?', () => deleteOrder(order.id))} title="Delete Order"><Trash2 size={14} /></button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                     {filteredOrders.length > visibleOrderCount && (
                       <div style={{ padding: '2rem', textAlign: 'center' }}>
                         <button 
@@ -1253,8 +1512,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     )}
                   </div>
                 </motion.div>
-              ) : activeTab === 'billing' ? (
-                <motion.div key="billing" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              )}
+
+              {activeTab === 'billing' && (
+                <motion.div 
+                  key="billing" 
+                  initial={{ opacity: 0, x: -10 }} 
+                  animate={{ opacity: 1, x: 0 }} 
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                >
                   <header className="page-header">
                     <div className="page-title">
                       <h1>Billing & Statements</h1>
@@ -1262,230 +1529,156 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     </div>
                   </header>
 
-                  <div className="detail-view" style={{ gridTemplateColumns: '350px 1fr', alignItems: 'start' }}>
-                    <div className="data-table-container">
-                      <div className="table-controls">
-                        <div className="search-input-wrap">
-                          <Search size={18} />
-                          <input type="text" placeholder="Search partner..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <div className="detail-view" style={isMobile ? { display: 'block' } : { gridTemplateColumns: '350px 1fr', alignItems: 'start' }}>
+                    {(!isMobile || !selectedBillPartner) && (
+                      <div className="data-table-container" style={isMobile ? { marginBottom: '2rem' } : {}}>
+                        <div className="table-controls">
+                          <div className="search-input-wrap">
+                            <Search size={18} />
+                            <input type="text" placeholder="Search partner..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                          </div>
                         </div>
+                        {shopkeepers.filter(sk => sk.name.toLowerCase().includes(searchQuery.toLowerCase())).map(sk => {
+                          const partnerOrders = orders.filter(o => o.shopkeeper_id === sk.id && o.status !== 'paid');
+                          const total = partnerOrders.reduce((sum, o) => sum + o.selling_price, 0);
+                          return (
+                            <div
+                              key={sk.id}
+                              className={`sk-row ${selectedBillPartner === sk.id ? 'active' : ''}`}
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => {
+                                setSelectedBillPartner(sk.id);
+                                loadInvoiceHistory(sk.id);
+                              }}
+                            >
+                              <div className="sk-name-cell">
+                                <div className="sk-avatar">{sk.name[0]}</div>
+                                <div>
+                                  <h4>{sk.name}</h4>
+                                  <p>{partnerOrders.length} Orders</p>
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <strong style={{ color: 'var(--admin-accent)' }}>₹{total.toLocaleString('en-IN')}</strong>
+                                <ChevronRight size={16} style={{ marginLeft: '8px', opacity: 0.3 }} />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {shopkeepers.filter(sk => sk.name.toLowerCase().includes(searchQuery.toLowerCase())).map(sk => {
-                        const partnerOrders = orders.filter(o => o.shopkeeper_id === sk.id && o.status !== 'paid');
-                        const total = partnerOrders.reduce((sum, o) => sum + o.selling_price, 0);
-                        return (
-                          <div
-                            key={sk.id}
-                            className={`sk-row ${selectedBillPartner === sk.id ? 'active' : ''}`}
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => setSelectedBillPartner(sk.id)}
-                          >
-                            <div className="sk-name-cell">
-                              <div className="sk-avatar">{sk.name[0]}</div>
-                              <div>
-                                <h4>{sk.name}</h4>
-                                <p>{partnerOrders.length} Orders</p>
-                              </div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              <strong style={{ color: 'var(--admin-accent)' }}>₹{total.toLocaleString('en-IN')}</strong>
-                              <ChevronRight size={16} style={{ marginLeft: '8px', opacity: 0.3 }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    )}
 
-                    <div className="watchlist-card" style={{ minWidth: 0 }}>
-                      {selectedBillPartner ? (
-                        <>
-                          <div className="mobile-back-bar">
-                            <button onClick={() => setSelectedBillPartner(null)} className="btn-pro-ghost">
-                              <ArrowLeft size={16} /> Back to List
-                            </button>
-                          </div>
-                          <div className="billing-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                            <div>
-                              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{shopkeepers.find(s => s.id === selectedBillPartner)?.name}</h2>
-                              <p style={{ color: 'var(--text-muted)' }}>Statement for current period</p>
-                            </div>
-                             <div className="billing-action-row" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <button className="btn-pro-ghost" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => copyStatementText(selectedBillPartner)}>Copy Text</button>
-                              <button className="btn-pro-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => markAllAsPaid(selectedBillPartner)}>Mark All Paid</button>
-                              <button className="btn-pro-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={async () => {
-                                const partner = shopkeepers.find(s => s.id === selectedBillPartner);
-                                const partnerOrders = orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid');
-                                if (partner && partnerOrders.length > 0) {
-                                  try {
-                                    await generateInvoice(partner, partnerOrders, operatorName, true);
-                                  } catch (err) {
-                                    showToast('Failed to preview invoice', 'error');
-                                  }
+                    {(!isMobile || selectedBillPartner) && (
+                      <div className={isMobile ? "billing-mobile-container" : "watchlist-card"} style={isMobile ? {} : { minWidth: 0 }}>
+                        {selectedBillPartner ? (
+                          <BillingDetail 
+                            partner={shopkeepers.find(s => s.id === selectedBillPartner)!}
+                            orders={orders}
+                            isMobile={isMobile}
+                            onBack={() => setSelectedBillPartner(null)}
+                            onShare={shareStatement}
+                            onCopy={copyStatementText}
+                            onMarkPaid={markAllAsPaid}
+                            onEmail={emailStatement}
+                            onGenerateInvoice={async (partner, partnerOrders, opName, isPreview) => {
+                              if (isPreview) {
+                                try { await generateInvoice(partner, partnerOrders, opName, true); }
+                                catch (err) { showToast('Failed to preview invoice', 'error'); }
+                              } else {
+                                setInvoiceLoading(true);
+                                try {
+                                  await generateInvoice(partner, partnerOrders, opName, false);
+                                  await loadInvoiceHistory(partner.id);
+                                  showToast('Official Invoice generated successfully');
+                                } catch (err) {
+                                  showToast('Failed to generate official invoice', 'error');
+                                } finally {
+                                  setInvoiceLoading(false);
                                 }
-                              }}><FileText size={16} /> Preview PDF</button>
-                              <button className="btn-pro-primary" disabled={invoiceLoading} onClick={async () => {
-                                const partner = shopkeepers.find(s => s.id === selectedBillPartner);
-                                const partnerOrders = orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid');
-                                if (partner && partnerOrders.length > 0) {
-                                  setInvoiceLoading(true);
-                                  try {
-                                    await generateInvoice(partner, partnerOrders, operatorName, false);
-                                    await loadInvoiceHistory(partner.id);
-                                    showToast('Official Invoice generated successfully');
-                                  } catch (err) {
-                                    showToast('Failed to generate official invoice', 'error');
-                                  } finally {
-                                    setInvoiceLoading(false);
-                                  }
-                                }
-                              }}>
-                                {invoiceLoading ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
-                                {invoiceLoading ? 'Generating...' : 'Issue Official Invoice'}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="data-table-container" style={{ boxShadow: 'none', border: '1px solid #f1f5f9', overflowX: 'auto', borderRadius: '12px' }}>
-                            <div className="invoice-table-header" style={{ gridTemplateColumns: '2fr 1fr 60px 80px 80px 100px 100px', minWidth: '850px' }}>
-                              <div>Item</div>
-                              <div>Date</div>
-                              <div style={{ textAlign: 'center' }}>Qty</div>
-                              <div style={{ textAlign: 'right' }}>MRP</div>
-                              <div style={{ textAlign: 'right' }}>Rate</div>
-                              <div style={{ textAlign: 'right' }}>Saving/pc</div>
-                              <div style={{ textAlign: 'right' }}>Total</div>
-                            </div>
-                            {orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').map(order => {
-                              const qty = order.quantity || 1;
-                              const rate = order.selling_price / qty;
-                              const savingsPerPiece = order.mrp ? (order.mrp - rate) : 0;
-                              return (
-                                <div key={order.id} className="invoice-item-row" style={{ gridTemplateColumns: '2fr 1fr 60px 80px 80px 100px 100px', minWidth: '850px' }}>
-                                  <div>
-                                    <div style={{ fontWeight: 700 }}>{order.product_name}</div>
-                                    {order.operator_name && <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>By {order.operator_name}</div>}
-                                  </div>
-                                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{new Date(order.created_at).toLocaleDateString()}</div>
-                                  <div style={{ textAlign: 'center' }}>{qty}</div>
-                                  <div style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{order.mrp || '-'}</div>
-                                  <div style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{rate.toLocaleString()}</div>
-                                  <div style={{ textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>₹{savingsPerPiece > 0 ? savingsPerPiece.toLocaleString() : '0'}</div>
-                                  <div style={{ textAlign: 'right', fontWeight: 600 }}>₹{order.selling_price.toLocaleString()}</div>
-                                </div>
-                              );
-                            })}
-                            <div style={{ padding: '1.5rem', borderTop: '2px solid #f1f5f9', background: '#f8fafc' }}>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '2rem', alignItems: 'center' }}>
-                                <div>
-                                  <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Total Savings:</span>
-                                  <strong style={{ color: '#16a34a' }}>
-                                    ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + (o.mrp ? (o.mrp * (o.quantity || 1)) - o.selling_price : 0), 0).toLocaleString('en-IN')}
-                                  </strong>
-                                </div>
-                                <div>
-                                  <span style={{ color: 'var(--text-muted)', marginRight: '1rem' }}>Total Amount Due:</span>
-                                  <strong style={{ fontSize: '1.5rem', color: '#1e293b' }}>
-                                    ₹{orders.filter(o => o.shopkeeper_id === selectedBillPartner && o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0).toLocaleString('en-IN')}
-                                  </strong>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Invoice History Section */}
-                          <div style={{ marginTop: '3rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                              <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Invoice History</h3>
-                            </div>
-                            
-                            {invoiceLoading ? (
-                              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                <Loader2 className="animate-spin" size={24} style={{ margin: '0 auto 1rem' }} />
-                                <p>Loading history...</p>
-                              </div>
-                            ) : invoiceHistory.length > 0 ? (
-                              <div className="data-table-container" style={{ boxShadow: 'none', border: '1px solid #f1f5f9', overflowX: 'auto', borderRadius: '12px' }}>
-                                <div className="invoice-table-header" style={{ gridTemplateColumns: '1.5fr 2fr 1fr 1fr', minWidth: '600px' }}>
-                                  <div>Invoice No.</div>
-                                  <div>Date</div>
-                                  <div style={{ textAlign: 'right' }}>Amount</div>
-                                  <div style={{ textAlign: 'right' }}>Savings</div>
-                                </div>
-                                {invoiceHistory.map(invoice => (
-                                  <div key={invoice.id} className="invoice-item-row" style={{ gridTemplateColumns: '1.5fr 2fr 1fr 1fr', minWidth: '600px', alignItems: 'center' }}>
-                                    <div style={{ fontWeight: 600 }}>{invoice.invoice_no}</div>
-                                    <div style={{ color: 'var(--text-muted)' }}>
-                                      {new Date(invoice.generated_at).toLocaleDateString('en-IN', {
-                                        year: 'numeric', month: 'short', day: 'numeric',
-                                        hour: '2-digit', minute: '2-digit'
-                                      })}
-                                    </div>
-                                    <div style={{ textAlign: 'right', fontWeight: 600 }}>₹{invoice.total_amount.toLocaleString('en-IN')}</div>
-                                    <div style={{ textAlign: 'right', color: '#16a34a' }}>₹{invoice.total_savings.toLocaleString('en-IN')}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div style={{ padding: '3rem 2rem', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-                                <History size={32} style={{ margin: '0 auto 1rem', color: '#94a3b8' }} />
-                                <p style={{ color: 'var(--text-muted)' }}>No past invoices found for this partner.</p>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
-                          <FileText size={48} style={{ margin: '0 auto 1.5rem', opacity: 0.2 }} />
-                          <h3>Select a partner to view billing details</h3>
-                          <p>Aggregated weekly reports and itemized invoices.</p>
-                        </div>
-                      )}
-                    </div>
+                              }
+                            }}
+                            invoiceLoading={invoiceLoading}
+                            operatorName={operatorName}
+                            invoiceHistory={invoiceHistory}
+                          />
+                        ) : (
+                          <EmptyState 
+                            icon={CreditCard}
+                            title="Select a Partner"
+                            description="Pick a partner from the left to view their detailed statement and manage billing."
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
-              ) : activeTab === 'simulator' ? (
-                <motion.div key="simulator" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              )}
+
+              {activeTab === 'simulator' && (
+                <motion.div 
+                  key="simulator" 
+                  initial={{ opacity: 0, x: -10 }} 
+                  animate={{ opacity: 1, x: 0 }} 
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                >
                   <header className="page-header">
                     <div className="page-title"><h1>Match Simulator</h1><p>Test matching logic with sample Telegram deals.</p></div>
                   </header>
                   <div className="watchlist-card" style={{ marginBottom: '2rem' }}>
-                    <textarea className="form-input-premium" rows={6} placeholder="Paste Telegram text here..." value={simText} onChange={(e) => setSimText(e.target.value)} style={{ width: '100%', padding: '1.5rem', marginBottom: '1.5rem' }} />
+                    <textarea 
+                      className="form-input-premium" 
+                      rows={isMobile ? 4 : 6} 
+                      placeholder="Paste Telegram text here..." 
+                      value={simText} 
+                      onChange={(e) => setSimText(e.target.value)} 
+                      style={{ width: '100%', padding: '1.5rem', marginBottom: '1.5rem' }} 
+                    />
                     <button onClick={runSimulator} disabled={simLoading} className="btn-pro-primary" style={{ width: '100%', justifyContent: 'center', height: '56px' }}>
                       {simLoading ? <><Loader2 className="animate-spin" size={18} /> Analyzing...</> : 'Run Logic Test'}
                     </button>
                   </div>
+                  
                   {simResults.length > 0 && (
-                    <div className="data-table-container">
-                      <div className="table-controls"><h3>Matching Results</h3></div>
+                    <div className={isMobile ? "mobile-list-container" : "data-table-container"}>
+                      {!isMobile && <div className="table-controls"><h3>Matching Results</h3></div>}
                       {simResults.map((res, i) => (
                         <motion.div
                           initial={{ x: -20, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
                           transition={{ delay: i * 0.05 }}
                           key={i}
-                          className="simulator-row"
                         >
-                          <div className="sk-name-cell"><h4>{res.name}</h4></div>
-                          <div style={{ textAlign: 'left' }}><span className="status-pill active">Matches: "{res.match}"</span></div>
-                          <div style={{ textAlign: 'right' }}>
-                            <button className="btn-pro-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => setViewingMessage(res.raw_message || null)}>View Text</button>
-                            <button className="btn-pro-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', marginLeft: '0.5rem' }} onClick={() => saveSimMatch(res.shopkeeperId, res.match)}>Save</button>
-                          </div>
+                          <SimulatorResultCard 
+                            res={res} 
+                            isMobile={isMobile} 
+                            onViewMsg={setViewingMessage} 
+                            onSave={() => saveSimMatch(res.shopkeeperId, res.match)} 
+                          />
                         </motion.div>
                       ))}
                     </div>
                   )}
                 </motion.div>
-              ) : selectedShopkeeper ? (
-                <>
+              )}
+
+              {activeTab === 'shopkeepers' && (
+                <AnimatePresence mode="wait">
+                  {selectedShopkeeper ? (
+                    <motion.div 
+                      key="detail" 
+                      initial={{ opacity: 0, x: 20 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                    >
                   <div className="mobile-back-bar">
                     <button onClick={() => setSelectedShopkeeper(null)} className="btn-pro-ghost">
                       <ArrowLeft size={16} /> Back to Partners
                     </button>
                   </div>
-                  <motion.div key="detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="detail-view">
+                  <div className="detail-view">
                     <div className="info-card">
-                      <button onClick={() => setSelectedShopkeeper(null)} className="btn-pro-ghost mobile-back-btn" style={{ marginBottom: '1.5rem' }}><ArrowLeft size={16} /> Back</button>
                     <div className="sk-avatar-lg">{selectedShopkeeper.name.charAt(0)}</div>
                     <h2>{selectedShopkeeper.name}</h2>
                     {selectedShopkeeper.operator_name && (
@@ -1559,241 +1752,375 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                           ))}
                         </AnimatePresence>
                         {watchlist.length === 0 && (
-                          <div style={{ padding: '2rem', textAlign: 'center', width: '100%', color: '#94a3b8', background: '#f8fafc', borderRadius: '16px', border: '1px dashed #e2e8f0' }}>
-                            No items in watchlist. Use suggestions or type above.
-                          </div>
+                          <EmptyState 
+                            icon={ShoppingCart} 
+                            title="Empty Watchlist" 
+                            description="Use suggestions or type above to track products."
+                          />
                         )}
                       </div>
                     </div>
                   </div>
-                  </motion.div>
-                </>
+                  </div>
+                </motion.div>
               ) : (
-                <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <motion.div 
+                    key="list" 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
                   <header className="page-header">
                     <div className="page-title"><h1>Partner Network</h1><p>Active shopkeepers and their watchlists.</p></div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <button onClick={downloadPartnersCSV} className="btn-pro-secondary"><Download size={18} /> CSV</button>
-                      <button onClick={() => { setFormState({ id: '', name: '', phone: '', address: '' }); setShowAddModal(true); }} className="btn-pro-primary"><Plus size={20} /> Add Partner</button>
-                    </div>
+                    {!isMobile && (
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={downloadPartnersCSV} className="btn-pro-secondary"><Download size={18} /> CSV</button>
+                        <button onClick={() => { setFormState({ id: '', name: '', phone: '', address: '' }); setShowAddModal(true); }} className="btn-pro-primary"><Plus size={20} /> Add Partner</button>
+                      </div>
+                    )}
                   </header>
                   <div className="data-table-container">
                     <div className="table-controls">
-                      <div className="search-input-wrap"><Search size={18} /><input type="text" placeholder="Search partners..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+                      <div className="search-input-wrap">
+                        <Search size={18} />
+                        <input type="text" placeholder="Search partners..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                      </div>
+                      {isMobile && (
+                        <button 
+                          onClick={() => { setFormState({ id: '', name: '', phone: '', address: '' }); setShowAddModal(true); }} 
+                          className="btn-pro-primary" 
+                          style={{ width: '100%', marginTop: '0.75rem', justifyContent: 'center' }}
+                        >
+                          <Plus size={20} /> Add New Partner
+                        </button>
+                      )}
                     </div>
-                    <div className="sk-row header-row" style={{ '--grid-cols': '1.5fr 1fr 100px 140px 140px' } as any}>
+                    <div className="sk-row header-row" style={{ '--grid-cols': '1.5fr 1fr 140px 140px' } as any}>
                       <span>Partner Info</span>
                       <span>Location</span>
-                      <span>Status</span>
                       <span style={{ textAlign: 'center' }}>Fulfillment</span>
                       <span style={{ textAlign: 'right' }}>Manage</span>
                     </div>
                     <div className="table-body">
-                      {loading ? <div className="loading-state"><Loader2 className="animate-spin" size={32} /></div> : filteredShopkeepers.length === 0 ? (
-                        <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No partners found</div>
-                      ) : filteredShopkeepers.map(sk => (
-                        <motion.div layout key={sk.id} className="sk-row" style={{ '--grid-cols': '1.5fr 1fr 100px 140px 140px' } as any}>
-                          <div className="sk-name-cell">
-                            <div className="sk-avatar">{sk.name.charAt(0)}</div>
-                            <div>
-                              <h4>{sk.name}</h4>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              {sk.phone}
-                              <button 
-                                className="btn-icon" 
-                                style={{ color: '#25d366', padding: '2px', height: '24px', width: '24px' }} 
-                                onClick={() => openWhatsApp(sk.phone, sk.name)}
-                                title="Chat on WhatsApp"
-                              >
-                                <MessageSquare size={14} />
+                      {loading ? (
+                        <div className="loading-state"><Loader2 className="animate-spin" size={32} /></div>
+                      ) : filteredShopkeepers.length === 0 ? (
+                        <EmptyState 
+                          icon={Users} 
+                          title="No Partners Found" 
+                          description="Your search didn't match any partners. Try a different query."
+                        />
+                      ) : isMobile ? (
+                        <div className="mobile-list-container">
+                          {filteredShopkeepers.map(sk => (
+                            <PartnerCard 
+                              key={sk.id}
+                              partner={sk}
+                              onEdit={(p) => { setSelectedShopkeeper(p); fetchWatchlist(p.id); }}
+                              onLogOrder={(p) => { setOrderPartner(p); setShowOrderModal(true); }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        filteredShopkeepers.map(sk => (
+                          <motion.div layout key={sk.id} className="sk-row" style={{ '--grid-cols': '1.5fr 1fr 140px 140px' } as any}>
+                            <div className="sk-name-cell">
+                              <div className="sk-avatar">{sk.name.charAt(0)}</div>
+                              <div>
+                                <h4>{sk.name}</h4>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  {sk.phone}
+                                  <button 
+                                    className="btn-icon" 
+                                    style={{ color: '#25d366', padding: '2px', height: '24px', width: '24px' }} 
+                                    onClick={() => openWhatsApp(sk.phone, sk.name)}
+                                    title="Chat on WhatsApp"
+                                  >
+                                    <MessageSquare size={14} />
+                                  </button>
+                                </div>
+                                {sk.operator_name && <span style={{ opacity: 0.5 }}>• By {sk.operator_name}</span>}
+                              </div>
+                            </div>
+                            <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{sk.address}</div>
+                            <div style={{ textAlign: 'center' }}>
+                              <button className="btn-pro-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => { setOrderPartner(sk); setShowOrderModal(true); }}>
+                                <ShoppingBag size={14} /> Log Order
                               </button>
                             </div>
-                            {sk.operator_name && <span style={{ opacity: 0.5 }}>â€¢ By {sk.operator_name}</span>}
-                          </div>
-                          </div>
-                          <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{sk.address}</div>
-                          <div><span className="status-pill active">Verified</span></div>
-                          <div style={{ textAlign: 'center' }}>
-                            <button className="btn-pro-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => { setOrderPartner(sk); setShowOrderModal(true); }}>
-                              <ShoppingBag size={14} /> Log Order
-                            </button>
-                          </div>
-                          <div style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                            <button className="btn-icon text-red-500" onClick={() => deleteShopkeeper(sk.id)} title="Delete Partner"><X size={14} /></button>
-                            <button className="btn-pro-ghost" onClick={() => { setSelectedShopkeeper(sk); fetchWatchlist(sk.id); }}>Manage <ChevronRight size={16} /></button>
-                          </div>
-                        </motion.div>
-                      ))}
+                            <div style={{ textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                              <button className="btn-icon text-red-500" onClick={() => deleteShopkeeper(sk.id)} title="Delete Partner"><X size={14} /></button>
+                              <button className="btn-pro-ghost" onClick={() => { setSelectedShopkeeper(sk); fetchWatchlist(sk.id); }}>Manage <ChevronRight size={16} /></button>
+                            </div>
+                          </motion.div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </motion.div>
               )}
-          </AnimatePresence>
-          </main>
-
-          {/* Mobile Bottom Nav */}
-          {!keyboardOpen && (
-            <div className="admin-mobile-bottom-nav">
-            {[
-              { tab: 'automation', icon: <Zap size={18} />, label: 'Auto' },
-              { tab: 'overview', icon: <LayoutDashboard size={18} />, label: 'Overview' },
-              { tab: 'shopkeepers', icon: <Users size={18} />, label: 'Partners' },
-              { tab: 'simulator', icon: <Target size={18} />, label: 'Simulate' },
-              { tab: 'orders', icon: <History size={18} />, label: 'Orders' },
-              { tab: 'matches', icon: <Bell size={18} />, label: 'Detections' },
-              { tab: 'billing', icon: <FileText size={18} />, label: 'Billing' },
-            ].map(({ tab, icon, label }) => (
-              <button key={tab}
-                className={`mobile-nav-item ${activeTab === tab ? 'active' : ''}`}
-                onClick={() => { setActiveTab(tab as any); setSelectedShopkeeper(null); }}
-              >
-                {icon}
-                <span>{label}</span>
-              </button>
-            ))}
-            </div>
+            </AnimatePresence>
           )}
-        </div>
-      )}
+        </AnimatePresence>
+      </main>
+
+        {/* Bottom Navigation */}
+        {isMobile && (
+          <nav className="admin-mobile-bottom-nav">
+            <div className="nav-items">
+              <button 
+                className={`nav-tab${activeTab === 'overview' ? ' active' : ''}`} 
+                onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setActiveTab('overview'); }}
+              >
+                <LayoutDashboard size={20} />
+                <span>Overview</span>
+              </button>
+              <button 
+                className={`nav-tab${activeTab === 'shopkeepers' ? ' active' : ''}`} 
+                onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setActiveTab('shopkeepers'); }}
+              >
+                <Users size={20} />
+                <span>Partners</span>
+              </button>
+              <button 
+                className={`nav-tab${activeTab === 'orders' ? ' active' : ''}`} 
+                onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setActiveTab('orders'); }}
+                style={{ position: 'relative' }}
+              >
+                <ShoppingBag size={20} />
+                <span>Orders</span>
+                {orders.filter(o => o.status !== 'paid').length > 0 && (
+                  <span style={{ 
+                    position: 'absolute', 
+                    top: '4px', 
+                    right: 'calc(50% - 18px)', 
+                    background: '#ef4444', 
+                    color: 'white', 
+                    fontSize: '0.6rem', 
+                    fontWeight: 900,
+                    minWidth: '16px',
+                    height: '16px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid white'
+                  }}>
+                    {orders.filter(o => o.status !== 'paid').length}
+                  </span>
+                )}
+              </button>
+              <button 
+                className={`nav-tab${activeTab === 'billing' ? ' active' : ''}`} 
+                onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setActiveTab('billing'); }}
+              >
+                <IndianRupee size={20} />
+                <span>Billing</span>
+              </button>
+              <button 
+                className={`nav-tab${showMoreDrawer ? ' active' : ''}`} 
+                onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setShowMoreDrawer(true); }}
+              >
+                <MoreHorizontal size={20} />
+                <span>More</span>
+              </button>
+            </div>
+          </nav>
+        )}
+
+
+
+          {/* More Drawer */}
+          <AnimatePresence>
+            {showMoreDrawer && (
+              <div className="drawer-overlay" onClick={() => setShowMoreDrawer(false)}>
+                <motion.div 
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  className="more-drawer"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="drawer-handle" />
+                  <div className="drawer-header">
+                    <h3>Operational Tools</h3>
+                  </div>
+                  <div className="drawer-grid">
+                    <button onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setFormState({ id: '', name: '', phone: '', address: '' }); setShowAddModal(true); setShowMoreDrawer(false); }}>
+                      <UserPlus size={24} />
+                      <span>Add Partner</span>
+                    </button>
+                    <button onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setShowOrderModal(true); setShowMoreDrawer(false); }}>
+                      <ShoppingBag size={24} />
+                      <span>Log Order</span>
+                    </button>
+                    <button onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setActiveTab('automation'); setShowMoreDrawer(false); }}>
+                      <Zap size={24} />
+                      <span>Automation</span>
+                    </button>
+                    <button onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setActiveTab('simulator'); setShowMoreDrawer(false); }}>
+                      <Target size={24} />
+                      <span>Simulator</span>
+                    </button>
+                    <button onClick={() => { if (navigator.vibrate) navigator.vibrate(20); setActiveTab('matches'); setShowMoreDrawer(false); }}>
+                      <Bell size={24} />
+                      <span>Detections</span>
+                    </button>
+                    <button onClick={() => { if (navigator.vibrate) navigator.vibrate(20); downloadOrdersCSV(); setShowMoreDrawer(false); }}>
+                      <Download size={24} />
+                      <span>Export CSV</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Combined Quick Action FABs */}
+          <AnimatePresence>
+            {isMobile && !showAddModal && !showOrderModal && !showMoreDrawer && !selectedShopkeeper && (
+              <>
+                {activeTab === 'shopkeepers' && (
+                  <motion.button
+                    initial={{ scale: 0, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0, opacity: 0, y: 20 }}
+                    className="quick-action-fab"
+                    aria-label="Add Partner"
+                    onClick={() => {
+                      if (navigator.vibrate) navigator.vibrate(40);
+                      setFormState({ id: '', name: '', phone: '', address: '' });
+                      setShowAddModal(true);
+                    }}
+                  >
+                    <UserPlus size={30} />
+                  </motion.button>
+                )}
+                {activeTab === 'orders' && (
+                  <motion.button
+                    initial={{ scale: 0, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0, opacity: 0, y: 20 }}
+                    className="quick-action-fab"
+                    aria-label="Log Order"
+                    onClick={() => {
+                      if (navigator.vibrate) navigator.vibrate(40);
+                      setShowOrderModal(true);
+                    }}
+                  >
+                    <PlusCircle size={30} />
+                  </motion.button>
+                )}
+              </>
+            )}
+          </AnimatePresence>
 
       {/* Invoice modal replaced by InvoiceGenerator utility (src/utils/invoiceGenerator.ts) */}
 
       {/* Modals */}
       <AnimatePresence>
-        {(showAddModal || showEditModal) && (
-          <div className="modal-overlay">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="modal">
-              {/* Mobile Drag Handle */}
-              <div className="mobile-drag-handle" style={{ 
-                width: '40px', height: '4px', background: '#e2e8f0', 
-                borderRadius: '2px', margin: '0 auto 1.25rem' 
-              }} />
-              <div className="modal-header"><h2>Partner Profile</h2><button onClick={() => { setShowAddModal(false); setShowEditModal(false); }}><X size={24} /></button></div>
-              <form onSubmit={handleSaveShopkeeper}>
-                <div className="form-group"><label>Name</label><input required className="form-input-premium" value={formState.name} onChange={(e) => setFormState({ ...formState, name: e.target.value })} /></div>
-                <div className="form-group"><label>WhatsApp</label><input required className="form-input-premium" value={formState.phone} onChange={(e) => setFormState({ ...formState, phone: e.target.value })} /></div>
-                <div className="form-group"><label>Address</label><textarea required className="form-input-premium" rows={3} value={formState.address} onChange={(e) => setFormState({ ...formState, address: e.target.value })} /></div>
-                <button type="submit" disabled={saving} className="btn-pro-primary" style={{ width: '100%' }}>{saving ? 'Saving...' : 'Save Profile'}</button>
-              </form>
-            </motion.div>
-          </div>
-        )}
+        <PartnerFormModal 
+          isOpen={showAddModal || showEditModal}
+          onClose={() => { setShowAddModal(false); setShowEditModal(false); }}
+          formState={formState}
+          setFormState={setFormState}
+          onSubmit={handleSaveShopkeeper}
+          saving={saving}
+          isMobile={isMobile}
+          mode={showAddModal ? 'add' : 'edit'}
+        />
 
-        {showOrderModal && (
-          <div className="modal-overlay">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="modal">
-              {/* Mobile Drag Handle */}
-              <div className="mobile-drag-handle" style={{ 
-                width: '40px', height: '4px', background: '#e2e8f0', 
-                borderRadius: '2px', margin: '0 auto 1.25rem' 
-              }} />
-              <div className="modal-header"><h2>Log Order â€” {orderPartner?.name || selectedShopkeeper?.name}</h2><button onClick={() => { setShowOrderModal(false); setOrderPartner(null); }}><X size={24} /></button></div>
-              <form onSubmit={logOrder}>
-                <div className="form-group"><label>Product Name</label><input required className="form-input-premium" value={orderForm.product_name} onChange={(e) => setOrderForm({ ...orderForm, product_name: e.target.value })} /></div>
-                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div><label>MRP per Piece (₹)</label><input type="number" required className="form-input-premium" value={orderForm.mrp} onChange={(e) => setOrderForm({ ...orderForm, mrp: e.target.value })} /></div>
-                  <div><label>Quantity</label><input type="number" required className="form-input-premium" value={orderForm.quantity} onChange={(e) => {
-                    const qty = e.target.value;
-                    const rate = orderForm.unit_rate;
-                    const fee = orderForm.platform_fee;
-                    setOrderForm({ ...orderForm, quantity: qty, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
-                  }} /></div>
-                </div>
-                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div><label>Our Rate per Piece (₹)</label><input type="number" required className="form-input-premium" value={orderForm.unit_rate} onChange={(e) => {
-                    const rate = e.target.value;
-                    const qty = orderForm.quantity;
-                    const fee = orderForm.platform_fee;
-                    setOrderForm({ ...orderForm, unit_rate: rate, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
-                  }} /></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Savings/Pc: </span>
-                    <strong style={{ color: '#16a34a' }}>₹{(parseFloat(orderForm.mrp || '0') - parseFloat(orderForm.unit_rate || '0')).toFixed(0)}</strong>
-                  </div>
-                </div>
-                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div><label>Platform Fee (Fixed ₹)</label><input type="number" className="form-input-premium" value={orderForm.platform_fee} onChange={(e) => {
-                    const fee = e.target.value;
-                    const rate = orderForm.unit_rate;
-                    const qty = orderForm.quantity;
-                    setOrderForm({ ...orderForm, platform_fee: fee, deal_price: ((parseFloat(rate || '0') * parseFloat(qty || '1')) + parseFloat(fee || '0')).toString() });
-                  }} /></div>
-                  <div><label>Total Deal Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.deal_price} readOnly /></div>
-                </div>
-                <div className="form-group order-price-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                  <div><label>Total Selling Price (₹)</label><input type="number" required className="form-input-premium" value={orderForm.selling_price} onChange={(e) => setOrderForm({ ...orderForm, selling_price: e.target.value })} /></div>
-                  <div className="profit-preview" style={{ marginTop: '0' }}>
-                    <span>Est. Profit: </span>
-                    <strong>₹{(parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0')).toFixed(0)}</strong>
-                  </div>
-                </div>
-                <button type="submit" disabled={saving} className="btn-pro-primary" style={{ width: '100%' }}><IndianRupee size={16} /> Log Order</button>
-              </form>
-            </motion.div>
-          </div>
-        )}
+        <LogOrderModal 
+          isOpen={showOrderModal}
+          onClose={() => { setShowOrderModal(false); setOrderPartner(null); }}
+          partner={orderPartner || selectedShopkeeper}
+          orderForm={orderForm}
+          setOrderForm={setOrderForm}
+          onSubmit={logOrder}
+          saving={saving}
+          isMobile={isMobile}
+        />
       </AnimatePresence>
       {/* Toast Notification */}
       <AnimatePresence>
         {notification && (
           <motion.div
-            initial={{ y: 50, opacity: 0 }}
+            initial={isMobile ? { y: -50, opacity: 0 } : { y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            className={`toast-notification ${notification.type}`}
+            exit={isMobile ? { y: -50, opacity: 0 } : { y: 50, opacity: 0 }}
+            className={`toast-notification ${notification.type}${isMobile ? ' toast-mobile-top' : ''}`}
           >
             {notification.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
             {notification.message}
           </motion.div>
         )}
-        {viewingMessage && (
-          <div className="modal-overlay">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="modal">
-              <div className="mobile-drag-handle" style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 1.25rem' }} />
-              <div className="modal-header"><h2>Telegram Message</h2><button onClick={() => setViewingMessage(null)}><X size={24} /></button></div>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#334155', border: '1px solid #e2e8f0' }}>
-                {viewingMessage}
-              </div>
-            </motion.div>
-          </div>
-        )}
+        <MessageModal 
+          isOpen={!!viewingMessage}
+          onClose={() => setViewingMessage(null)}
+          title="Telegram Message"
+          message={viewingMessage || ''}
+          isMobile={isMobile}
+        />
       </AnimatePresence>
 
-      {/* Custom Confirm Dialog */}
-      {confirmDialog && (
-        <div className="modal-overlay" style={{ zIndex: 100001 }}>
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="modal"
-            style={{ maxWidth: '360px', textAlign: 'center', padding: '2rem' }}
-          >
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>âš ï¸</div>
-            <p style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-              {confirmDialog.message}
-            </p>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button
-                className="btn-pro-ghost"
-                style={{ flex: 1 }}
-                onClick={() => setConfirmDialog(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-pro-primary"
-                style={{ flex: 1, background: '#ef4444', borderColor: '#ef4444' }}
-                onClick={() => {
-                  confirmDialog.onConfirm();
-                  setConfirmDialog(null);
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </motion.div>
-        </div>
+
+      {/* Bulk Select Bar - Mobile Only */}
+      {isMobile && activeTab === 'orders' && selectedOrderIds.length > 0 && (
+        <motion.div
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          exit={{ y: 100 }}
+          className="bulk-select-bar"
+          role="complementary"
+          aria-label="Bulk actions for selected orders"
+        >
+          <div className="bulk-info">
+            <span className="bulk-badge">{selectedOrderIds.length}</span>
+            <span>Selected</span>
+          </div>
+          <div className="bulk-actions">
+            <button 
+              className="btn-pro-ghost" 
+              style={{ color: 'white', borderColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem' }}
+              onClick={() => setSelectedOrderIds([])}
+            >
+              Clear
+            </button>
+            <button 
+              className="btn-pro-primary" 
+              style={{ background: '#ef4444', borderColor: '#ef4444', padding: '0.5rem 1rem' }}
+              onClick={() => {
+                setConfirmDialog({
+                  message: `Delete ${selectedOrderIds.length} selected orders?`,
+                  onConfirm: async () => {
+                    for (const id of selectedOrderIds) {
+                      await deleteOrder(id);
+                    }
+                    setSelectedOrderIds([]);
+                    showToast('Bulk delete successful');
+                  }
+                });
+              }}
+            >
+              Delete All
+            </button>
+          </div>
+        </motion.div>
       )}
-    </div>
-  );
+
+      <ConfirmModal 
+        isOpen={!!confirmDialog}
+        onClose={() => setConfirmDialog(null)}
+        onConfirm={() => {
+          if (navigator.vibrate) navigator.vibrate(20);
+          confirmDialog?.onConfirm();
+        }}
+        message={confirmDialog?.message || ''}
+        isMobile={isMobile}
+      />
+      </div>
+    </>
+  )}
+</div>
+);
 }
