@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Share2, FileText, Zap, Loader2, History, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Share2, FileText, Zap, Loader2, History } from 'lucide-react';
 import type { Shopkeeper, Order } from '../../types/database';
 import type { InvoiceRecord } from '../../utils/invoiceGenerator';
 import { Mail, CheckCircle2, MessageSquare } from 'lucide-react';
