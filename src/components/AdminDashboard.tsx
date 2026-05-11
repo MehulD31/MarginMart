@@ -4,8 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Package, TrendingUp, Search, Plus, Filter, MoreHorizontal,
   Trash2, Edit2, CheckCircle, AlertCircle, X, ChevronRight, MessageSquare,
-  Settings, Database, Play, Share2, Clipboard, Download, History,
-  LayoutDashboard, ShoppingCart, CreditCard, Menu, Phone, MapPin, PlusCircle,
+  Download, History, LayoutDashboard, ShoppingCart, CreditCard, PlusCircle,
   IndianRupee, Clock, Zap, Target, Bell, ArrowLeft, FileText, Loader2, ShoppingBag,
   CheckCircle2, LogOut, Send, RefreshCw, Lock, UserPlus, ChevronDown
 } from 'lucide-react';
@@ -156,7 +155,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   } | null>(null);
 
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile] = useState(window.innerWidth < 768);
 
   const showConfirm = (message: string, onConfirm: () => void) => {
     setConfirmDialog({ message, onConfirm });
@@ -168,7 +167,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'ordered' | 'delivered' | 'paid'>('all');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [statusSearchQuery, setStatusSearchQuery] = useState('');
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [keyboardOpen] = useState(false);
   const [invoiceHistory, setInvoiceHistory] = useState<InvoiceRecord[]>([]);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
 
@@ -176,7 +175,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [monitorChannels, setMonitorChannels] = useState<string[]>(['deals']);
   const [newChannelInput, setNewChannelInput] = useState('');
   const [isBotActive, setIsBotActive] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline] = useState(navigator.onLine);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [startY, setStartY] = useState(0);
