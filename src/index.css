@@ -3538,7 +3538,7 @@ img { max-width: 100%; display: block; }
 /* -- PRINT STYLES (for invoice) -- */
 @media print {
   @page {
-    margin: 1.5cm;
+    margin: 1cm;
     size: A4;
   }
 
@@ -3546,7 +3546,7 @@ img { max-width: 100%; display: block; }
     background: white !important;
     color: black !important;
     padding: 0 !important;
-    font-size: 11pt !important;
+    font-size: 10.5pt !important;
   }
 
   /* Hide dashboard specific elements only */
@@ -3607,7 +3607,7 @@ img { max-width: 100%; display: block; }
   .invoice-body {
     max-height: none !important;
     overflow: visible !important;
-    padding: 2rem 0 !important;
+    padding: 1rem 0 !important;
   }
 
   .invoice-table-header {
@@ -3627,7 +3627,7 @@ img { max-width: 100%; display: block; }
     border: 1px solid #e2e8f0 !important;
     border-top: none !important;
     page-break-inside: avoid;
-    padding: 0.75rem 1rem !important;
+    padding: 0.5rem 1rem !important;
     align-items: center;
   }
 
@@ -3636,7 +3636,8 @@ img { max-width: 100%; display: block; }
     background: #f8fafc !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    margin-top: 2rem !important;
+    margin-top: 1.5rem !important;
+    page-break-inside: avoid;
   }
 
   h1, h2, h3, h4 {
