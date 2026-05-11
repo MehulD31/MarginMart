@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Users, Package, TrendingUp, Search, Plus, Filter, MoreHorizontal,
+  Users, TrendingUp, Search, Plus, Filter, MoreHorizontal,
   Trash2, Edit2, CheckCircle, AlertCircle, X, ChevronRight, MessageSquare,
   Download, History, LayoutDashboard, ShoppingCart, CreditCard, PlusCircle,
   IndianRupee, Clock, Zap, Target, Bell, ArrowLeft, FileText, Loader2, ShoppingBag,
