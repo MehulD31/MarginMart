@@ -74,7 +74,7 @@ const TEMPLATE_KEYWORDS = ["Dove", "Maggi", "Pampers", "Atta", "Surf Excel", "Co
 
 const STATUS_METADATA = {
   all: { label: 'All Status', icon: Filter, color: '#64748b', desc: 'View all orders' },
-  ordered: { label: 'Ordered', icon: Clock, color: '#3b82f6', desc: 'Order placed, pending delivery' },
+  ordered: { label: 'Pending', icon: Clock, color: '#3b82f6', desc: 'Order placed, pending delivery' },
   delivered: { label: 'Delivered', icon: ShoppingBag, color: '#f59e0b', desc: 'Items received by partner' },
   paid: { label: 'Paid', icon: CheckCircle2, color: '#22c55e', desc: 'Payment received & settled' }
 };
@@ -1384,7 +1384,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     <header className="page-header">
                       <div className="page-title"><h1>Order Logs</h1><p>Manage order status and payment collections.</p></div>
                       <div className="header-actions orders-header-actions">
-                        {!isMobile && selectedOrderIds.length > 0 && (
+                        {selectedOrderIds.length > 0 && (
                           <button className="btn-pro-ghost" style={{ color: '#ef4444', borderColor: '#ef4444' }} onClick={bulkDeleteOrders}>
                             <X size={16} /> Delete ({selectedOrderIds.length})
                           </button>
@@ -1504,7 +1504,6 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                   isSelected={selectedOrderIds.includes(order.id)}
                                   onSelect={(id) => setSelectedOrderIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
                                   onUpdateStatus={updateOrderStatus}
-                                  onDelete={(id) => showConfirm('Delete this order?', () => deleteOrder(id))}
                                 />
                               ))}
                             </div>

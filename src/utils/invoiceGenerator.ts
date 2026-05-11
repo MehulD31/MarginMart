@@ -82,15 +82,15 @@ export async function generateInvoice(
     const isEven = idx % 2 === 0;
     return `
       <tr style="background:${isEven ? '#ffffff' : '#f9fafb'};">
-        <td style="padding:11px 14px; font-weight:600; color:#1e293b;">${order.product_name}</td>
-        <td style="padding:11px 14px; color:#64748b; text-align:center;">${date}</td>
-        <td style="padding:11px 14px; text-align:center; font-weight:700;">${qty}</td>
-        <td style="padding:11px 14px; text-align:right; color:#64748b;">${order.mrp ? '₹' + formatINR(order.mrp) : '—'}</td>
-        <td style="padding:11px 14px; text-align:right; color:#475569;">₹${formatINR(rate)}</td>
-        <td style="padding:11px 14px; text-align:right; font-weight:700; color:${savingPerPc > 0 ? '#16a34a' : '#94a3b8'};">
+        <td style="padding:8px 12px; font-weight:600; color:#1e293b;">${order.product_name}</td>
+        <td style="padding:8px 12px; color:#64748b; text-align:center;">${date}</td>
+        <td style="padding:8px 12px; text-align:center; font-weight:700;">${qty}</td>
+        <td style="padding:8px 12px; text-align:right; color:#64748b;">${order.mrp ? '₹' + formatINR(order.mrp) : '—'}</td>
+        <td style="padding:8px 12px; text-align:right; color:#475569;">₹${formatINR(rate)}</td>
+        <td style="padding:8px 12px; text-align:right; font-weight:700; color:${savingPerPc > 0 ? '#16a34a' : '#94a3b8'};">
           ${savingPerPc > 0 ? '₹' + formatINR(savingPerPc) : '—'}
         </td>
-        <td style="padding:11px 14px; text-align:right; font-weight:800; color:#1e293b;">₹${formatINR(order.selling_price)}</td>
+        <td style="padding:8px 12px; text-align:right; font-weight:800; color:#1e293b;">₹${formatINR(order.selling_price)}</td>
       </tr>`;
   }).join('');
 
@@ -118,11 +118,11 @@ export async function generateInvoice(
 
   // 3. Build invoice HTML
   const savingsBadge = totalSavings > 0 ? `
-    <div style="display:flex; align-items:center; gap:10px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px; padding:10px 16px; margin-bottom:12px;">
+    <div style="display:flex; align-items:center; gap:8px; background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:8px; padding:8px 14px; margin-bottom:10px; page-break-inside:avoid;">
       <span style="font-size:18px;">🎉</span>
       <div>
-        <div style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#15803d;">Your Total Savings with MarginMart</div>
-        <div style="font-size:22px; font-weight:900; color:#16a34a; letter-spacing:-0.02em;">₹${formatINR(totalSavings)}</div>
+        <div style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#15803d;">Your Total Savings with MarginMart</div>
+        <div style="font-size:18px; font-weight:900; color:#16a34a; letter-spacing:-0.02em;">₹${formatINR(totalSavings)}</div>
       </div>
     </div>` : '';
 
@@ -138,31 +138,31 @@ export async function generateInvoice(
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #e2e8f0; min-height: 100vh; padding: 32px 16px 64px;
+      background: #e2e8f0; min-height: 100vh; padding: 24px 16px 48px;
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
     .page {
-      width: 794px; min-height: 1123px; margin: 0 auto; background: #ffffff;
+      width: 794px; margin: 0 auto; background: #ffffff;
       border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
       overflow: hidden; display: flex; flex-direction: column; position: relative;
     }
     .inv-header {
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #064e3b 100%);
-      padding: 28px 36px 24px; display: flex; justify-content: space-between;
-      align-items: flex-start; gap: 24px;
+      padding: 22px 30px 18px; display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 20px;
     }
     .inv-brand { color: white; }
-    .inv-brand-tag { font-size: 10px; color: #94a3b8; font-weight: 500; margin-top: 4px; letter-spacing: 0.05em; text-transform: uppercase; }
-    .inv-brand-location { font-size: 11px; color: #64748b; margin-top: 6px; }
+    .inv-brand-tag { font-size: 9px; color: #94a3b8; font-weight: 500; margin-top: 2px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .inv-brand-location { font-size: 10px; color: #64748b; margin-top: 4px; }
     .inv-meta { text-align: right; color: white; }
-    .inv-title { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; color: white; }
-    .inv-no { font-size: 11px; color: #86efac; font-weight: 700; letter-spacing: 0.08em; margin-top: 4px; }
-    .inv-dates { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
-    .inv-date-row { font-size: 11px; color: #94a3b8; display: flex; gap: 6px; justify-content: flex-end; }
+    .inv-title { font-size: 24px; font-weight: 900; letter-spacing: -0.03em; color: white; }
+    .inv-no { font-size: 10px; color: #86efac; font-weight: 700; letter-spacing: 0.08em; margin-top: 2px; }
+    .inv-dates { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+    .inv-date-row { font-size: 10px; color: #94a3b8; display: flex; gap: 6px; justify-content: flex-end; }
     .inv-date-row span:first-child { color: #64748b; }
     .inv-date-row span:last-child { color: #e2e8f0; font-weight: 600; }
     .inv-parties {
-      padding: 24px 36px; display: grid; grid-template-columns: 1fr 1px 1fr;
+      padding: 18px 30px; display: grid; grid-template-columns: 1fr 1px 1fr;
       gap: 0; border-bottom: 1px solid #f1f5f9;
     }
     .inv-divider { background: #f1f5f9; }
@@ -173,25 +173,25 @@ export async function generateInvoice(
     .inv-party-name { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 6px; line-height: 1.2; }
     .inv-party-detail { font-size: 12px; color: #64748b; line-height: 1.6; }
     .inv-party-phone { font-size: 12px; color: #334155; font-weight: 600; margin-top: 6px; }
-    .inv-table-wrap { padding: 20px 36px 0; flex: 1; }
+    .inv-table-wrap { padding: 16px 30px 0; flex: 1; }
     .inv-section-label { font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     thead tr { background: #0f172a; color: white; }
-    thead th { padding: 10px 14px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    thead th { padding: 8px 12px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
     thead th:nth-child(1) { text-align: left; }
     thead th:nth-child(2), thead th:nth-child(3) { text-align: center; }
     thead th:nth-child(n+4) { text-align: right; }
     tbody tr { border-bottom: 1px solid #f1f5f9; }
     tbody td { vertical-align: middle; }
     tfoot tr { background: #f8fafc; }
-    tfoot td { padding: 10px 14px; font-size: 12px; font-weight: 700; color: #475569; border-top: 2px solid #e2e8f0; }
-    tfoot td:last-child { color: #1e293b; text-align: right; font-weight: 900; font-size: 14px; }
-    .inv-footer { padding: 20px 36px 28px; border-top: 2px solid #f1f5f9; }
+    tfoot td { padding: 8px 12px; font-size: 11px; font-weight: 700; color: #475569; border-top: 2px solid #e2e8f0; }
+    tfoot td:last-child { color: #1e293b; text-align: right; font-weight: 900; font-size: 13px; }
+    .inv-footer { padding: 14px 30px 18px; border-top: 2px solid #f1f5f9; }
     .inv-totals-row { display: flex; justify-content: flex-end; align-items: flex-start; gap: 32px; margin-top: 16px; }
-    .inv-grand-box { background: linear-gradient(135deg, #0f172a, #1e293b); border-radius: 12px; padding: 14px 20px; text-align: right; min-width: 160px; }
-    .inv-grand-label { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
-    .inv-grand-amount { font-size: 28px; font-weight: 900; color: white; letter-spacing: -0.04em; }
-    .inv-terms { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 16px 36px 24px; border-top: 1px solid #f1f5f9; margin-top: auto; }
+    .inv-grand-box { background: linear-gradient(135deg, #0f172a, #1e293b); border-radius: 10px; padding: 10px 16px; text-align: right; min-width: 140px; }
+    .inv-grand-label { font-size: 8.5px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+    .inv-grand-amount { font-size: 24px; font-weight: 900; color: white; letter-spacing: -0.04em; }
+    .inv-terms { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 12px 30px 18px; border-top: 1px solid #f1f5f9; margin-top: auto; }
     .inv-terms-title { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; margin-bottom: 8px; }
     .inv-terms ol { padding-left: 14px; }
     .inv-terms li { font-size: 10px; color: #94a3b8; line-height: 1.7; }
@@ -224,8 +224,8 @@ export async function generateInvoice(
       cursor: pointer; font-family: 'Inter', sans-serif;
     }
     @media print {
-      body { background: white; padding: 0; }
-      .page { width: 100%; min-height: 100vh; border-radius: 0; box-shadow: none; }
+      body { background: white; padding: 0; zoom: 0.92; }
+      .page { width: 100%; min-height: auto; border-radius: 0; box-shadow: none; margin: 0; }
       .print-bar { display: none !important; }
       .inv-stamp { display: none; }
     }
