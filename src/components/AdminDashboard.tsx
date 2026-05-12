@@ -531,7 +531,12 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
         : [item.product_name];
 
       keysToMatch.forEach((key: string) => {
-        if (text.includes(key.toLowerCase())) {
+        // Robust whole-word matching using word boundaries
+        // This prevents false positives like "rin" matching "grinder"
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(\\b|^)${escapedKey}(\\b|$)`, 'i');
+        
+        if (regex.test(text)) {
           const sk = allSk?.find(s => s.id === item.shopkeeper_id);
           if (sk) {
             // Avoid duplicate matches for same partner
