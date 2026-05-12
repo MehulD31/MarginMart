@@ -6,7 +6,7 @@ import {
   Trash2, Edit2, CheckCircle, AlertCircle, X, ChevronRight, MessageSquare,
   Download, History, LayoutDashboard, ShoppingCart, CreditCard, PlusCircle,
   IndianRupee, Clock, Zap, Target, Bell, ArrowLeft, FileText, Loader2, ShoppingBag,
-  CheckCircle2, LogOut, Send, RefreshCw, Lock, UserPlus, ChevronDown
+  CheckCircle2, LogOut, Send, RefreshCw, Lock, UserPlus, ChevronDown, BarChart3
 } from 'lucide-react';
 import PartnerCard from './mobile/PartnerCard';
 import OrderCard from './mobile/OrderCard';
@@ -714,6 +714,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const totalProfit = orders.reduce((sum, o) => sum + (o.selling_price - o.deal_price), 0);
   const pendingCollection = orders.filter(o => o.status !== 'paid').reduce((sum, o) => sum + o.selling_price, 0);
   const todayRevenue = orders.filter(o => new Date(o.created_at).toDateString() === new Date().toDateString()).reduce((sum, o) => sum + o.selling_price, 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + o.selling_price, 0);
 
 
   // Operator Performance
@@ -1027,6 +1028,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     </header>
                     <div className="stats-overview">
                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="stat-card-mini">
+                        <h4>Total Revenue</h4>
+                        <div className="val" style={{ color: '#8b5cf6' }}>₹{totalRevenue.toLocaleString('en-IN')}</div>
+                        <BarChart3 style={{ color: '#8b5cf6' }} size={20} />
+                      </motion.div>
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }} className="stat-card-mini">
                         <h4>Total Net Profit</h4>
                         <div className="val text-green">₹{totalProfit.toLocaleString('en-IN')}</div>
                         <TrendingUp className="text-green" />
