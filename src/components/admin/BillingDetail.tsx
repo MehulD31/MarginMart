@@ -65,7 +65,7 @@ export const BillingDetail: React.FC<BillingDetailProps> = ({
         <div className={isMobile ? "billing-action-grid" : "billing-action-row"} style={!isMobile ? { display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' } : {}}>
           <button className="btn-pro-primary" disabled={invoiceLoading} onClick={() => onGenerateInvoice(partner, unpaidOrders, operatorName, false)}>
             {invoiceLoading ? <Loader2 className="animate-spin" size={16} /> : <Zap size={16} />}
-            {invoiceLoading ? 'Generating...' : 'Issue Official Invoice'}
+            {invoiceLoading ? 'Generating...' : 'Issue Final Invoice'}
           </button>
           <button className="btn-pro-secondary" onClick={() => onEmail(partner.id)}>
             <Mail size={16} /> Email

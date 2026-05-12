@@ -1641,16 +1641,29 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                   try { await generateInvoice(partner, partnerOrders, opName, true); }
                                   catch (err) { showToast('Failed to preview invoice', 'error'); }
                                 } else {
-                                  setInvoiceLoading(true);
-                                  try {
-                                    await generateInvoice(partner, partnerOrders, opName, false);
-                                    await loadInvoiceHistory(partner.id);
-                                    showToast('Official Invoice generated successfully');
-                                  } catch (err) {
-                                    showToast('Failed to generate official invoice', 'error');
-                                  } finally {
-                                    setInvoiceLoading(false);
-                                  }
+                                  showConfirm("Generate Final Invoice and mark all " + partnerOrders.length + " orders as PAID?", async () => {
+                                    setInvoiceLoading(true);
+                                    try {
+                                      await generateInvoice(partner, partnerOrders, opName, false);
+                                      
+                                      // After successful generation, mark all these orders as paid
+                                      const { error: updateErr } = await supabase
+                                        .from('orders')
+                                        .update({ status: 'paid' })
+                                        .in('id', partnerOrders.map(o => o.id));
+                                      
+                                      if (updateErr) throw updateErr;
+
+                                      await loadInvoiceHistory(partner.id);
+                                      fetchOrders(); // Refresh global orders list
+                                      showToast('Final Invoice issued and orders marked as PAID');
+                                    } catch (err) {
+                                      console.error('Final Invoice error:', err);
+                                      showToast('Failed to issue final invoice', 'error');
+                                    } finally {
+                                      setInvoiceLoading(false);
+                                    }
+                                  });
                                 }
                               }}
                               invoiceLoading={invoiceLoading}
