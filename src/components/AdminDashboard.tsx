@@ -534,7 +534,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
         // Robust whole-word matching using word boundaries
         // This prevents false positives like "rin" matching "grinder"
         const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(\\b|^)${escapedKey}(\\b|$)`, 'i');
+        // Explicit non-alphanumeric boundary check to prevent false positives like "rin" in "grinder"
+        const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${escapedKey}(?:$|[^a-zA-Z0-9])`, 'i');
         
         if (regex.test(text)) {
           const sk = allSk?.find(s => s.id === item.shopkeeper_id);
