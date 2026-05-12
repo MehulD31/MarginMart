@@ -56,13 +56,36 @@ export async function generateInvoice(
   operatorName?: string,
   isPreview: boolean = false
 ): Promise<string> {
+  // 0. Open window immediately to avoid popup blocker
+  const newWin = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
+  if (newWin) {
+    newWin.document.write(`
+      <html>
+        <head><title>Generating Invoice...</title></head>
+        <body style="display:flex; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#64748b; background:#f8fafc;">
+          <div style="text-align:center;">
+            <div style="border:4px solid #e2e8f0; border-top:4px solid #22c55e; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto 20px;"></div>
+            <h2 style="color:#1e293b; margin-bottom:8px;">Preparing Your Invoice</h2>
+            <p>Please wait while we secure your record...</p>
+          </div>
+          <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+        </body>
+      </html>
+    `);
+  }
+
   // 1. Get sequential invoice number from DB (race-safe advisory lock) if official
   let invoiceNo = 'PREVIEW';
-  if (!isPreview) {
-    const { data, error: seqErr } = await supabase
-      .rpc('generate_invoice_no');
-    if (seqErr || !data) throw new Error('Failed to generate invoice number');
-    invoiceNo = data as string;
+  try {
+    if (!isPreview) {
+      const { data, error: seqErr } = await supabase
+        .rpc('generate_invoice_no');
+      if (seqErr || !data) throw new Error('Failed to generate invoice number');
+      invoiceNo = data as string;
+    }
+  } catch (err) {
+    if (newWin) newWin.close();
+    throw err;
   }
 
   const invoiceDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -360,11 +383,24 @@ export async function generateInvoice(
 </body>
 </html>`;
 
-  // 4. Open in new window
-  const newWin = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
+  // 4. Output to window
   if (newWin) {
+    newWin.document.open();
     newWin.document.write(html);
     newWin.document.close();
+    
+    // Auto-focus and optionally print
+    setTimeout(() => {
+      newWin.focus();
+      if (!isPreview) {
+        // Subtle hint for official invoices
+        console.log('Official invoice generated: ' + invoiceNo);
+      }
+    }, 500);
+  } else {
+    // If popup was blocked, we already inserted into DB (if !isPreview),
+    // but the user can't see the invoice.
+    alert('Invoice ' + (isPreview ? 'Preview' : invoiceNo) + ' generated, but the window was blocked by your browser. Please allow popups for this site.');
   }
 
   return invoiceNo as string;
