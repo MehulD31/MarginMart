@@ -56,7 +56,7 @@ log = logging.getLogger("marginmart")
 # ── Supabase helpers ──────────────────────────────────────────────────────────
 def fetch_watchlists():
     """Fetch all watchlist items with shopkeeper names from Supabase."""
-    url = f"{SUPABASE_URL}/rest/v1/watchlists?select=product_name,keywords,shopkeeper_id,shopkeepers(name)"
+    url = f"{SUPABASE_URL}/rest/v1/watchlists?select=product_name,keywords,shopkeeper_id,supplier_rate,product_size,description,shopkeepers(name)"
     req = urllib.request.Request(url, headers={
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}"
@@ -207,10 +207,15 @@ async def run_monitor():
         shopkeeper_matches: dict[str, list[str]] = {}
         shopkeeper_ids: dict[str, str] = {}
         item_product_names: dict[str, str] = {}
+        # Track product details (supplier_rate, product_size) per shopkeeper per product
+        shopkeeper_product_details: dict[str, list[dict]] = {}
 
         for item in watchlists:
             product_name = item.get("product_name") or ""
             keywords = item.get("keywords") or []
+            supplier_rate = item.get("supplier_rate")
+            product_size = item.get("product_size")
+            description = item.get("description")
             if isinstance(keywords, str):
                 keywords = [keywords]
             
@@ -234,12 +239,21 @@ async def run_monitor():
             if shopkeeper_name not in shopkeeper_matches:
                 shopkeeper_matches[shopkeeper_name] = []
                 shopkeeper_ids[shopkeeper_name] = shopkeeper_id
-                # Keep track of the actual product name for this item
                 item_product_names[shopkeeper_name] = product_name
+                shopkeeper_product_details[shopkeeper_name] = []
 
             for kw in matched_kws:
                 if kw not in shopkeeper_matches[shopkeeper_name]:
                     shopkeeper_matches[shopkeeper_name].append(kw)
+
+            # Store product details for this match
+            shopkeeper_product_details[shopkeeper_name].append({
+                "product_name": product_name,
+                "supplier_rate": supplier_rate,
+                "product_size": product_size,
+                "description": description,
+                "matched_keywords": matched_kws,
+            })
 
         if not shopkeeper_matches:
             return  # No match, skip
@@ -254,10 +268,35 @@ async def run_monitor():
                 save_match(shopkeeper_id, p_name, kw, raw_text, db_post_url)
 
         # Build alert message
-        shopkeeper_lines = "\n".join(
-            f"  \u2022 <b>{name}</b>  \u2192  {', '.join(kws)}"
-            for name, kws in shopkeeper_matches.items()
-        )
+        # Build detailed lines per shopkeeper with product info
+        shopkeeper_lines_parts = []
+        for name, kws in shopkeeper_matches.items():
+            details = shopkeeper_product_details.get(name, [])
+            line = f"  • <b>{name}</b>"
+            # Build product detail lines
+            product_info_lines = []
+            seen_products = set()
+            for d in details:
+                p_name = d["product_name"]
+                if p_name in seen_products:
+                    continue
+                seen_products.add(p_name)
+                info_parts = [f"    📦 {p_name}"]
+                if d.get("product_size"):
+                    info_parts[0] += f" ({d['product_size']})"
+                if d.get("description"):
+                    info_parts.append(f"       📝 {d['description']}")
+                if d.get("supplier_rate"):
+                    info_parts.append(f"       💰 Supplier Rate: ₹{d['supplier_rate']}")
+                product_info_lines.append("\n".join(info_parts))
+            
+            if product_info_lines:
+                line += "\n" + "\n".join(product_info_lines)
+            else:
+                line += f"  →  {', '.join(kws)}"
+            shopkeeper_lines_parts.append(line)
+
+        shopkeeper_lines = "\n".join(shopkeeper_lines_parts)
 
         # Base alert parts
         alert_parts = [

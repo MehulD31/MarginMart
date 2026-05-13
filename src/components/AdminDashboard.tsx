@@ -232,6 +232,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
   // Watchlist Editing
   const [newProduct, setNewProduct] = useState('');
+  const [newSupplierRate, setNewSupplierRate] = useState('');
+  const [newProductSize, setNewProductSize] = useState('');
+  const [newProductDesc, setNewProductDesc] = useState('');
 
   useEffect(() => {
     if (isAuthorized) {
@@ -481,12 +484,18 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       shopkeeper_id: selectedShopkeeper.id,
       product_name: keywords[0] || product.trim(),
       keywords: keywords,
-      operator_name: operatorName || 'Admin'
+      operator_name: operatorName || 'Admin',
+      supplier_rate: newSupplierRate ? parseFloat(newSupplierRate) : null,
+      product_size: newProductSize || null,
+      description: newProductDesc || null
     }]);
 
     if (!error) {
       showToast(`Added ${keywords[0]} to watchlist`);
       setNewProduct('');
+      setNewSupplierRate('');
+      setNewProductSize('');
+      setNewProductDesc('');
       fetchWatchlist(selectedShopkeeper.id);
     } else {
       showToast('Error adding product', 'error');
@@ -1781,6 +1790,13 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                   <input placeholder="Add keyword (e.g. Rice)" className="form-input-premium" value={newProduct} onChange={(e) => setNewProduct(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addToWatchlist(newProduct)} />
                                   <button className="btn-pro-primary" onClick={() => addToWatchlist(newProduct)} style={{ padding: '0.75rem 1.25rem', height: '48px' }}><Plus size={20} /></button>
                                 </div>
+                                <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                  <input placeholder="Size (e.g. 500g, 1L)" className="form-input-premium" value={newProductSize} onChange={(e) => setNewProductSize(e.target.value)} style={{ height: '40px', fontSize: '0.85rem' }} />
+                                  <input placeholder="Supplier Rate (₹)" className="form-input-premium" type="number" value={newSupplierRate} onChange={(e) => setNewSupplierRate(e.target.value)} style={{ height: '40px', fontSize: '0.85rem' }} />
+                                </div>
+                                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                                  <input placeholder="Description (e.g. pink powder, white cream)" className="form-input-premium" value={newProductDesc} onChange={(e) => setNewProductDesc(e.target.value)} style={{ height: '40px', fontSize: '0.85rem' }} />
+                                </div>
                               </div>
                               <div style={{ marginBottom: '2rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: '#64748b' }}>
@@ -1827,7 +1843,12 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                             key={`${item.id}-${idx}`}
                                             className="product-tag"
                                           >
-                                            <span title={item.operator_name ? `Added by ${item.operator_name}` : ''}>{kw}</span>
+                                            <span title={[item.description && `Desc: ${item.description}`, item.product_size && `Size: ${item.product_size}`, item.supplier_rate && `Supplier Rate: ₹${item.supplier_rate}`, item.operator_name && `Added by ${item.operator_name}`].filter(Boolean).join(' | ')}>
+                                              {kw}
+                                              {item.product_size && <span style={{ fontSize: '0.7rem', opacity: 0.7, marginLeft: '4px' }}>({item.product_size})</span>}
+                                              {item.supplier_rate && <span style={{ fontSize: '0.7rem', color: '#10b981', marginLeft: '4px' }}>₹{item.supplier_rate}</span>}
+                                              {item.description && <span style={{ fontSize: '0.65rem', color: '#8b5cf6', marginLeft: '4px', fontStyle: 'italic' }}>{item.description}</span>}
+                                            </span>
                                             <button onClick={() => removeFromWatchlist(item.id, item.product_name)}><X size={14} /></button>
                                           </motion.div>
                                         ))}
