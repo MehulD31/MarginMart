@@ -24,6 +24,7 @@ from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
 import urllib.request
 import json
+import re
 from aiohttp import web
 
 load_dotenv()
@@ -205,13 +206,25 @@ async def run_monitor():
         # Match against all watchlist items — build shopkeeper → keywords map
         shopkeeper_matches: dict[str, list[str]] = {}
         shopkeeper_ids: dict[str, str] = {}
+        item_product_names: dict[str, str] = {}
 
         for item in watchlists:
+            product_name = item.get("product_name") or ""
             keywords = item.get("keywords") or []
             if isinstance(keywords, str):
                 keywords = [keywords]
+            
+            terms = [product_name] + keywords
+            matched_kws = []
+            for k in terms:
+                if not k:
+                    continue
+                escaped = re.escape(k.lower())
+                # Robust boundary check
+                pattern = rf"(?:^|[^a-z0-9]){escaped}(?:$|[^a-z0-9])"
+                if re.search(pattern, text_lower):
+                    matched_kws.append(k)
 
-            matched_kws = [k for k in keywords if k and k.lower() in text_lower]
             if not matched_kws:
                 continue
 
@@ -221,6 +234,8 @@ async def run_monitor():
             if shopkeeper_name not in shopkeeper_matches:
                 shopkeeper_matches[shopkeeper_name] = []
                 shopkeeper_ids[shopkeeper_name] = shopkeeper_id
+                # Keep track of the actual product name for this item
+                item_product_names[shopkeeper_name] = product_name
 
             for kw in matched_kws:
                 if kw not in shopkeeper_matches[shopkeeper_name]:
@@ -231,11 +246,12 @@ async def run_monitor():
 
         log.info(f"MATCH in [{channel_title}/{post_id}] for: {list(shopkeeper_matches.keys())}")
 
-        # Save matches to DB (keep db_post_url for analytics parsing)
+        # Save matches to DB
         for shopkeeper_name, kws in shopkeeper_matches.items():
             shopkeeper_id = shopkeeper_ids[shopkeeper_name]
+            p_name = item_product_names[shopkeeper_name]
             for kw in kws:
-                save_match(shopkeeper_id, kw, kw, raw_text, db_post_url)
+                save_match(shopkeeper_id, p_name, kw, raw_text, db_post_url)
 
         # Build alert message
         shopkeeper_lines = "\n".join(
