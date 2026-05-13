@@ -14,6 +14,9 @@ export interface WatchlistItem {
   product_name: string;
   keywords: string[];
   operator_name?: string;
+  supplier_rate?: number | null;
+  product_size?: string | null;
+  description?: string | null;
 }
 
 export interface Match {
