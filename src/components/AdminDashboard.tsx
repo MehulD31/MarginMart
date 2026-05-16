@@ -151,14 +151,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     message: string;
-    onConfirm: () => void;
+    onConfirm: (checked?: boolean) => void;
+    checkboxLabel?: string;
+    variant?: 'danger' | 'success' | 'primary';
   } | null>(null);
 
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
   const [isMobile] = useState(window.innerWidth < 768);
 
-  const showConfirm = (message: string, onConfirm: () => void) => {
-    setConfirmDialog({ message, onConfirm });
+  const showConfirm = (message: string, onConfirm: (checked?: boolean) => void, checkboxLabel?: string, variant: 'danger' | 'success' | 'primary' = 'danger') => {
+    setConfirmDialog({ message, onConfirm, checkboxLabel, variant });
   };
   const [orderPartner, setOrderPartner] = useState<Shopkeeper | null>(null);
   const [visibleOrderCount, setVisibleOrderCount] = useState(10);
@@ -597,6 +599,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       const rate = o.selling_price / qty;
       const mrpVal = o.mrp || 0;
       const savingPerPc = mrpVal > rate ? (mrpVal - rate) : 0;
+      const savingPercent = mrpVal > 0 ? Math.round((savingPerPc / mrpVal) * 100) : 0;
 
       totalAmount += o.selling_price;
       totalSavings += (savingPerPc * qty);
@@ -604,7 +607,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       text += `• ${o.product_name}\n`;
       text += `  Qty: ${qty} | Rate: ₹${rate.toLocaleString('en-IN')}\n`;
       text += `  *Subtotal: ₹${o.selling_price.toLocaleString('en-IN')}*\n`;
-      if (savingPerPc > 0) text += `  _(You saved ₹${(savingPerPc * qty).toLocaleString('en-IN')})_\n`;
+      if (savingPerPc > 0) text += `  _(You saved ₹${(savingPerPc * qty).toLocaleString('en-IN')} | ${savingPercent}% Disc)_ \n`;
       text += `\n`;
     });
 
@@ -1662,29 +1665,32 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                   try { await generateInvoice(partner, partnerOrders, opName, true); }
                                   catch (err) { showToast('Failed to preview invoice', 'error'); }
                                 } else {
-                                  showConfirm("Generate Final Invoice and mark all " + partnerOrders.length + " orders as PAID?", async () => {
+                                  showConfirm(`Generate Final Invoice for ${partnerOrders.length} orders?`, async (shouldMarkPaid) => {
                                     setInvoiceLoading(true);
                                     try {
                                       await generateInvoice(partner, partnerOrders, opName, false);
                                       
-                                      // After successful generation, mark all these orders as paid
-                                      const { error: updateErr } = await supabase
-                                        .from('orders')
-                                        .update({ status: 'paid' })
-                                        .in('id', partnerOrders.map(o => o.id));
-                                      
-                                      if (updateErr) throw updateErr;
+                                      if (shouldMarkPaid) {
+                                        const { error: updateErr } = await supabase
+                                          .from('orders')
+                                          .update({ status: 'paid' })
+                                          .in('id', partnerOrders.map(o => o.id));
+                                        
+                                        if (updateErr) throw updateErr;
+                                        showToast('Final Invoice issued and orders marked as PAID');
+                                      } else {
+                                        showToast('Final Invoice issued');
+                                      }
 
                                       await loadInvoiceHistory(partner.id);
-                                      fetchOrders(); // Refresh global orders list
-                                      showToast('Final Invoice issued and orders marked as PAID');
+                                      fetchOrders();
                                     } catch (err) {
                                       console.error('Final Invoice error:', err);
                                       showToast('Failed to issue final invoice', 'error');
                                     } finally {
                                       setInvoiceLoading(false);
                                     }
-                                  });
+                                  }, "Mark these orders as PAID?", 'success');
                                 }
                               }}
                               invoiceLoading={invoiceLoading}
@@ -2207,12 +2213,14 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             <ConfirmModal
               isOpen={!!confirmDialog}
               onClose={() => setConfirmDialog(null)}
-              onConfirm={() => {
+              onConfirm={(checked) => {
                 if (navigator.vibrate) navigator.vibrate(20);
-                confirmDialog?.onConfirm();
+                confirmDialog?.onConfirm(checked);
               }}
               message={confirmDialog?.message || ''}
+              checkboxLabel={confirmDialog?.checkboxLabel}
               isMobile={isMobile}
+              variant={confirmDialog?.variant}
             />
           </div>
         </div>

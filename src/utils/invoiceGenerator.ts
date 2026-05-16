@@ -99,6 +99,8 @@ export async function generateInvoice(
     const qty = order.quantity || 1;
     const rate = order.selling_price / qty;
     const savingPerPc = order.mrp ? order.mrp - rate : 0;
+    const savingPercent = order.mrp ? Math.round((savingPerPc / order.mrp) * 100) : 0;
+    
     totalAmount += order.selling_price;
     totalSavings += savingPerPc * qty;
     const date = new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
@@ -112,6 +114,9 @@ export async function generateInvoice(
         <td style="padding:8px 12px; text-align:right; color:#475569;">₹${formatINR(rate)}</td>
         <td style="padding:8px 12px; text-align:right; font-weight:700; color:${savingPerPc > 0 ? '#16a34a' : '#94a3b8'};">
           ${savingPerPc > 0 ? '₹' + formatINR(savingPerPc) : '—'}
+        </td>
+        <td style="padding:8px 12px; text-align:center; font-weight:700; color:${savingPercent > 0 ? '#16a34a' : '#94a3b8'};">
+          ${savingPercent > 0 ? savingPercent + '%' : '—'}
         </td>
         <td style="padding:8px 12px; text-align:right; font-weight:800; color:#1e293b;">₹${formatINR(order.selling_price)}</td>
       </tr>`;
@@ -202,8 +207,8 @@ export async function generateInvoice(
     thead tr { background: #0f172a; color: white; }
     thead th { padding: 8px 12px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
     thead th:nth-child(1) { text-align: left; }
-    thead th:nth-child(2), thead th:nth-child(3) { text-align: center; }
-    thead th:nth-child(n+4) { text-align: right; }
+    thead th:nth-child(2), thead th:nth-child(3), thead th:nth-child(7) { text-align: center; }
+    thead th:nth-child(4), thead th:nth-child(5), thead th:nth-child(6), thead th:nth-child(8) { text-align: right; }
     tbody tr { border-bottom: 1px solid #f1f5f9; }
     tbody td { vertical-align: middle; }
     tfoot tr { background: #f8fafc; }
@@ -321,19 +326,20 @@ export async function generateInvoice(
     <table>
       <thead>
         <tr>
-          <th style="width:30%; text-align:left; border-radius:6px 0 0 6px;">Item Description</th>
+          <th style="width:28%; text-align:left; border-radius:6px 0 0 6px;">Item Description</th>
           <th style="width:10%;">Date</th>
           <th style="width:6%;">Qty</th>
           <th style="width:11%;">MRP</th>
           <th style="width:11%;">Rate/pc</th>
-          <th style="width:12%; color:#86efac;">Save/pc</th>
+          <th style="width:11%; color:#86efac;">Save/pc</th>
+          <th style="width:11%; color:#86efac;">DISC %</th>
           <th style="width:12%; border-radius:0 6px 6px 0;">Total</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
       <tfoot>
         <tr>
-          <td colspan="6" style="text-align:right; padding-right:14px; font-size:11px; font-weight:700; color:#64748b;">SUBTOTAL</td>
+          <td colspan="7" style="text-align:right; padding-right:14px; font-size:11px; font-weight:700; color:#64748b;">SUBTOTAL</td>
           <td>₹${formatINR(totalAmount)}</td>
         </tr>
       </tfoot>

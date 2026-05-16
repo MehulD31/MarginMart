@@ -108,7 +108,7 @@ export const BillingDetail: React.FC<BillingDetailProps> = ({
                     <div className="item-meta">
                       <span>Qty: {qty}</span>
                       <span>Rate: ₹{rate.toLocaleString()}</span>
-                      <span style={{ color: '#16a34a' }}>Saved: ₹{savings.toLocaleString()}</span>
+                      <span style={{ color: '#16a34a' }}>Saved: ₹{savings.toLocaleString()} ({order.mrp ? Math.round(((order.mrp - rate) / order.mrp) * 100) : 0}% Disc)</span>
                       <span>{new Date(order.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
@@ -127,21 +127,30 @@ export const BillingDetail: React.FC<BillingDetailProps> = ({
             </div>
           ) : (
             <div className="billing-table">
-              <div className="sk-row header" style={{ '--grid-cols': '1fr 100px 120px 120px' } as any}>
+              <div className="sk-row header" style={{ '--grid-cols': '1fr 80px 100px 100px 120px' } as any}>
                 <div>Product</div>
                 <div>Qty</div>
                 <div>Rate</div>
+                <div>DISC %</div>
                 <div style={{ textAlign: 'right' }}>Total</div>
               </div>
               <div className="table-body">
-                {unpaidOrders.map(order => (
-                  <div key={order.id} className="sk-row" style={{ '--grid-cols': '1fr 100px 120px 120px' } as any}>
-                    <div style={{ fontWeight: 500 }}>{order.product_name}</div>
-                    <div>{order.quantity || 1}</div>
-                    <div>₹{(order.selling_price / (order.quantity || 1)).toLocaleString()}</div>
-                    <div style={{ textAlign: 'right', fontWeight: 700 }}>₹{order.selling_price.toLocaleString()}</div>
-                  </div>
-                ))}
+                {unpaidOrders.map(order => {
+                  const qty = order.quantity || 1;
+                  const rate = order.selling_price / qty;
+                  const marginPercent = order.mrp ? Math.round(((order.mrp - rate) / order.mrp) * 100) : 0;
+                  return (
+                    <div key={order.id} className="sk-row" style={{ '--grid-cols': '1fr 80px 100px 100px 120px' } as any}>
+                      <div style={{ fontWeight: 500 }}>{order.product_name}</div>
+                      <div>{qty}</div>
+                      <div>₹{rate.toLocaleString()}</div>
+                      <div style={{ color: marginPercent > 0 ? '#16a34a' : 'inherit', fontWeight: 600 }}>
+                        {marginPercent}%
+                      </div>
+                      <div style={{ textAlign: 'right', fontWeight: 700 }}>₹{order.selling_price.toLocaleString()}</div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="billing-summary" style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '2px dashed var(--admin-border)', display: 'flex', justifyContent: 'flex-end' }}>
                 <div style={{ textAlign: 'right' }}>
