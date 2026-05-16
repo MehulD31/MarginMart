@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, TrendingUp, User, TrendingDown, DollarSign } from 'lucide-react';
+import { X, TrendingUp, User, TrendingDown } from 'lucide-react';
 import type { Order } from '../../../types/database';
 
 interface ProfitBreakdownModalProps {
