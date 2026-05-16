@@ -159,6 +159,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   } | null>(null);
 
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [isMobile] = useState(window.innerWidth < 768);
 
   const showConfirm = (message: string, onConfirm: (checked?: boolean) => void, checkboxLabel?: string, variant: 'danger' | 'success' | 'primary' = 'danger') => {
@@ -436,7 +438,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     const partner = orderPartner || selectedShopkeeper;
     if (!partner) return;
     setSaving(true);
-    const { error } = await supabase.from('orders').insert([{
+    
+    const orderData = {
       shopkeeper_id: partner.id,
       product_name: orderForm.product_name,
       deal_price: parseFloat(orderForm.deal_price),
@@ -445,20 +448,53 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       quantity: parseFloat(orderForm.quantity || '1'),
       unit_rate: parseFloat(orderForm.unit_rate || '0'),
       platform_fee: parseFloat(orderForm.platform_fee || '0'),
-      status: 'ordered',
       operator_name: operatorName || 'Admin'
-    }]);
+    };
+
+    let error;
+    if (isEditingOrder && editingOrderId) {
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update(orderData)
+        .eq('id', editingOrderId);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from('orders')
+        .insert([{ ...orderData, status: 'ordered' }]);
+      error = insertError;
+    }
 
     if (!error) {
       if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
-      showToast(`Logged order for ${orderForm.product_name}`);
-      setShowOrderModal(false); setOrderPartner(null);
+      showToast(isEditingOrder ? 'Order updated successfully' : `Logged order for ${orderForm.product_name}`);
+      setShowOrderModal(false); 
+      setOrderPartner(null);
+      setIsEditingOrder(false);
+      setEditingOrderId(null);
       setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0', mrp: '' });
       fetchOrders();
     } else {
-      showToast('Failed to log fulfillment', 'error');
+      showToast(isEditingOrder ? 'Failed to update order' : 'Failed to log fulfillment', 'error');
     }
     setSaving(false);
+  }
+
+  function startEditOrder(order: any) {
+    if (!order) return;
+    setEditingOrderId(order.id);
+    setIsEditingOrder(true);
+    setOrderPartner(shopkeepers.find(sk => sk.id === order.shopkeeper_id) || null);
+    setOrderForm({
+      product_name: order.product_name || '',
+      mrp: (order.mrp || 0).toString(),
+      quantity: (order.quantity || 1).toString(),
+      unit_rate: (order.unit_rate || (order.deal_price / (order.quantity || 1)) || 0).toString(),
+      platform_fee: (order.platform_fee || 0).toString(),
+      deal_price: (order.deal_price || 0).toString(),
+      selling_price: (order.selling_price || 0).toString(),
+    });
+    setShowOrderModal(true);
   }
 
   async function fetchWatchlist(shopkeeperId: string) {
@@ -1537,6 +1573,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                   isSelected={selectedOrderIds.includes(order.id)}
                                   onSelect={(id) => setSelectedOrderIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
                                   onUpdateStatus={updateOrderStatus}
+                                  onEdit={startEditOrder}
+                                  onDelete={(id) => showConfirm('Delete this order?', () => deleteOrder(id))}
                                 />
                               ))}
                             </div>
@@ -1574,9 +1612,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 <div style={{ textAlign: 'right' }}>
                                   <div style={{ fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
                                   <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Qty: {order.quantity || 1} × ₹{(order.unit_rate || (order.deal_price / (order.quantity || 1))).toLocaleString()}</div>
-                                  <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}</div>
+                                  <div style={{ 
+                                    fontSize: '0.7rem', 
+                                    color: (order.selling_price - order.deal_price) < 0 ? '#ef4444' : '#22c55e', 
+                                    fontWeight: 700 
+                                  }}>
+                                    Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}
+                                  </div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
+                                <div style={{ textAlign: 'right', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                  <button className="btn-icon text-blue-500" onClick={() => startEditOrder(order)} title="Edit Order"><Edit2 size={14} /></button>
                                   <button className="btn-icon text-red-500" onClick={() => showConfirm('Delete this order?', () => deleteOrder(order.id))} title="Delete Order"><Trash2 size={14} /></button>
                                 </div>
                               </div>
@@ -2125,6 +2170,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       aria-label="Log Order"
                       onClick={() => {
                         if (navigator.vibrate) navigator.vibrate(40);
+                        setIsEditingOrder(false);
+                        setEditingOrderId(null);
+                        setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0', mrp: '' });
                         setShowOrderModal(true);
                       }}
                     >
@@ -2161,6 +2209,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 isMobile={isMobile}
                 partners={shopkeepers}
                 onPartnerSelect={(p) => setOrderPartner(p)}
+                isEdit={isEditingOrder}
               />
             </AnimatePresence>
             {/* Toast Notification */}
