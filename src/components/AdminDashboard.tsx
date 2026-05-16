@@ -14,6 +14,7 @@ import { LogOrderModal } from './admin/modals/LogOrderModal';
 import { PartnerFormModal } from './admin/modals/PartnerFormModal';
 import { ConfirmModal } from './admin/modals/ConfirmModal';
 import { MessageModal } from './admin/modals/MessageModal';
+import { ProfitBreakdownModal } from './admin/modals/ProfitBreakdownModal';
 import { BillingDetail } from './admin/BillingDetail';
 import { generateInvoice, fetchPartnerInvoices, type InvoiceRecord } from '../utils/invoiceGenerator';
 
@@ -144,6 +145,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedBillPartner, setSelectedBillPartner] = useState<string | null>(null);
   const [viewingMessage, setViewingMessage] = useState<string | null>(null);
+  const [showProfitModal, setShowProfitModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [operatorName, setOperatorName] = useState(localStorage.getItem('mm_operator_name') || '');
@@ -1045,7 +1047,14 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <div className="val" style={{ color: '#8b5cf6' }}>₹{totalRevenue.toLocaleString('en-IN')}</div>
                         <BarChart3 style={{ color: '#8b5cf6' }} size={20} />
                       </motion.div>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }} className="stat-card-mini">
+                      <motion.div 
+                        initial={{ y: 20, opacity: 0 }} 
+                        animate={{ y: 0, opacity: 1 }} 
+                        transition={{ delay: 0.15 }} 
+                        className="stat-card-mini"
+                        onClick={() => setShowProfitModal(true)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <h4>Total Net Profit</h4>
                         <div className="val text-green">₹{totalProfit.toLocaleString('en-IN')}</div>
                         <TrendingUp className="text-green" />
@@ -2172,6 +2181,12 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 onClose={() => setViewingMessage(null)}
                 title="Telegram Message"
                 message={viewingMessage || ''}
+                isMobile={isMobile}
+              />
+              <ProfitBreakdownModal
+                isOpen={showProfitModal}
+                onClose={() => setShowProfitModal(false)}
+                orders={orders}
                 isMobile={isMobile}
               />
             </AnimatePresence>
