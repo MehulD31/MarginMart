@@ -17,6 +17,7 @@ export interface WatchlistItem {
   supplier_rate?: number | null;
   product_size?: string | null;
   description?: string | null;
+  is_exclude: boolean;
 }
 
 export interface Match {

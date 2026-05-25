@@ -241,6 +241,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [newSupplierRate, setNewSupplierRate] = useState('');
   const [newProductSize, setNewProductSize] = useState('');
   const [newProductDesc, setNewProductDesc] = useState('');
+  const [newExcludeProduct, setNewExcludeProduct] = useState('');
 
   useEffect(() => {
     if (isAuthorized) {
@@ -502,21 +503,22 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     setWatchlist(data || []);
   }
 
-  async function addToWatchlist(product: string) {
+  async function addToWatchlist(product: string, isExclude: boolean = false) {
     if (!selectedShopkeeper || !product.trim()) return;
 
     const keywords = product.split(',').map(k => k.trim()).filter(k => k);
     const firstKeyword = (keywords[0] || product.trim()).toLowerCase();
 
-    // Check for existing duplicate
+    // Check for existing duplicate in either exclusions or watchlist depending on isExclude
     const alreadyExists = watchlist.some(item =>
+      !!item.is_exclude === isExclude &&
       (item.keywords || [item.product_name]).some(
         kw => kw.toLowerCase() === firstKeyword
       )
     );
 
     if (alreadyExists) {
-      showToast(`"${keywords[0]}" is already in the watchlist`, 'error');
+      showToast(`"${keywords[0]}" is already in the ${isExclude ? 'exclusions' : 'watchlist'}`, 'error');
       return;
     }
 
@@ -525,17 +527,22 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       product_name: keywords[0] || product.trim(),
       keywords: keywords,
       operator_name: operatorName || 'Admin',
-      supplier_rate: newSupplierRate ? parseFloat(newSupplierRate) : null,
-      product_size: newProductSize || null,
-      description: newProductDesc || null
+      supplier_rate: isExclude ? null : (newSupplierRate ? parseFloat(newSupplierRate) : null),
+      product_size: isExclude ? null : (newProductSize || null),
+      description: isExclude ? null : (newProductDesc || null),
+      is_exclude: isExclude
     }]);
 
     if (!error) {
-      showToast(`Added ${keywords[0]} to watchlist`);
-      setNewProduct('');
-      setNewSupplierRate('');
-      setNewProductSize('');
-      setNewProductDesc('');
+      showToast(`Added ${keywords[0]} to ${isExclude ? 'exclusions' : 'watchlist'}`);
+      if (isExclude) {
+        setNewExcludeProduct('');
+      } else {
+        setNewProduct('');
+        setNewSupplierRate('');
+        setNewProductSize('');
+        setNewProductDesc('');
+      }
       fetchWatchlist(selectedShopkeeper.id);
     } else {
       showToast('Error adding product', 'error');
@@ -569,12 +576,46 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   async function runSimulator() {
     if (!simText.trim()) return;
     setSimLoading(true);
-    const { data: allItems } = await supabase.from('watchlists').select('product_name, keywords, shopkeeper_id');
+    const { data: allItems } = await supabase.from('watchlists').select('product_name, keywords, shopkeeper_id, is_exclude');
     const { data: allSk } = await supabase.from('shopkeepers').select('id, name');
     const simMatches: { name: string, match: string, shopkeeperId: string, raw_message?: string }[] = [];
     const text = simText.toLowerCase();
 
+    // 1. Build exclusion map per shopkeeper
+    const exclusions: { [skId: string]: string[] } = {};
     allItems?.forEach(item => {
+      if (item.is_exclude) {
+        const skId = item.shopkeeper_id;
+        if (!exclusions[skId]) {
+          exclusions[skId] = [];
+        }
+        const keys = (item.keywords && item.keywords.length > 0) ? item.keywords : [item.product_name];
+        keys.forEach((k: string) => {
+          if (k) exclusions[skId].push(k.toLowerCase());
+        });
+      }
+    });
+
+    allItems?.forEach(item => {
+      if (item.is_exclude) return;
+
+      const skId = item.shopkeeper_id;
+
+      // Check if message contains any exclusion keyword for this shopkeeper
+      let hasExclusion = false;
+      if (exclusions[skId]) {
+        for (const excl of exclusions[skId]) {
+          const escapedExcl = excl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${escapedExcl}(?:$|[^a-zA-Z0-9])`, 'i');
+          if (regex.test(text)) {
+            hasExclusion = true;
+            break;
+          }
+        }
+      }
+
+      if (hasExclusion) return;
+
       const keysToMatch = (item.keywords && item.keywords.length > 0)
         ? item.keywords
         : [item.product_name];
@@ -1882,9 +1923,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
                                     <ShoppingBag size={14} className="text-green-500" />
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Watchlist ({watchlist.length})</span>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Watchlist ({watchlist.filter(item => !item.is_exclude).length})</span>
                                   </div>
-                                  {watchlist.length > 0 && (
+                                  {watchlist.filter(item => !item.is_exclude).length > 0 && (
                                     <button onClick={() => clearWatchlist(selectedShopkeeper.id)} style={{ color: '#ef4444', background: 'transparent', border: 'none', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>
                                       Clear All
                                     </button>
@@ -1892,7 +1933,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                                   <AnimatePresence>
-                                    {watchlist.map((item) => (
+                                    {watchlist.filter(item => !item.is_exclude).map((item) => (
                                       <React.Fragment key={item.id}>
                                         {(item.keywords || [item.product_name]).map((kw, idx) => (
                                           <motion.div
@@ -1915,12 +1956,74 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                       </React.Fragment>
                                     ))}
                                   </AnimatePresence>
-                                  {watchlist.length === 0 && (
+                                  {watchlist.filter(item => !item.is_exclude).length === 0 && (
                                     <EmptyState
                                       icon={ShoppingCart}
                                       title="Empty Watchlist"
                                       description="Use suggestions or type above to track products."
                                     />
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="tag-cloud" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '2rem', marginTop: '2rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
+                                    <AlertCircle size={14} style={{ color: '#ef4444' }} />
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Things Not to Match ({watchlist.filter(item => item.is_exclude).length})</span>
+                                  </div>
+                                </div>
+                                <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1.25rem' }}>
+                                  Add terms you want to explicitly avoid matching (e.g. if watching for "Lux", add "Lux cozy" or "luxury" here to prevent false positives).
+                                </p>
+                                
+                                <div className="add-product-row" style={{ marginBottom: '1.5rem' }}>
+                                  <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem' }}>
+                                    <input 
+                                      placeholder="Add exclusion keyword (e.g. luxury)" 
+                                      className="form-input-premium" 
+                                      value={newExcludeProduct} 
+                                      onChange={(e) => setNewExcludeProduct(e.target.value)} 
+                                      onKeyDown={(e) => e.key === 'Enter' && addToWatchlist(newExcludeProduct, true)} 
+                                    />
+                                    <button 
+                                      className="btn-pro-primary" 
+                                      onClick={() => addToWatchlist(newExcludeProduct, true)} 
+                                      style={{ padding: '0.75rem 1.25rem', height: '48px', background: 'linear-gradient(135deg, #64748b 0%, #475569 100%)' }}
+                                    >
+                                      <Plus size={20} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                  <AnimatePresence>
+                                    {watchlist.filter(item => item.is_exclude).map((item) => (
+                                      <React.Fragment key={item.id}>
+                                        {(item.keywords || [item.product_name]).map((kw, idx) => (
+                                          <motion.div
+                                            layout
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            key={`${item.id}-${idx}`}
+                                            className="product-tag"
+                                            style={{ borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.02)' }}
+                                          >
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569' }}>
+                                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }}></span>
+                                              {kw}
+                                            </span>
+                                            <button onClick={() => removeFromWatchlist(item.id, item.product_name)}><X size={14} /></button>
+                                          </motion.div>
+                                        ))}
+                                      </React.Fragment>
+                                    ))}
+                                  </AnimatePresence>
+                                  {watchlist.filter(item => item.is_exclude).length === 0 && (
+                                    <div style={{ textAlign: 'center', width: '100%', padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', border: '1px dashed #e2e8f0' }}>
+                                      <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>No exclusions set for this partner.</span>
+                                    </div>
                                   )}
                                 </div>
                               </div>
