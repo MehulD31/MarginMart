@@ -15,6 +15,7 @@ import { PartnerFormModal } from './admin/modals/PartnerFormModal';
 import { ConfirmModal } from './admin/modals/ConfirmModal';
 import { MessageModal } from './admin/modals/MessageModal';
 import { ProfitBreakdownModal } from './admin/modals/ProfitBreakdownModal';
+import { WatchlistItemEditModal } from './admin/modals/WatchlistItemEditModal';
 import { BillingDetail } from './admin/BillingDetail';
 import { generateInvoice, fetchPartnerInvoices, type InvoiceRecord } from '../utils/invoiceGenerator';
 
@@ -242,6 +243,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [newProductSize, setNewProductSize] = useState('');
   const [newProductDesc, setNewProductDesc] = useState('');
   const [newExcludeProduct, setNewExcludeProduct] = useState('');
+  const [showWatchlistEditModal, setShowWatchlistEditModal] = useState(false);
+  const [editingWatchlistItem, setEditingWatchlistItem] = useState<WatchlistItem | null>(null);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -571,6 +574,46 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
         showToast('Error removing product', 'error');
       }
     });
+  }
+
+  async function updateWatchlistItem(updatedItem: WatchlistItem) {
+    if (!selectedShopkeeper) return;
+    setSaving(true);
+
+    const firstKeyword = updatedItem.product_name.toLowerCase();
+
+    // Check for existing duplicate in either exclusions or watchlist, excluding the current item itself
+    const alreadyExists = watchlist.some(item =>
+      item.id !== updatedItem.id &&
+      !!item.is_exclude === updatedItem.is_exclude &&
+      (item.keywords || [item.product_name]).some(
+        kw => kw.toLowerCase() === firstKeyword
+      )
+    );
+
+    if (alreadyExists) {
+      showToast(`"${updatedItem.product_name}" is already in the ${updatedItem.is_exclude ? 'exclusions' : 'watchlist'}`, 'error');
+      setSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from('watchlists').update({
+      product_name: updatedItem.product_name,
+      keywords: updatedItem.keywords,
+      product_size: updatedItem.product_size,
+      supplier_rate: updatedItem.supplier_rate,
+      description: updatedItem.description,
+    }).eq('id', updatedItem.id);
+
+    if (!error) {
+      showToast('Watchlist item updated successfully');
+      setShowWatchlistEditModal(false);
+      setEditingWatchlistItem(null);
+      fetchWatchlist(selectedShopkeeper.id);
+    } else {
+      showToast('Error updating watchlist item', 'error');
+    }
+    setSaving(false);
   }
 
   async function runSimulator() {
@@ -1944,7 +1987,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                             key={`${item.id}-${idx}`}
                                             className="product-tag"
                                           >
-                                            <span title={[item.description && `Desc: ${item.description}`, item.product_size && `Size: ${item.product_size}`, item.supplier_rate && `Supplier Rate: ₹${item.supplier_rate}`, item.operator_name && `Added by ${item.operator_name}`].filter(Boolean).join(' | ')}>
+                                            <span 
+                                              style={{ cursor: 'pointer' }}
+                                              onClick={() => { setEditingWatchlistItem(item); setShowWatchlistEditModal(true); }}
+                                              title={[item.description && `Desc: ${item.description}`, item.product_size && `Size: ${item.product_size}`, item.supplier_rate && `Supplier Rate: ₹${item.supplier_rate}`, item.operator_name && `Added by ${item.operator_name}`].filter(Boolean).join(' | ') + " | Click to edit"}
+                                            >
                                               {kw}
                                               {item.product_size && <span style={{ fontSize: '0.7rem', opacity: 0.7, marginLeft: '4px' }}>({item.product_size})</span>}
                                               {item.supplier_rate && <span style={{ fontSize: '0.7rem', color: '#10b981', marginLeft: '4px' }}>₹{item.supplier_rate}</span>}
@@ -2010,7 +2057,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                             className="product-tag"
                                             style={{ borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.02)' }}
                                           >
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569' }}>
+                                            <span 
+                                              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569', cursor: 'pointer' }}
+                                              onClick={() => { setEditingWatchlistItem(item); setShowWatchlistEditModal(true); }}
+                                              title="Click to edit"
+                                            >
                                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }}></span>
                                               {kw}
                                             </span>
@@ -2313,6 +2364,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 partners={shopkeepers}
                 onPartnerSelect={(p) => setOrderPartner(p)}
                 isEdit={isEditingOrder}
+              />
+
+              <WatchlistItemEditModal
+                isOpen={showWatchlistEditModal}
+                onClose={() => { setShowWatchlistEditModal(false); setEditingWatchlistItem(null); }}
+                item={editingWatchlistItem}
+                onSave={updateWatchlistItem}
+                saving={saving}
+                isMobile={isMobile}
               />
             </AnimatePresence>
             {/* Toast Notification */}
