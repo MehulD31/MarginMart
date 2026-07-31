@@ -16,7 +16,7 @@ import os
 import sys
 import logging
 import signal
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
@@ -30,7 +30,8 @@ from aiohttp import web
 load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────────────
-API_ID = int(os.getenv("TELEGRAM_API_ID", "0"))
+api_id_env = os.getenv("TELEGRAM_API_ID", "")
+API_ID = int(api_id_env) if api_id_env.strip().isdigit() else 0
 API_HASH = os.getenv("TELEGRAM_API_HASH", "")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -84,6 +85,47 @@ def fetch_monitor_channels():
     except Exception as e:
         log.warning(f"Failed to fetch monitor channels: {e}")
     return []
+
+def write_heartbeat(status: str, detail: str = ""):
+    """Upsert the monitor's liveness row so the dashboard can detect a silent death.
+
+    status: 'online' | 'degraded' | 'offline'
+    Failures here are non-fatal — never let telemetry take down the monitor.
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        payload = json.dumps({
+            "id": "singleton",
+            "status": status,
+            "detail": (detail or "")[:500],
+            "last_seen_at": now_iso,
+            "updated_at": now_iso,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/monitor_health",
+            data=payload,
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+                # Upsert on the primary key
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            method="POST"
+        )
+        urllib.request.urlopen(req, timeout=10)
+    except Exception as e:
+        log.warning(f"Heartbeat write failed: {e}")
+
+async def idle_forever(status: str, detail: str):
+    """Keep the web server alive for Render health checks, but keep reporting
+    the real status so a dead bot is visible on the dashboard."""
+    log.info("Entering safe idle/degraded state to keep web server alive...")
+    while True:
+        write_heartbeat(status, detail)
+        await asyncio.sleep(300)
 
 def save_match(shopkeeper_id: str, product_name: str, keyword: str, text: str, link: str):
     """Save a match to the matches table."""
@@ -169,7 +211,42 @@ async def run_monitor():
     # Start the dummy web server so Render doesn't crash the deployment
     await start_web_server()
     
-    await client.start() # type: ignore
+    try:
+        log.info("Connecting to Telegram...")
+        await client.connect()
+        if not await client.is_user_authorized():
+            log.error("Telegram client is NOT authorized! Session string is expired, invalid, or revoked.")
+            err_msg = (
+                "⚠️ <b>MarginMart Spy Engine Alert</b>\n\n"
+                "The Telegram userbot session is <b>Offline</b> (session expired, revoked, or duplicated).\n"
+                "Please generate a new session string and update the <code>TELEGRAM_SESSION_STRING</code> environment variable on Render."
+            )
+            try:
+                send_alert(err_msg)
+                log.info("Sent session error alert via Telegram bot.")
+            except Exception as bot_err:
+                log.error(f"Failed to send session error alert via Telegram bot: {bot_err}")
+
+            await idle_forever(
+                "offline",
+                "Telegram session expired, revoked, or duplicated. Regenerate TELEGRAM_SESSION_STRING."
+            )
+                
+        # Start client normally (it's authorized, so it won't prompt for interactive login)
+        await client.start()
+    except Exception as start_err:
+        log.error(f"Error during Telegram client startup: {start_err}")
+        err_msg = (
+            f"⚠️ <b>MarginMart Spy Engine Alert</b>\n\n"
+            f"An error occurred during Telegram client startup: <code>{start_err}</code>\n"
+            f"The monitor is inactive, but the web server remains online."
+        )
+        try:
+            send_alert(err_msg)
+        except Exception as bot_err:
+            log.error(f"Failed to send crash alert via Telegram bot: {bot_err}")
+
+        await idle_forever("offline", f"Startup error: {start_err}")
 
     me = await client.get_me()
     log.info(f"Logged in as: {me.first_name} (@{me.username})")
@@ -180,6 +257,11 @@ async def run_monitor():
     
     active_channels = fetch_monitor_channels() or MONITOR_CHANNELS
     log.info(f"Loaded {len(active_channels)} active spy channels: {active_channels}")
+
+    write_heartbeat(
+        "online",
+        f"Logged in as @{me.username} | {len(watchlists)} watchlist items | channels: {', '.join(active_channels)}"
+    )
 
     async def on_new_message(event):
         nonlocal watchlists
@@ -375,6 +457,11 @@ async def run_monitor():
             await asyncio.sleep(30)
             try:
                 watchlists = fetch_watchlists()
+                # Liveness ping — dashboard flags the bot if this goes stale
+                write_heartbeat(
+                    "online",
+                    f"{len(watchlists)} watchlist items | channels: {', '.join(active_channels)}"
+                )
                 new_channels = fetch_monitor_channels()
                 if new_channels and set(new_channels) != set(active_channels):
                     log.info(f"Spy Channels updated to {new_channels}. Re-registering listener.")
@@ -393,7 +480,21 @@ async def run_monitor():
         await client.run_until_disconnected() # type: ignore
     except KeyboardInterrupt:
         log.info("Shutting down monitor...")
+    except Exception as run_err:
+        log.error(f"Fatal error in listener loop: {run_err}")
+        err_msg = (
+            f"⚠️ <b>MarginMart Spy Engine Alert</b>\n\n"
+            f"The listener crashed with a fatal error: <code>{run_err}</code>\n"
+            f"The monitor is inactive, but the web server remains online."
+        )
+        try:
+            send_alert(err_msg)
+        except Exception as bot_err:
+            log.error(f"Failed to send crash alert via Telegram bot: {bot_err}")
+
+        await idle_forever("offline", f"Listener crashed: {run_err}")
     finally:
+        write_heartbeat("offline", "Monitor process disconnected/stopped")
         await client.disconnect()
 
 # ── Entry point ───────────────────────────────────────────────────────────────

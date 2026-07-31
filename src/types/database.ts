@@ -47,3 +47,11 @@ export interface Order {
   operator_name?: string;
   shopkeeper?: { name: string };
 }
+
+export interface MonitorHealth {
+  id: string;
+  status: 'online' | 'degraded' | 'offline' | 'unknown';
+  detail?: string | null;
+  last_seen_at: string;
+  updated_at: string;
+}
