@@ -30,7 +30,8 @@ from aiohttp import web
 load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────────────
-API_ID = int(os.getenv("TELEGRAM_API_ID", "0"))
+api_id_env = os.getenv("TELEGRAM_API_ID", "")
+API_ID = int(api_id_env) if api_id_env.strip().isdigit() else 0
 API_HASH = os.getenv("TELEGRAM_API_HASH", "")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -169,7 +170,45 @@ async def run_monitor():
     # Start the dummy web server so Render doesn't crash the deployment
     await start_web_server()
     
-    await client.start() # type: ignore
+    try:
+        log.info("Connecting to Telegram...")
+        await client.connect()
+        if not await client.is_user_authorized():
+            log.error("Telegram client is NOT authorized! Session string is expired, invalid, or revoked.")
+            err_msg = (
+                "⚠️ <b>MarginMart Spy Engine Alert</b>\n\n"
+                "The Telegram userbot session is <b>Offline</b> (session expired, revoked, or duplicated).\n"
+                "Please generate a new session string and update the <code>TELEGRAM_SESSION_STRING</code> environment variable on Render."
+            )
+            try:
+                send_alert(err_msg)
+                log.info("Sent session error alert via Telegram bot.")
+            except Exception as bot_err:
+                log.error(f"Failed to send session error alert via Telegram bot: {bot_err}")
+            
+            # Non-blocking idle loop to keep web server alive for Render health checks
+            log.info("Entering safe idle/degraded state to keep web server alive...")
+            while True:
+                await asyncio.sleep(3600)
+                
+        # Start client normally (it's authorized, so it won't prompt for interactive login)
+        await client.start()
+    except Exception as start_err:
+        log.error(f"Error during Telegram client startup: {start_err}")
+        err_msg = (
+            f"⚠️ <b>MarginMart Spy Engine Alert</b>\n\n"
+            f"An error occurred during Telegram client startup: <code>{start_err}</code>\n"
+            f"The monitor is inactive, but the web server remains online."
+        )
+        try:
+            send_alert(err_msg)
+        except Exception as bot_err:
+            log.error(f"Failed to send crash alert via Telegram bot: {bot_err}")
+            
+        # Non-blocking idle loop to keep web server alive
+        log.info("Entering safe idle/degraded state to keep web server alive...")
+        while True:
+            await asyncio.sleep(3600)
 
     me = await client.get_me()
     log.info(f"Logged in as: {me.first_name} (@{me.username})")
@@ -357,6 +396,22 @@ async def run_monitor():
         await client.run_until_disconnected() # type: ignore
     except KeyboardInterrupt:
         log.info("Shutting down monitor...")
+    except Exception as run_err:
+        log.error(f"Fatal error in listener loop: {run_err}")
+        err_msg = (
+            f"⚠️ <b>MarginMart Spy Engine Alert</b>\n\n"
+            f"The listener crashed with a fatal error: <code>{run_err}</code>\n"
+            f"The monitor is inactive, but the web server remains online."
+        )
+        try:
+            send_alert(err_msg)
+        except Exception as bot_err:
+            log.error(f"Failed to send crash alert via Telegram bot: {bot_err}")
+            
+        # Non-blocking idle loop to keep web server alive for Render health checks
+        log.info("Entering safe idle/degraded state to keep web server alive...")
+        while True:
+            await asyncio.sleep(3600)
     finally:
         await client.disconnect()
 
