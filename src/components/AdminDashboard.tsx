@@ -6,7 +6,8 @@ import {
   Trash2, Edit2, CheckCircle, AlertCircle, X, ChevronRight, MessageSquare,
   Download, History, LayoutDashboard, ShoppingCart, CreditCard, PlusCircle,
   IndianRupee, Clock, Zap, Target, Bell, ArrowLeft, FileText, Loader2, ShoppingBag,
-  CheckCircle2, LogOut, Send, RefreshCw, Lock, UserPlus, ChevronDown, BarChart3
+  CheckCircle2, LogOut, Send, RefreshCw, Lock, UserPlus, ChevronDown, BarChart3,
+  AlertTriangle
 } from 'lucide-react';
 import PartnerCard from './mobile/PartnerCard';
 import OrderCard from './mobile/OrderCard';
@@ -70,7 +71,7 @@ const EmptyState = ({ icon: Icon, title, description }: { icon: any, title: stri
   </div>
 );
 
-import type { Shopkeeper, WatchlistItem, Match, Order } from '../types/database';
+import type { Shopkeeper, WatchlistItem, Match, Order, MonitorHealth } from '../types/database';
 
 const TEMPLATE_KEYWORDS = ["Dove", "Maggi", "Pampers", "Atta", "Surf Excel", "Cooking Oil", "Rice", "Sugar", "Shampoo", "Soap"];
 
@@ -181,7 +182,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [loginError, setLoginError] = useState(false);
   const [monitorChannels, setMonitorChannels] = useState<string[]>(['deals']);
   const [newChannelInput, setNewChannelInput] = useState('');
-  const [isBotActive, setIsBotActive] = useState(false);
+
   const [isOnline] = useState(navigator.onLine);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -246,6 +247,27 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [showWatchlistEditModal, setShowWatchlistEditModal] = useState(false);
   const [editingWatchlistItem, setEditingWatchlistItem] = useState<WatchlistItem | null>(null);
 
+  // Real liveness of the Telegram monitor (heartbeat written by continuous_monitor.py)
+  const [monitorHealth, setMonitorHealth] = useState<MonitorHealth | null>(null);
+
+  // The monitor pings every 30s. Anything older than 5 min means it is not running.
+  const HEARTBEAT_STALE_MS = 5 * 60 * 1000;
+  const heartbeatAgeMs = monitorHealth
+    ? Date.now() - new Date(monitorHealth.last_seen_at).getTime()
+    : null;
+  const isHeartbeatStale = heartbeatAgeMs === null || heartbeatAgeMs > HEARTBEAT_STALE_MS;
+  const isListenerLive = monitorHealth?.status === 'online' && !isHeartbeatStale;
+
+  function formatAge(ms: number | null) {
+    if (ms === null) return 'never';
+    const mins = Math.floor(ms / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hr ago`;
+    return `${Math.floor(hrs / 24)} days ago`;
+  }
+
   useEffect(() => {
     if (isAuthorized) {
       fetchShopkeepers();
@@ -253,7 +275,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       fetchMatches();
       fetchTelegramConfig();
       fetchTotalWatchlists();
+      fetchMonitorHealth();
     }
+  }, [isAuthorized]);
+
+  // Poll the heartbeat so a silently dead bot becomes visible without a refresh
+  useEffect(() => {
+    if (!isAuthorized) return;
+    const t = setInterval(fetchMonitorHealth, 60_000);
+    return () => clearInterval(t);
   }, [isAuthorized]);
 
   useEffect(() => {
@@ -309,12 +339,19 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     }
   }
 
+  async function fetchMonitorHealth() {
+    const { data } = await supabase
+      .from('monitor_health')
+      .select('*')
+      .eq('id', 'singleton')
+      .maybeSingle();
+    setMonitorHealth(data || null);
+  }
+
   async function fetchTelegramConfig() {
     const { data } = await supabase.from('telegram_configs').select('*');
     if (data) {
-      const active = data.find(c => c.key === 'is_active')?.value === 'true';
       const channels = data.find(c => c.key === 'monitor_channels')?.value || 'deals';
-      setIsBotActive(active);
       setMonitorChannels(channels.split(',').map((c: string) => c.trim()).filter(Boolean));
     }
   }
@@ -1281,12 +1318,45 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <p>Manage real-time deal discovery and listeners</p>
                       </div>
                       <div className="header-actions">
-                        <div className={`status-pill ${isBotActive ? 'pulse active' : ''}`}>
-                          <div className={`status-dot ${isBotActive ? 'green' : 'red'}`}></div>
-                          Listener: {isBotActive ? 'Active' : 'Offline'}
+                        <div className={`status-pill ${isListenerLive ? 'pulse active' : ''}`}>
+                          <div className={`status-dot ${isListenerLive ? 'green' : 'red'}`}></div>
+                          Listener: {isListenerLive ? 'Active' : 'Offline'}
                         </div>
                       </div>
                     </header>
+
+                    {!isListenerLive && (
+                      <div
+                        role="alert"
+                        style={{
+                          marginTop: '1.5rem', padding: '1.25rem 1.5rem', borderRadius: '16px',
+                          background: '#fef2f2', border: '1px solid #fecaca',
+                          display: 'flex', gap: '1rem', alignItems: 'flex-start'
+                        }}
+                      >
+                        <AlertTriangle size={22} color="#dc2626" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, color: '#991b1b', marginBottom: '0.35rem' }}>
+                            Spy Engine is not running — you are missing deals
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: '#7f1d1d', lineHeight: 1.5 }}>
+                            Last heartbeat: <strong>{formatAge(heartbeatAgeMs)}</strong>
+                            {monitorHealth?.status && monitorHealth.status !== 'online' && (
+                              <> · reported status <strong>{monitorHealth.status}</strong></>
+                            )}
+                            {monitorHealth?.detail && (
+                              <div style={{ marginTop: '0.4rem', fontStyle: 'italic', opacity: 0.9 }}>
+                                {monitorHealth.detail}
+                              </div>
+                            )}
+                            <div style={{ marginTop: '0.5rem' }}>
+                              Regenerate the session with <code>python scripts/generate_session.py</code>, update{' '}
+                              <code>TELEGRAM_SESSION_STRING</code> on Render, then redeploy.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="automation-grid" style={{
                       display: 'grid',
