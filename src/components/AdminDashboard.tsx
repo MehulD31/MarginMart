@@ -14,6 +14,8 @@ import { LogOrderModal } from './admin/modals/LogOrderModal';
 import { PartnerFormModal } from './admin/modals/PartnerFormModal';
 import { ConfirmModal } from './admin/modals/ConfirmModal';
 import { MessageModal } from './admin/modals/MessageModal';
+import { ProfitBreakdownModal } from './admin/modals/ProfitBreakdownModal';
+import { WatchlistItemEditModal } from './admin/modals/WatchlistItemEditModal';
 import { BillingDetail } from './admin/BillingDetail';
 import { generateInvoice, fetchPartnerInvoices, type InvoiceRecord } from '../utils/invoiceGenerator';
 
@@ -144,6 +146,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedBillPartner, setSelectedBillPartner] = useState<string | null>(null);
   const [viewingMessage, setViewingMessage] = useState<string | null>(null);
+  const [showProfitModal, setShowProfitModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [operatorName, setOperatorName] = useState(localStorage.getItem('mm_operator_name') || '');
@@ -157,6 +160,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   } | null>(null);
 
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [isMobile] = useState(window.innerWidth < 768);
 
   const showConfirm = (message: string, onConfirm: (checked?: boolean) => void, checkboxLabel?: string, variant: 'danger' | 'success' | 'primary' = 'danger') => {
@@ -237,6 +242,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [newSupplierRate, setNewSupplierRate] = useState('');
   const [newProductSize, setNewProductSize] = useState('');
   const [newProductDesc, setNewProductDesc] = useState('');
+  const [newExcludeProduct, setNewExcludeProduct] = useState('');
+  const [showWatchlistEditModal, setShowWatchlistEditModal] = useState(false);
+  const [editingWatchlistItem, setEditingWatchlistItem] = useState<WatchlistItem | null>(null);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -434,7 +442,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     const partner = orderPartner || selectedShopkeeper;
     if (!partner) return;
     setSaving(true);
-    const { error } = await supabase.from('orders').insert([{
+    
+    const orderData = {
       shopkeeper_id: partner.id,
       product_name: orderForm.product_name,
       deal_price: parseFloat(orderForm.deal_price),
@@ -443,20 +452,53 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       quantity: parseFloat(orderForm.quantity || '1'),
       unit_rate: parseFloat(orderForm.unit_rate || '0'),
       platform_fee: parseFloat(orderForm.platform_fee || '0'),
-      status: 'ordered',
       operator_name: operatorName || 'Admin'
-    }]);
+    };
+
+    let error;
+    if (isEditingOrder && editingOrderId) {
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update(orderData)
+        .eq('id', editingOrderId);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from('orders')
+        .insert([{ ...orderData, status: 'ordered' }]);
+      error = insertError;
+    }
 
     if (!error) {
       if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
-      showToast(`Logged order for ${orderForm.product_name}`);
-      setShowOrderModal(false); setOrderPartner(null);
+      showToast(isEditingOrder ? 'Order updated successfully' : `Logged order for ${orderForm.product_name}`);
+      setShowOrderModal(false); 
+      setOrderPartner(null);
+      setIsEditingOrder(false);
+      setEditingOrderId(null);
       setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0', mrp: '' });
       fetchOrders();
     } else {
-      showToast('Failed to log fulfillment', 'error');
+      showToast(isEditingOrder ? 'Failed to update order' : 'Failed to log fulfillment', 'error');
     }
     setSaving(false);
+  }
+
+  function startEditOrder(order: any) {
+    if (!order) return;
+    setEditingOrderId(order.id);
+    setIsEditingOrder(true);
+    setOrderPartner(shopkeepers.find(sk => sk.id === order.shopkeeper_id) || null);
+    setOrderForm({
+      product_name: order.product_name || '',
+      mrp: (order.mrp || 0).toString(),
+      quantity: (order.quantity || 1).toString(),
+      unit_rate: (order.unit_rate || (order.deal_price / (order.quantity || 1)) || 0).toString(),
+      platform_fee: (order.platform_fee || 0).toString(),
+      deal_price: (order.deal_price || 0).toString(),
+      selling_price: (order.selling_price || 0).toString(),
+    });
+    setShowOrderModal(true);
   }
 
   async function fetchWatchlist(shopkeeperId: string) {
@@ -464,21 +506,22 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     setWatchlist(data || []);
   }
 
-  async function addToWatchlist(product: string) {
+  async function addToWatchlist(product: string, isExclude: boolean = false) {
     if (!selectedShopkeeper || !product.trim()) return;
 
     const keywords = product.split(',').map(k => k.trim()).filter(k => k);
     const firstKeyword = (keywords[0] || product.trim()).toLowerCase();
 
-    // Check for existing duplicate
+    // Check for existing duplicate in either exclusions or watchlist depending on isExclude
     const alreadyExists = watchlist.some(item =>
+      !!item.is_exclude === isExclude &&
       (item.keywords || [item.product_name]).some(
         kw => kw.toLowerCase() === firstKeyword
       )
     );
 
     if (alreadyExists) {
-      showToast(`"${keywords[0]}" is already in the watchlist`, 'error');
+      showToast(`"${keywords[0]}" is already in the ${isExclude ? 'exclusions' : 'watchlist'}`, 'error');
       return;
     }
 
@@ -487,17 +530,22 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       product_name: keywords[0] || product.trim(),
       keywords: keywords,
       operator_name: operatorName || 'Admin',
-      supplier_rate: newSupplierRate ? parseFloat(newSupplierRate) : null,
-      product_size: newProductSize || null,
-      description: newProductDesc || null
+      supplier_rate: isExclude ? null : (newSupplierRate ? parseFloat(newSupplierRate) : null),
+      product_size: isExclude ? null : (newProductSize || null),
+      description: isExclude ? null : (newProductDesc || null),
+      is_exclude: isExclude
     }]);
 
     if (!error) {
-      showToast(`Added ${keywords[0]} to watchlist`);
-      setNewProduct('');
-      setNewSupplierRate('');
-      setNewProductSize('');
-      setNewProductDesc('');
+      showToast(`Added ${keywords[0]} to ${isExclude ? 'exclusions' : 'watchlist'}`);
+      if (isExclude) {
+        setNewExcludeProduct('');
+      } else {
+        setNewProduct('');
+        setNewSupplierRate('');
+        setNewProductSize('');
+        setNewProductDesc('');
+      }
       fetchWatchlist(selectedShopkeeper.id);
     } else {
       showToast('Error adding product', 'error');
@@ -528,15 +576,89 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     });
   }
 
+  async function updateWatchlistItem(updatedItem: WatchlistItem) {
+    if (!selectedShopkeeper) return;
+    setSaving(true);
+
+    const firstKeyword = updatedItem.product_name.toLowerCase();
+
+    // Check for existing duplicate in either exclusions or watchlist, excluding the current item itself
+    const alreadyExists = watchlist.some(item =>
+      item.id !== updatedItem.id &&
+      !!item.is_exclude === updatedItem.is_exclude &&
+      (item.keywords || [item.product_name]).some(
+        kw => kw.toLowerCase() === firstKeyword
+      )
+    );
+
+    if (alreadyExists) {
+      showToast(`"${updatedItem.product_name}" is already in the ${updatedItem.is_exclude ? 'exclusions' : 'watchlist'}`, 'error');
+      setSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from('watchlists').update({
+      product_name: updatedItem.product_name,
+      keywords: updatedItem.keywords,
+      product_size: updatedItem.product_size,
+      supplier_rate: updatedItem.supplier_rate,
+      description: updatedItem.description,
+    }).eq('id', updatedItem.id);
+
+    if (!error) {
+      showToast('Watchlist item updated successfully');
+      setShowWatchlistEditModal(false);
+      setEditingWatchlistItem(null);
+      fetchWatchlist(selectedShopkeeper.id);
+    } else {
+      showToast('Error updating watchlist item', 'error');
+    }
+    setSaving(false);
+  }
+
   async function runSimulator() {
     if (!simText.trim()) return;
     setSimLoading(true);
-    const { data: allItems } = await supabase.from('watchlists').select('product_name, keywords, shopkeeper_id');
+    const { data: allItems } = await supabase.from('watchlists').select('product_name, keywords, shopkeeper_id, is_exclude');
     const { data: allSk } = await supabase.from('shopkeepers').select('id, name');
     const simMatches: { name: string, match: string, shopkeeperId: string, raw_message?: string }[] = [];
     const text = simText.toLowerCase();
 
+    // 1. Build exclusion map per shopkeeper
+    const exclusions: { [skId: string]: string[] } = {};
     allItems?.forEach(item => {
+      if (item.is_exclude) {
+        const skId = item.shopkeeper_id;
+        if (!exclusions[skId]) {
+          exclusions[skId] = [];
+        }
+        const keys = (item.keywords && item.keywords.length > 0) ? item.keywords : [item.product_name];
+        keys.forEach((k: string) => {
+          if (k) exclusions[skId].push(k.toLowerCase());
+        });
+      }
+    });
+
+    allItems?.forEach(item => {
+      if (item.is_exclude) return;
+
+      const skId = item.shopkeeper_id;
+
+      // Check if message contains any exclusion keyword for this shopkeeper
+      let hasExclusion = false;
+      if (exclusions[skId]) {
+        for (const excl of exclusions[skId]) {
+          const escapedExcl = excl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${escapedExcl}(?:$|[^a-zA-Z0-9])`, 'i');
+          if (regex.test(text)) {
+            hasExclusion = true;
+            break;
+          }
+        }
+      }
+
+      if (hasExclusion) return;
+
       const keysToMatch = (item.keywords && item.keywords.length > 0)
         ? item.keywords
         : [item.product_name];
@@ -1045,7 +1167,14 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                         <div className="val" style={{ color: '#8b5cf6' }}>₹{totalRevenue.toLocaleString('en-IN')}</div>
                         <BarChart3 style={{ color: '#8b5cf6' }} size={20} />
                       </motion.div>
-                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }} className="stat-card-mini">
+                      <motion.div 
+                        initial={{ y: 20, opacity: 0 }} 
+                        animate={{ y: 0, opacity: 1 }} 
+                        transition={{ delay: 0.15 }} 
+                        className="stat-card-mini"
+                        onClick={() => setShowProfitModal(true)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <h4>Total Net Profit</h4>
                         <div className="val text-green">₹{totalProfit.toLocaleString('en-IN')}</div>
                         <TrendingUp className="text-green" />
@@ -1528,6 +1657,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                   isSelected={selectedOrderIds.includes(order.id)}
                                   onSelect={(id) => setSelectedOrderIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
                                   onUpdateStatus={updateOrderStatus}
+                                  onEdit={startEditOrder}
+                                  onDelete={(id) => showConfirm('Delete this order?', () => deleteOrder(id))}
                                 />
                               ))}
                             </div>
@@ -1565,9 +1696,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 <div style={{ textAlign: 'right' }}>
                                   <div style={{ fontWeight: 800, color: '#1e293b' }}>₹{order.selling_price.toLocaleString()}</div>
                                   <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Qty: {order.quantity || 1} × ₹{(order.unit_rate || (order.deal_price / (order.quantity || 1))).toLocaleString()}</div>
-                                  <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}</div>
+                                  <div style={{ 
+                                    fontSize: '0.7rem', 
+                                    color: (order.selling_price - order.deal_price) < 0 ? '#ef4444' : '#22c55e', 
+                                    fontWeight: 700 
+                                  }}>
+                                    Profit: ₹{(order.selling_price - order.deal_price).toLocaleString()}
+                                  </div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
+                                <div style={{ textAlign: 'right', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                  <button className="btn-icon text-blue-500" onClick={() => startEditOrder(order)} title="Edit Order"><Edit2 size={14} /></button>
                                   <button className="btn-icon text-red-500" onClick={() => showConfirm('Delete this order?', () => deleteOrder(order.id))} title="Delete Order"><Trash2 size={14} /></button>
                                 </div>
                               </div>
@@ -1828,9 +1966,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
                                     <ShoppingBag size={14} className="text-green-500" />
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Watchlist ({watchlist.length})</span>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Watchlist ({watchlist.filter(item => !item.is_exclude).length})</span>
                                   </div>
-                                  {watchlist.length > 0 && (
+                                  {watchlist.filter(item => !item.is_exclude).length > 0 && (
                                     <button onClick={() => clearWatchlist(selectedShopkeeper.id)} style={{ color: '#ef4444', background: 'transparent', border: 'none', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>
                                       Clear All
                                     </button>
@@ -1838,7 +1976,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                                   <AnimatePresence>
-                                    {watchlist.map((item) => (
+                                    {watchlist.filter(item => !item.is_exclude).map((item) => (
                                       <React.Fragment key={item.id}>
                                         {(item.keywords || [item.product_name]).map((kw, idx) => (
                                           <motion.div
@@ -1849,7 +1987,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                             key={`${item.id}-${idx}`}
                                             className="product-tag"
                                           >
-                                            <span title={[item.description && `Desc: ${item.description}`, item.product_size && `Size: ${item.product_size}`, item.supplier_rate && `Supplier Rate: ₹${item.supplier_rate}`, item.operator_name && `Added by ${item.operator_name}`].filter(Boolean).join(' | ')}>
+                                            <span 
+                                              style={{ cursor: 'pointer' }}
+                                              onClick={() => { setEditingWatchlistItem(item); setShowWatchlistEditModal(true); }}
+                                              title={[item.description && `Desc: ${item.description}`, item.product_size && `Size: ${item.product_size}`, item.supplier_rate && `Supplier Rate: ₹${item.supplier_rate}`, item.operator_name && `Added by ${item.operator_name}`].filter(Boolean).join(' | ') + " | Click to edit"}
+                                            >
                                               {kw}
                                               {item.product_size && <span style={{ fontSize: '0.7rem', opacity: 0.7, marginLeft: '4px' }}>({item.product_size})</span>}
                                               {item.supplier_rate && <span style={{ fontSize: '0.7rem', color: '#10b981', marginLeft: '4px' }}>₹{item.supplier_rate}</span>}
@@ -1861,12 +2003,78 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                                       </React.Fragment>
                                     ))}
                                   </AnimatePresence>
-                                  {watchlist.length === 0 && (
+                                  {watchlist.filter(item => !item.is_exclude).length === 0 && (
                                     <EmptyState
                                       icon={ShoppingCart}
                                       title="Empty Watchlist"
                                       description="Use suggestions or type above to track products."
                                     />
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="tag-cloud" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '2rem', marginTop: '2rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
+                                    <AlertCircle size={14} style={{ color: '#ef4444' }} />
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Things Not to Match ({watchlist.filter(item => item.is_exclude).length})</span>
+                                  </div>
+                                </div>
+                                <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1.25rem' }}>
+                                  Add terms you want to explicitly avoid matching (e.g. if watching for "Lux", add "Lux cozy" or "luxury" here to prevent false positives).
+                                </p>
+                                
+                                <div className="add-product-row" style={{ marginBottom: '1.5rem' }}>
+                                  <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem' }}>
+                                    <input 
+                                      placeholder="Add exclusion keyword (e.g. luxury)" 
+                                      className="form-input-premium" 
+                                      value={newExcludeProduct} 
+                                      onChange={(e) => setNewExcludeProduct(e.target.value)} 
+                                      onKeyDown={(e) => e.key === 'Enter' && addToWatchlist(newExcludeProduct, true)} 
+                                    />
+                                    <button 
+                                      className="btn-pro-primary" 
+                                      onClick={() => addToWatchlist(newExcludeProduct, true)} 
+                                      style={{ padding: '0.75rem 1.25rem', height: '48px', background: 'linear-gradient(135deg, #64748b 0%, #475569 100%)' }}
+                                    >
+                                      <Plus size={20} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                  <AnimatePresence>
+                                    {watchlist.filter(item => item.is_exclude).map((item) => (
+                                      <React.Fragment key={item.id}>
+                                        {(item.keywords || [item.product_name]).map((kw, idx) => (
+                                          <motion.div
+                                            layout
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            key={`${item.id}-${idx}`}
+                                            className="product-tag"
+                                            style={{ borderColor: 'rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.02)' }}
+                                          >
+                                            <span 
+                                              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569', cursor: 'pointer' }}
+                                              onClick={() => { setEditingWatchlistItem(item); setShowWatchlistEditModal(true); }}
+                                              title="Click to edit"
+                                            >
+                                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }}></span>
+                                              {kw}
+                                            </span>
+                                            <button onClick={() => removeFromWatchlist(item.id, item.product_name)}><X size={14} /></button>
+                                          </motion.div>
+                                        ))}
+                                      </React.Fragment>
+                                    ))}
+                                  </AnimatePresence>
+                                  {watchlist.filter(item => item.is_exclude).length === 0 && (
+                                    <div style={{ textAlign: 'center', width: '100%', padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', border: '1px dashed #e2e8f0' }}>
+                                      <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>No exclusions set for this partner.</span>
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -2116,6 +2324,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       aria-label="Log Order"
                       onClick={() => {
                         if (navigator.vibrate) navigator.vibrate(40);
+                        setIsEditingOrder(false);
+                        setEditingOrderId(null);
+                        setOrderForm({ product_name: '', deal_price: '', selling_price: '', quantity: '1', unit_rate: '', platform_fee: '0', mrp: '' });
                         setShowOrderModal(true);
                       }}
                     >
@@ -2152,6 +2363,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 isMobile={isMobile}
                 partners={shopkeepers}
                 onPartnerSelect={(p) => setOrderPartner(p)}
+                isEdit={isEditingOrder}
+              />
+
+              <WatchlistItemEditModal
+                isOpen={showWatchlistEditModal}
+                onClose={() => { setShowWatchlistEditModal(false); setEditingWatchlistItem(null); }}
+                item={editingWatchlistItem}
+                onSave={updateWatchlistItem}
+                saving={saving}
+                isMobile={isMobile}
               />
             </AnimatePresence>
             {/* Toast Notification */}
@@ -2172,6 +2393,12 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 onClose={() => setViewingMessage(null)}
                 title="Telegram Message"
                 message={viewingMessage || ''}
+                isMobile={isMobile}
+              />
+              <ProfitBreakdownModal
+                isOpen={showProfitModal}
+                onClose={() => setShowProfitModal(false)}
+                orders={orders}
                 isMobile={isMobile}
               />
             </AnimatePresence>

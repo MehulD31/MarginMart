@@ -57,7 +57,7 @@ log = logging.getLogger("marginmart")
 # ── Supabase helpers ──────────────────────────────────────────────────────────
 def fetch_watchlists():
     """Fetch all watchlist items with shopkeeper names from Supabase."""
-    url = f"{SUPABASE_URL}/rest/v1/watchlists?select=product_name,keywords,shopkeeper_id,supplier_rate,product_size,description,shopkeepers(name)"
+    url = f"{SUPABASE_URL}/rest/v1/watchlists?select=product_name,keywords,shopkeeper_id,supplier_rate,product_size,description,is_exclude,shopkeepers(name)"
     req = urllib.request.Request(url, headers={
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}"
@@ -242,6 +242,24 @@ async def run_monitor():
         text_lower = raw_text.lower()
         log.info(f"[{channel_title}/{post_id}] New message: {raw_text[:80].replace(chr(10), ' ')}")
 
+        # Build shopkeeper -> exclusion terms list
+        exclusions_per_shopkeeper: dict[str, list[str]] = {}
+        for item in watchlists:
+            if item.get("is_exclude"):
+                shopkeeper_id = item.get("shopkeeper_id")
+                if not shopkeeper_id:
+                    continue
+                product_name = item.get("product_name") or ""
+                keywords = item.get("keywords") or []
+                if isinstance(keywords, str):
+                    keywords = [keywords]
+                terms = [product_name] + keywords
+                if shopkeeper_id not in exclusions_per_shopkeeper:
+                    exclusions_per_shopkeeper[shopkeeper_id] = []
+                for k in terms:
+                    if k:
+                        exclusions_per_shopkeeper[shopkeeper_id].append(k.lower())
+
         # Match against all watchlist items — build shopkeeper → keywords map
         shopkeeper_matches: dict[str, list[str]] = {}
         shopkeeper_ids: dict[str, str] = {}
@@ -250,6 +268,24 @@ async def run_monitor():
         shopkeeper_product_details: dict[str, list[dict]] = {}
 
         for item in watchlists:
+            if item.get("is_exclude"):
+                continue
+
+            shopkeeper_id = item.get("shopkeeper_id")
+
+            # Check if any exclusion keyword for this shopkeeper is in the message
+            has_exclusion_match = False
+            if shopkeeper_id in exclusions_per_shopkeeper:
+                for excl in exclusions_per_shopkeeper[shopkeeper_id]:
+                    escaped_excl = re.escape(excl)
+                    excl_pattern = rf"(?:^|[^a-z0-9]){escaped_excl}(?:$|[^a-z0-9])"
+                    if re.search(excl_pattern, text_lower):
+                        has_exclusion_match = True
+                        break
+
+            if has_exclusion_match:
+                continue
+
             product_name = item.get("product_name") or ""
             keywords = item.get("keywords") or []
             supplier_rate = item.get("supplier_rate")

@@ -21,6 +21,7 @@ interface LogOrderModalProps {
   isMobile: boolean;
   partners?: any[];
   onPartnerSelect?: (p: any) => void;
+  isEdit?: boolean;
 }
 
 export const LogOrderModal: React.FC<LogOrderModalProps> = ({
@@ -33,7 +34,8 @@ export const LogOrderModal: React.FC<LogOrderModalProps> = ({
   saving,
   isMobile,
   partners,
-  onPartnerSelect
+  onPartnerSelect,
+  isEdit
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showDropdown, setShowDropdown] = React.useState(false);
@@ -51,7 +53,7 @@ export const LogOrderModal: React.FC<LogOrderModalProps> = ({
         className={`modal ${isMobile ? 'is-bottom-sheet' : ''}`}
       >
         <div className="modal-header">
-          <h2>{partner ? `Log Order — ${partner.name}` : 'Log New Order'}</h2>
+          <h2>{isEdit ? 'Edit Order' : (partner ? `Log Order — ${partner.name}` : 'Log New Order')}</h2>
           <button type="button" onClick={onClose}><X size={24} /></button>
         </div>
         <form onSubmit={onSubmit}>
@@ -202,15 +204,25 @@ export const LogOrderModal: React.FC<LogOrderModalProps> = ({
           </div>
 
           <div className="form-group">
-            <div className="calc-display-box highlight" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.2)' }}>
-              <span className="label" style={{ color: '#22c55e' }}>Est. Net Profit</span>
-              <span className="value" style={{ color: '#22c55e', fontSize: '1.5rem' }}>₹{(parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0')).toFixed(0)}</span>
-            </div>
+            {(() => {
+              const profit = parseFloat(orderForm.selling_price || '0') - parseFloat(orderForm.deal_price || '0');
+              const isNegative = profit < 0;
+              const color = isNegative ? '#ef4444' : '#22c55e';
+              const bgColor = isNegative ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)';
+              const borderColor = isNegative ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)';
+              
+              return (
+                <div className="calc-display-box highlight" style={{ background: bgColor, borderColor: borderColor }}>
+                  <span className="label" style={{ color: color }}>Est. Net Profit</span>
+                  <span className="value" style={{ color: color, fontSize: '1.5rem' }}>₹{profit.toFixed(0)}</span>
+                </div>
+              );
+            })()}
           </div>
           
           <div className={isMobile ? "sticky-action-bar" : ""}>
             <button type="submit" disabled={saving} className="btn-pro-primary" style={{ width: '100%', height: '54px', fontSize: '1.1rem' }}>
-              <IndianRupee size={20} /> {saving ? 'Logging...' : 'Confirm & Log Order'}
+              <IndianRupee size={20} /> {saving ? (isEdit ? 'Updating...' : 'Logging...') : (isEdit ? 'Update Order' : 'Confirm & Log Order')}
             </button>
           </div>
         </form>
