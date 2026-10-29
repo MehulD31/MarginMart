@@ -196,7 +196,7 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
                   <th scope="row">{name.get(id)?.label}</th>
                   <td className="num">{ordered.get(id) ?? 0}</td>
                   <td>{locked ? <span className="num">{spare.get(id) ?? 0}</span>
-                    : <input type="number" inputMode="numeric" min={0} max={999} aria-label={`${t('loading.spare')}: ${name.get(id)?.label}`} value={spares[id] ?? 0} onChange={(e) => setSpare(id, Number(e.target.value))} />}</td>
+                    : <input type="number" inputMode="numeric" min={0} max={999} aria-label={`${t('loading.spare')}: ${name.get(id)?.label}`} placeholder="0" value={spares[id] ? spares[id] : ''} onFocus={(e) => e.target.select()} onChange={(e) => setSpare(id, Number(e.target.value))} />}</td>
                   <td className="num"><strong>{(ordered.get(id) ?? 0) + (spare.get(id) ?? 0)}</strong></td>
                 </tr>))}
               {ids.length === 0 && <tr><td colSpan={4} className="muted">{t('loading.nothing')}</td></tr>}
