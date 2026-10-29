@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Scale, Wallet, CircleCheck, Circle, ClipboardList, IndianRupee, Package, Phone, Store, Truck, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Boxes, Scale, Wallet, CircleCheck, Circle, ClipboardList, IndianRupee, Package, Phone, Store, Truck, TrendingUp } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must, usePacks, useVariants, useVehicles, type Shop } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
@@ -10,6 +10,8 @@ import { formatPaise } from '../../shared/money'
 import { Empty, Skeleton } from '../../shared/ui/kit'
 import { ProductImage } from '../../shared/ui/ProductImage'
 import { initials } from '../../shared/ui/util'
+import { isLowStock } from '../../shared/api/db'
+import { useStockRows } from './stockRows'
 import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
 
 const useSetup = () => useQuery({
@@ -80,6 +82,8 @@ export default function DashboardPage() {
     queryFn: () => must<Shop[]>(supabase.from('shop').select('*').in('route_id', dayPlans.map((p) => p.route_id)).eq('active', true).order('stop_seq')),
   })
   const hi = i18n.language === 'hi'
+  const stockRows = useStockRows()
+  const lowStock = stockRows.rows.filter((r) => r.active && isLowStock(r)).sort((a, b) => a.on_hand - b.on_hand)
 
   const live = useMemo(() => (orders.data ?? []).filter(isLive), [orders.data])
   const top = useMemo(() => {
@@ -152,6 +156,17 @@ export default function DashboardPage() {
             <Link to="/admin/khata" className="kpi-link"><Kpi icon={<AlertTriangle size={18} />} tone={money.data.overdueN ? 'amber' : 'green'} label={t('dash.overdueShops')} value={`${money.data.overdueN}`} sub={t('dash.overdueAmt', { v: formatPaise(money.data.overdueAmt) })} /></Link>
             <Link to="/admin/closing" className="kpi-link"><Kpi icon={<Scale size={18} />} tone={money.data.flaggedN || money.data.awaiting ? 'amber' : 'green'} label={t('dash.flagged')} value={`${money.data.flaggedN}`} sub={money.data.awaiting ? t('dash.flaggedSub', { n: money.data.awaiting }) : money.data.flaggedN ? t('dash.allReceived') : t('dash.nothingFlagged')} /></Link>
           </div>
+        </div>
+      )}
+
+      {lowStock.length > 0 && (
+        <div className="card stack">
+          <div className="row-between"><h2>{t('inventory.dashTitle')}</h2>
+            <Link to="/admin/inventory" className="button btn-sm"><Boxes size={16} aria-hidden="true" />{t('inventory.dashOpen', { n: lowStock.length })}</Link></div>
+          <ul className="plain-list stack">{lowStock.slice(0, 8).map((r) => (
+            <li key={r.variant_id} className="row-between"><span>{r.name}</span>
+              <span className={`badge ${r.on_hand < 0 ? 'badge-red' : 'badge-amber'} num`}>{t('inventory.dashLeft', { n: r.on_hand, min: r.low_threshold })}</span></li>))}
+          </ul>
         </div>
       )}
 

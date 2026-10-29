@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Phone, Plus } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
-import { must, type Shop } from '../../shared/api/db'
+import { must, useVehicles, type Shop } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
-import { Empty, PageHeader, Sheet, Skeleton } from '../../shared/ui/kit'
+import { useAuth } from '../../shared/api/auth'
+import { errorMessage } from '../../shared/ui/errors'
+import { Alert, Empty, PageHeader, Sheet, Skeleton } from '../../shared/ui/kit'
 import { OrderEditor } from './OrderEditor'
-import { isLive, linesCases, linesTotal, ordersByDate, planDates, useOrderCounts, useOrdersFor, usePlans, type AdminOrder, type Plan } from './opsData'
+import { isLive, linesCases, linesTotal, ordersByDate, planDates, useOrderCounts, useOrdersFor, usePlans, todayIST, addDays, type AdminOrder, type Plan } from './opsData'
 import { useLocaleDate } from './opsData'
 
 export function DateChips({ dates, value, counts, onChange }: { dates: string[]; value: string; counts?: Record<string, number>; onChange: (d: string) => void }) {
@@ -48,6 +50,8 @@ export default function OrdersPage() {
   const [open, setOpen] = useState<{ order?: AdminOrder; shop?: Shop; plan: Plan } | null>(null)
   const [picking, setPicking] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const isAdmin = useAuth().profile?.role === 'admin'
 
   const planById = new Map(dayPlans.map((p) => [p.id, p]))
   const forRoute = (orders.data ?? []).filter((o) => !route || planById.get(o.route_day_plan_id)?.route_id === route)
@@ -58,7 +62,7 @@ export default function OrdersPage() {
   return (
     <section className="stack-lg">
       <PageHeader title={t('orders.title')} sub={day ? t('orders.sub', { date: fmt(day, true), n: live.length, total: formatPaise(live.reduce((s, o) => s + linesTotal(o), 0)) }) : undefined}
-        actions={<button type="button" className="primary" disabled={!dayPlans.length} onClick={() => setPicking(true)}><Plus size={18} aria-hidden="true" />{t('orders.new')}</button>} />
+        actions={<button type="button" className="primary" disabled={!isAdmin && !dayPlans.length} onClick={() => (isAdmin ? setAdding(true) : setPicking(true))}><Plus size={18} aria-hidden="true" />{t('orders.new')}</button>} />
       {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} counts={countsByDate} onChange={(d) => { setDate(d); setRoute('') }} />}
       {dayPlans.length > 1 && (
         <div className="segmented" role="tablist" aria-label={t('shops.route')}>
@@ -98,6 +102,9 @@ export default function OrdersPage() {
           setOpen({ order: existing, shop, plan })
         }} />}
       </Sheet>
+      <Sheet open={adding} title={t('orders.new')} onClose={() => setAdding(false)}>
+        {adding && <AddOrder initialDate={day || todayIST()} onReady={(shop, plan, order) => { setAdding(false); setDate(plan.date); setRoute(''); setOpen({ shop, plan, order }) }} />}
+      </Sheet>
       <Sheet open={!!open} wide title={open ? `${open.order?.shop.name ?? open.shop?.name} · ${fmt(open.plan.date)}` : ''} onClose={() => setOpen(null)}>
         {open && <OrderEditor key={open.order?.id ?? open.shop?.id}
           shopId={open.order?.shop_id ?? open.shop!.id} shopName={`${open.plan.route.name} · ${fmt(open.plan.date, true)}`} planId={open.plan.id}
@@ -133,6 +140,100 @@ function ShopPicker({ plans, onPick }: { plans: Plan[]; onPick: (s: Shop, p: Pla
             </button></li>)
         })}</ul>
       )}
+    </div>
+  )
+}
+
+type ShopWithRoute = Shop & { route: { name: string } }
+type PlanRow = Plan & { vehicle: { name: string } | null }
+
+/**
+ * Admin: any shop, any day in the next two weeks, on any truck going that day.
+ * The trip can be the shop's own route (added for that day if it doesn't usually run) or another
+ * route's trip, so one truck can carry extra shops. The vehicle chosen here is pre-set for Loading.
+ */
+function AddOrder({ initialDate, onReady }: { initialDate: string; onReady: (s: Shop, p: Plan, o?: AdminOrder) => void }) {
+  const { t } = useTranslation()
+  const fmt = useLocaleDate()
+  const qc = useQueryClient()
+  const vehicles = useVehicles()
+  const [date, setDate] = useState(initialDate)
+  const [q, setQ] = useState('')
+  const [shop, setShop] = useState<ShopWithRoute | null>(null)
+  const [trip, setTrip] = useState('')
+  const [vehicle, setVehicle] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const shops = useQuery({
+    queryKey: ['shop', 'active-all'],
+    queryFn: () => must<ShopWithRoute[]>(supabase.from('shop').select('*, route(name)').eq('active', true).order('name')),
+  })
+  const trips = useQuery({
+    queryKey: ['plans', 'on', date],
+    enabled: !!date,
+    queryFn: () => must<PlanRow[]>(supabase.from('route_day_plan').select('id, route_id, date, status, vehicle_id, driver_id, route(name), vehicle(name)').eq('date', date).order('created_at')),
+  })
+  const open = (trips.data ?? []).filter((p) => p.status === 'planning')
+  const ownTrip = shop && (trips.data ?? []).find((p) => p.route_id === shop.route_id)
+  const NEW = 'new'
+  // Default trip: the shop's own route that day, else a new trip for it.
+  const tripId = trip || (ownTrip?.status === 'planning' ? ownTrip.id : NEW)
+  const chosen = open.find((p) => p.id === tripId)
+  const vehicleId = vehicle || chosen?.vehicle_id || ''
+
+  const pickShop = (s: ShopWithRoute) => { setShop(s); setTrip(''); setVehicle(''); setErr(null) }
+  const changeDate = (d: string) => { setDate(d); setTrip(''); setVehicle('') }
+
+  const go = async () => {
+    if (!shop) return
+    setErr(null); setBusy(true)
+    try {
+      let id = chosen?.id
+      if (!chosen || (vehicleId && vehicleId !== chosen.vehicle_id)) {
+        id = await must<string>(supabase.rpc('add_delivery_day', { p_route_id: chosen?.route_id ?? shop.route_id, p_date: date, p_vehicle_id: vehicleId || null }))
+      }
+      const plan = await must<Plan>(supabase.from('route_day_plan').select('id, route_id, date, status, vehicle_id, driver_id, route(name)').eq('id', id!).single())
+      if (plan.status !== 'planning') { setErr(t('orders.todayLoaded', { route: plan.route.name })); return }
+      const existing = await must<AdminOrder[]>(supabase.from('orders')
+        .select('id, status, source, created_at, updated_at, shop_id, route_day_plan_id, cancel_reason, shop(name, owner_name, phone, stop_seq), order_line(variant_id, qty_ordered, unit_price_paise)')
+        .eq('shop_id', shop.id).eq('route_day_plan_id', plan.id).eq('status', 'placed'))
+      await qc.invalidateQueries({ queryKey: ['plans'] })
+      onReady(shop, plan, existing[0])
+    } catch (e) { setErr(errorMessage(t, e)) }
+    finally { setBusy(false) }
+  }
+
+  const list = (shops.data ?? []).filter((s) => !q || `${s.name} ${s.owner_name ?? ''} ${s.phone ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+  return (
+    <div className="stack">
+      <label className="field"><span>{t('orders.deliveryDay')}</span>
+        <input type="date" min={todayIST()} max={addDays(todayIST(), 14)} value={date} onChange={(e) => changeDate(e.target.value)} /></label>
+      {!shop ? <>
+        <input type="search" aria-label={t('shops.searchLabel')} placeholder={t('shops.searchLabel')} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        {shops.isLoading ? <Skeleton /> : list.length === 0 ? <p className="muted">{t('common.noMatches')}</p> : (
+          <ul className="plain-list more-list">{list.map((s) => (
+            <li key={s.id}><button type="button" className="btn-block" onClick={() => pickShop(s)}>
+              <span className="grow" style={{ textAlign: 'left' }}><span className="cell-title">{s.name}</span><span className="cell-sub" style={{ display: 'block' }}>{s.route.name} · #{s.stop_seq}</span></span>
+            </button></li>))}</ul>
+        )}
+      </> : <>
+        <div className="row-between"><div><div className="cell-title">{shop.name}</div><div className="cell-sub">{shop.route.name}</div></div>
+          <button type="button" className="btn-sm" onClick={() => setShop(null)}>{t('orders.changeShop')}</button></div>
+        <label className="field"><span>{t('orders.trip')}</span>
+          <select value={tripId} onChange={(e) => { setTrip(e.target.value); setVehicle('') }}>
+            {open.map((p) => <option key={p.id} value={p.id}>{p.route.name} · {p.vehicle?.name ?? t('orders.noVehicleYet')}</option>)}
+            {!ownTrip && <option value={NEW}>{t('orders.newTrip', { route: shop.route.name, date: fmt(date) })}</option>}
+          </select></label>
+        {ownTrip && ownTrip.status !== 'planning' && <Alert msg={{ kind: 'warn', text: t('orders.todayLoaded', { route: ownTrip.route.name }) }} />}
+        <label className="field"><span>{t('loading.vehicle')}</span>
+          <select value={vehicleId} onChange={(e) => setVehicle(e.target.value)}>
+            <option value="">{t('orders.chooseAtLoading')}</option>
+            {vehicles.data?.filter((v) => v.active).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select></label>
+        <p className="muted">{t('orders.vehicleHint')}</p>
+        {err && <Alert msg={{ kind: 'error', text: err }} />}
+        <div className="row"><button type="button" className="primary" disabled={busy || (tripId !== NEW && !chosen)} onClick={() => void go()}>{t('orders.continue')}</button></div>
+      </>}
     </div>
   )
 }

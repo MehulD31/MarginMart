@@ -36,7 +36,7 @@ Test accounts (PIN 482915, reserved numbers 90000001xx, test data only):
 - Cannot create staff users, only shops (from Shops). Server refuses if they try.
 
 ### Shop owner
-- First login forces a new PIN; a weak PIN (123456) is refused.
+- First login forces a new PIN; any 6-digit PIN is accepted, and mismatched confirm is refused.
 - Lands on the shop home and can log out.
 - The database refuses: reading another shop, reading draft prices, editing their own credit limit.
 

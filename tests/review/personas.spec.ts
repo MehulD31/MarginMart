@@ -127,13 +127,13 @@ test.describe('Manager', () => {
 })
 
 test.describe('Shop owner', () => {
-  test('first login forces a new PIN and refuses a weak one', async ({ page }) => {
+  test('first login forces a new PIN and refuses a mismatched confirm', async ({ page }) => {
     await login(page, ACCOUNTS.newShop)
     await expect(page.getByRole('heading', { name: 'Set your new PIN' })).toBeVisible()
     await page.getByLabel('New PIN', { exact: true }).fill('123456')
-    await page.getByLabel('Confirm new PIN').fill('123456')
+    await page.getByLabel('Confirm new PIN').fill('654321')
     await page.getByRole('button', { name: 'Save PIN' }).click()
-    await expect(page.getByRole('alert')).toContainText('too easy to guess')
+    await expect(page.getByRole('alert')).toContainText("don't match")
     await screenIsSound(page, 'change pin')
   })
 

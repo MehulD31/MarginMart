@@ -24,7 +24,9 @@
     "loading": "Loading",
     "khata": "Khata",
     "closing": "End of day",
-    "audit": "Change history"
+    "audit": "Change history",
+    "inventory": "Inventory",
+    "purchases": "Purchases"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -61,7 +63,7 @@
   },
   "changePin": {
     "title": "Set your new PIN",
-    "intro": "Choose a 6-digit PIN only you know. Don't use 111111 or 123456.",
+    "intro": "Choose a 6-digit PIN only you know.",
     "newPin": "New PIN",
     "confirmPin": "Confirm new PIN",
     "mismatch": "The two PINs don't match.",
@@ -128,7 +130,6 @@
     "INVALID_CREDENTIALS": "Wrong number or PIN.",
     "attemptsLeft": "{{count}} attempts left before a 15-minute lock.",
     "LOCKED": "Too many wrong tries. Try again after {{time}}.",
-    "WEAK_PIN": "That PIN is too easy to guess. Pick another.",
     "INVALID_PHONE": "Enter a valid 10-digit mobile number.",
     "INVALID_INPUT": "Please check the details.",
     "ALREADY_REGISTERED": "This number already has an account. Log in instead.",
@@ -453,7 +454,15 @@
       "manager": "by phone",
       "driver_van": "van sale"
     },
-    "showCancelled": "Show cancelled ({{n}})"
+    "showCancelled": "Show cancelled ({{n}})",
+    "todayLoaded": "The {{route}} truck for this day is already loaded. Undo loading on the Loading page, or pick another trip.",
+    "trip": "Truck / trip",
+    "noVehicleYet": "no vehicle yet",
+    "newTrip": "New trip: {{route}} on {{date}}",
+    "chooseAtLoading": "Choose at loading",
+    "vehicleHint": "The vehicle is set for the whole trip. You can still change it on the Loading page.",
+    "changeShop": "Change",
+    "continue": "Continue"
   },
   "loading": {
     "title": "Loading sheet",
@@ -683,7 +692,71 @@
       "route": "Route",
       "vehicle": "Vehicle",
       "join_requests": "Join request",
-      "route_day_plan": "Delivery day"
+      "route_day_plan": "Delivery day",
+      "stock_move": "Stock movement",
+      "stock": "Stock threshold",
+      "supplier": "Supplier",
+      "purchase": "Purchase",
+      "purchase_line": "Purchase line"
     }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "sub": "{{cases}} cases in the warehouse · worth {{value}} at cost · {{low}} low",
+    "lowOnly": "Low or negative ({{n}})",
+    "item": "Item",
+    "onHand": "On hand (cases)",
+    "threshold": "Low-stock alert at",
+    "thresholdHint": "Warn when cases on hand fall to (0 = off)",
+    "avgCost": "Avg cost / case",
+    "value": "Value at cost",
+    "low": "Low",
+    "negative": "Negative",
+    "adjust": "Adjust stock",
+    "modeCount": "Set counted stock",
+    "modeDelta": "Add / remove",
+    "countedCases": "Cases counted",
+    "deltaCases": "Cases (+ add, − remove)",
+    "reason": "Reason",
+    "reasonPh": "Recount, damaged, expired…",
+    "saveAdjust": "Save adjustment",
+    "history": "Stock history",
+    "noMoves": "No stock movements yet.",
+    "kind": "Type",
+    "change": "Change",
+    "balance": "Balance",
+    "kinds": {
+      "purchase": "Purchase",
+      "load_out": "Loaded on truck",
+      "load_undo": "Loading undone",
+      "return_in": "Returned from route",
+      "return_undo": "Day reopened",
+      "adjust": "Adjustment"
+    },
+    "dashTitle": "Low stock",
+    "dashOpen": "Inventory ({{n}})",
+    "dashLeft": "{{n}} left · alert at {{min}}"
+  },
+  "purchases": {
+    "title": "Purchases",
+    "sub": "Stock bought from suppliers. Saving a purchase adds the cases to inventory.",
+    "new": "New purchase",
+    "suppliers": "Suppliers ({{n}})",
+    "suppliersTitle": "Suppliers",
+    "addSupplierFirst": "Add a supplier before recording a purchase.",
+    "empty": "No purchases yet",
+    "date": "Date",
+    "supplier": "Supplier",
+    "invoice": "Invoice no.",
+    "total": "Total",
+    "note": "Note",
+    "lines": "Items",
+    "costPerCase": "Cost / case (₹)",
+    "addLine": "Add item",
+    "removeLine": "Remove item",
+    "save": "Save purchase",
+    "supplierName": "Supplier name",
+    "phone": "Phone",
+    "addSupplier": "Add supplier"
   }
 }

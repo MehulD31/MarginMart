@@ -15,7 +15,8 @@ export const json = (body: unknown, status = 200) =>
 
 export const normalizePhone = (raw: unknown): string | null => {
   const digits = String(raw ?? '').replace(/\D/g, '').slice(-10)
-  return /^[6-9]\d{9}$/.test(digits) ? digits : null
+  // Any 10 digits: vehicle logins use placeholder numbers like 1111111111.
+  return /^\d{10}$/.test(digits) ? digits : null
 }
 
 export const isValidPin = (pin: unknown): pin is string => typeof pin === 'string' && /^\d{6}$/.test(pin)

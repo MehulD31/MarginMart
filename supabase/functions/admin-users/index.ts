@@ -7,7 +7,7 @@
 //   view_pin    { user_id }                                   -> { pin }            admin only, every view audited
 // Generated PINs are one-time: the user must change it on first login (profiles.must_change_pin).
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { cors, emailFor, isValidPin, isWeakPin, json, normalizePhone, passwordFor, randomPin } from '../_shared/pin.ts'
+import { cors, emailFor, isValidPin, json, normalizePhone, passwordFor, randomPin } from '../_shared/pin.ts'
 
 const ROLES = ['admin', 'manager', 'driver', 'shop'] as const
 type Role = (typeof ROLES)[number]
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
   switch (body.action) {
     case 'change_pin': {
-      if (!isValidPin(body.new_pin) || isWeakPin(body.new_pin)) return json({ error: 'WEAK_PIN' }, 400)
+      if (!isValidPin(body.new_pin)) return json({ error: 'INVALID_INPUT' }, 400)
       const { error } = await admin.auth.admin.updateUserById(me.user_id, { password: await passwordFor(me.phone, body.new_pin) })
       if (error) return json({ error: 'UPDATE_FAILED' }, 500)
       await admin.from('profiles').update({ must_change_pin: false }).eq('user_id', me.user_id)

@@ -50,6 +50,14 @@ export const useVariants = () => useQuery({
   queryFn: () => must<Variant[]>(supabase.from('variant').select('*').order('sort').order('flavour_en')),
 })
 
+export interface Stock { variant_id: string; on_hand: number; low_threshold: number; avg_cost_paise: number; updated_at: string }
+/** Warehouse stock per flavour, in cases. Flavours never stocked have no row (treat as 0). */
+export const useStock = () => useQuery({
+  queryKey: ['stock'],
+  queryFn: () => must<Stock[]>(supabase.from('stock').select('*')),
+})
+/** Low when at or below its threshold (only if a threshold is set), or below zero. */
+export const isLowStock = (s: Pick<Stock, 'on_hand' | 'low_threshold'>) => s.on_hand < 0 || (s.low_threshold > 0 && s.on_hand <= s.low_threshold)
 export const imageUrl = (path: string | null) =>
   path ? supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl : null
 
