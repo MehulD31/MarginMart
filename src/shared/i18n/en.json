@@ -650,7 +650,10 @@
     "tripOrders": "{{n}} orders",
     "confirmLoad": "Lock the load: {{n}} shops, {{cases}} cases go on the truck and leave stock. Orders can no longer be changed.",
     "orderedSpare": "{{o}} ordered + {{s}} spare",
-    "loadTruck": "Load truck ({{n}} cases)"
+    "loadTruck": "Load truck ({{n}} cases)",
+    "laterOrder": "This shop also has an order for {{date}} ({{n}} cases).",
+    "deliverNow": "Deliver that order now",
+    "laterHasToday": "It also has an order today. Deliver today's order; ask the office to cancel or merge the other one."
   },
   "eod": {
     "title": "End of day",

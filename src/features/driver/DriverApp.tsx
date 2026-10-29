@@ -16,6 +16,10 @@ import { EndOfDay } from './EndOfDay'
 import { LoadTrip, TripStrip } from './DriverTrips'
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../../shared/api/supabase'
+import { must } from '../../shared/api/db'
+import { errorMessage } from '../../shared/ui/errors'
 
 type Day = ReturnType<typeof useDriverDay>
 const REASONS = ['out_of_stock', 'shop_refused', 'damaged', 'shop_closed', 'other'] as const
@@ -247,6 +251,9 @@ function StopScreen({ day }: { day: Day }) {
         <div className="stat"><div className="label">{t('driver.thisBill')}</div><div className="value num">{formatPaise(doneAlready ? stop.invoice?.total_paise ?? 0 : total)}</div></div>
       </div>
 
+      {!doneAlready && <LaterOrders planId={snap.plan.id} shopId={stop.shop.id} hasOrderToday={!!stop.order}
+        label={(id) => (cat.get(id) ? variantLabel(cat.get(id)!, hi) : '—')}
+        onPulled={(lines) => { setQty((x) => { const n = { ...x }; for (const l of lines) n[l.variant_id] = (n[l.variant_id] ?? 0) + l.qty; return n }); void day.refetch() }} />}
       {doneAlready ? (
         <>
           <Alert msg={{ kind: stop.queued?.status === 'failed' ? 'error' : 'success', text: stop.invoice ? t('driver.deliveredNote', { no: stop.invoice.number }) : t('driver.queuedNote') }} />
@@ -380,6 +387,47 @@ function CollectDue({ stop, onDone }: { stop: StopState; onDone: () => void }) {
       <label className="field"><span>{t('driver.amountReceived')}</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} /></label>
       {mode === 'upi' && <label className="field"><span>{t('driver.upiRef')}</span><input maxLength={40} value={ref} onChange={(e) => setRef(e.target.value)} /></label>}
       <div className="sheet-foot"><button type="button" className="primary" disabled={paise <= 0} onClick={() => void save()}>{t('driver.saveCollection', { amount: formatPaise(paise) })}</button></div>
+    </div>
+  )
+}
+
+type Later = { order_id: string; shop_id: string; plan_id: string; date: string; status: string; vehicle_id: string | null; cases: number; lines: { variant_id: string; qty: number }[] }
+
+/** This shop also has an order for another day: deliver it now (moves it onto today's trip) instead of selling it twice. */
+function LaterOrders({ planId, shopId, hasOrderToday, label, onPulled }: {
+  planId: string; shopId: string; hasOrderToday: boolean; label: (id: string) => string; onPulled: (lines: Later['lines']) => void
+}) {
+  const { t } = useTranslation()
+  const fmt = useLocaleDate()
+  const qc = useQueryClient()
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const later = useQuery({
+    queryKey: ['driver-later', planId],
+    queryFn: () => must<Later[]>(supabase.rpc('driver_upcoming_orders', { p_plan_id: planId })),
+    staleTime: 30_000,
+  })
+  const mine = (later.data ?? []).filter((o) => o.shop_id === shopId).sort((a, b) => a.date.localeCompare(b.date))
+  if (!mine.length) return null
+  const pull = async (o: Later) => {
+    setBusy(true); setErr(null)
+    try {
+      await must(supabase.rpc('driver_pull_order', { p_order_id: o.order_id, p_plan_id: planId }))
+      void qc.invalidateQueries({ queryKey: ['driver-later'] }); void qc.invalidateQueries({ queryKey: ['driver-trips'] })
+      onPulled(o.lines)
+    } catch (e) { setErr(errorMessage(t, e)) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="alert alert-warn stack" role="status" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+      {mine.map((o) => (
+        <div key={o.order_id} className="stack" style={{ gap: 6 }}>
+          <strong>{t('driver.laterOrder', { date: fmt(o.date), n: o.cases })}</strong>
+          <span className="cell-sub">{o.lines.map((l) => `${label(l.variant_id)} × ${l.qty}`).join(', ')}</span>
+          {hasOrderToday ? <span className="cell-sub">{t('driver.laterHasToday')}</span>
+            : <button type="button" className="primary" disabled={busy} onClick={() => void pull(o)}>{t('driver.deliverNow')}</button>}
+        </div>))}
+      {err && <span className="error">{err}</span>}
     </div>
   )
 }
