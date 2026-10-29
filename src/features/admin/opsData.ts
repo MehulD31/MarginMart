@@ -35,6 +35,18 @@ export const useOrdersFor = (planIds: string[]) => useQuery({
     .in('route_day_plan_id', planIds).order('created_at')),
 })
 
+/** Count of live (non-cancelled) orders per upcoming plan, so the Orders page can
+ *  badge each delivery day and default to the nearest day that actually has orders. */
+export const useOrderCounts = (planIds: string[]) => useQuery({
+  queryKey: ['admin-order-counts', planIds],
+  enabled: planIds.length > 0,
+  queryFn: () => must<{ route_day_plan_id: string }[]>(supabase.from('orders')
+    .select('route_day_plan_id').in('route_day_plan_id', planIds).neq('status', 'cancelled')),
+  select: (rows) => rows.reduce<Record<string, number>>((m, r) => {
+    m[r.route_day_plan_id] = (m[r.route_day_plan_id] ?? 0) + 1; return m
+  }, {}),
+})
+
 export const useLoadLines = (planId: string | null) => useQuery({
   queryKey: ['load-lines', planId],
   enabled: !!planId,
@@ -52,6 +64,14 @@ export const isLive = (o: AdminOrder) => o.status !== 'cancelled'
 
 /** Distinct upcoming delivery dates, nearest first. */
 export const planDates = (plans: Plan[]) => [...new Set(plans.map((p) => p.date))]
+
+/** Live-order count per delivery date, summed across every route's plan on that day. */
+export const ordersByDate = (plans: Plan[], countByPlan: Record<string, number>) =>
+  plans.reduce<Record<string, number>>((m, p) => {
+    const n = countByPlan[p.id] ?? 0
+    if (n) m[p.date] = (m[p.date] ?? 0) + n
+    return m
+  }, {})
 
 export const CANCEL_REASONS = ['shop_asked', 'shop_closed', 'out_of_stock', 'credit_hold', 'duplicate', 'other'] as const
 

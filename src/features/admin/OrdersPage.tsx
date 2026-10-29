@@ -7,15 +7,23 @@ import { must, type Shop } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
 import { Empty, PageHeader, Sheet, Skeleton } from '../../shared/ui/kit'
 import { OrderEditor } from './OrderEditor'
-import { isLive, linesCases, linesTotal, planDates, useOrdersFor, usePlans, type AdminOrder, type Plan } from './opsData'
+import { isLive, linesCases, linesTotal, ordersByDate, planDates, useOrderCounts, useOrdersFor, usePlans, type AdminOrder, type Plan } from './opsData'
 import { useLocaleDate } from './opsData'
 
-export function DateChips({ dates, value, onChange }: { dates: string[]; value: string; onChange: (d: string) => void }) {
+export function DateChips({ dates, value, counts, onChange }: { dates: string[]; value: string; counts?: Record<string, number>; onChange: (d: string) => void }) {
   const { t } = useTranslation()
   const fmt = useLocaleDate()
   return (
     <div className="segmented" role="tablist" aria-label={t('orders.deliveryDay')}>
-      {dates.map((d) => <button key={d} type="button" role="tab" className="btn-sm" aria-selected={value === d} onClick={() => onChange(d)}>{fmt(d)}</button>)}
+      {dates.map((d) => {
+        const n = counts?.[d] ?? 0
+        return (
+          <button key={d} type="button" role="tab" className="btn-sm" aria-selected={value === d}
+            aria-label={n ? t('orders.dayWithCount', { date: fmt(d), n }) : fmt(d)} onClick={() => onChange(d)}>
+            {fmt(d)}{n > 0 && <span className="badge badge-blue" aria-hidden="true">{n}</span>}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -26,10 +34,15 @@ export default function OrdersPage() {
   const { t } = useTranslation()
   const fmt = useLocaleDate()
   const plans = usePlans()
-  const dates = planDates(plans.data ?? [])
+  const allPlans = plans.data ?? []
+  const dates = planDates(allPlans)
+  const counts = useOrderCounts(allPlans.map((p) => p.id))
+  const countsByDate = ordersByDate(allPlans, counts.data ?? {})
+  // Default to the nearest delivery day that actually has orders; fall back to the nearest day.
+  const defaultDay = dates.find((d) => countsByDate[d] > 0) ?? dates[0] ?? ''
   const [date, setDate] = useState<string | null>(null)
-  const day = date ?? dates[0] ?? ''
-  const dayPlans = (plans.data ?? []).filter((p) => p.date === day)
+  const day = date ?? defaultDay
+  const dayPlans = allPlans.filter((p) => p.date === day)
   const [route, setRoute] = useState('')
   const orders = useOrdersFor(dayPlans.map((p) => p.id))
   const [open, setOpen] = useState<{ order?: AdminOrder; shop?: Shop; plan: Plan } | null>(null)
@@ -46,7 +59,7 @@ export default function OrdersPage() {
     <section className="stack-lg">
       <PageHeader title={t('orders.title')} sub={day ? t('orders.sub', { date: fmt(day, true), n: live.length, total: formatPaise(live.reduce((s, o) => s + linesTotal(o), 0)) }) : undefined}
         actions={<button type="button" className="primary" disabled={!dayPlans.length} onClick={() => setPicking(true)}><Plus size={18} aria-hidden="true" />{t('orders.new')}</button>} />
-      {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} onChange={(d) => { setDate(d); setRoute('') }} />}
+      {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} counts={countsByDate} onChange={(d) => { setDate(d); setRoute('') }} />}
       {dayPlans.length > 1 && (
         <div className="segmented" role="tablist" aria-label={t('shops.route')}>
           {[{ route_id: '', route: { name: t('common.all') } }, ...dayPlans].map((p) => (

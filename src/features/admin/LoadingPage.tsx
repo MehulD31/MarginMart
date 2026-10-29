@@ -118,7 +118,9 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
         </div>
         {over > 0 && <Alert msg={{ kind: 'warn', text: t('loading.overCapacity', { n: over }) }} />}
         <Alert msg={msg} />
-        {locked && <Alert msg={{ kind: 'success', text: t('loading.lockedNote', { vehicle: vehicle?.name ?? '', driver: driverName ?? '' }) }} />}
+        {locked && <Alert msg={{ kind: 'success', text: driverName
+          ? t('loading.lockedNote', { vehicle: vehicle?.name ?? '—', driver: driverName })
+          : t('loading.lockedNoteNoDriver', { vehicle: vehicle?.name ?? '—' }) }} />}
 
         <div className="card form-grid">
           <label className="field"><span>{t('loading.vehicle')}</span>

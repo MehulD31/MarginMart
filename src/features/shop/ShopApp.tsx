@@ -234,7 +234,7 @@ function PackCard({ item, cart, hi, disabled }: { item: CatalogItem; cart: CartA
             {price.scheme_type === 'bogo_on_mrp' && <span className="badge badge-amber">{t('shop.bogo')}</span>}
           </div>
         </div>
-        {single && <Stepper value={cart.cart[variants[0].id] ?? 0} onChange={(n) => !disabled && cart.set(variants[0].id, n)} label={name} />}
+        {single && <Stepper value={cart.cart[variants[0].id] ?? 0} onChange={(n) => cart.set(variants[0].id, n)} label={name} disabled={disabled} />}
       </div>
       {!single && (
         <ul className="flavours">
@@ -243,7 +243,7 @@ function PackCard({ item, cart, hi, disabled }: { item: CatalogItem; cart: CartA
             return (
               <li key={v.id}>
                 <span className="row"><ProductImage path={v.image_path} name={`{v.flavour_en} {pack.name_en}`} size={40} /><span>{fl}</span></span>
-                <Stepper value={cart.cart[v.id] ?? 0} onChange={(n) => !disabled && cart.set(v.id, n)} label={`${fl} · ${name}`} />
+                <Stepper value={cart.cart[v.id] ?? 0} onChange={(n) => cart.set(v.id, n)} label={`${fl} · ${name}`} disabled={disabled} />
               </li>
             )
           })}

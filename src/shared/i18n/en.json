@@ -422,6 +422,7 @@
     "sub": "{{date}} · {{n}} orders · {{total}}",
     "new": "Take an order",
     "deliveryDay": "Delivery day",
+    "dayWithCount": "{{date}}, {{n}} orders",
     "cases": "Cases",
     "empty": "No orders for this day yet",
     "emptyHint": "Orders from shops appear here. Use \"Take an order\" for phone orders.",
@@ -473,6 +474,7 @@
     "confirmUnlock": "Unlock? Orders can be changed again and the sheet must be locked again.",
     "locked": "Load locked. Print the sheet for the helpers.",
     "lockedNote": "Locked. {{vehicle}} · driver {{driver}}.",
+    "lockedNoteNoDriver": "Locked. {{vehicle}}.",
     "printTitle": "{{route}} · {{date}}",
     "stopsTitle": "Stops in order",
     "status": {
