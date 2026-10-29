@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Lock, LockOpen, Plus, Printer, Truck } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
-import { must, usePacks, useVariants, useVehicles } from '../../shared/api/db'
+import { must, usePacks, useRoutes, useVariants, useVehicles } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
@@ -61,7 +61,7 @@ export default function LoadingPage() {
         )}
       </div>
       {!plans.isLoading && dayPlans.length === 0 && <div className="card"><Empty icon={<Truck size={26} />} title={t('loading.noPlans')} /></div>}
-      {!plans.isLoading && dayPlans.length > 0 && !plan && <div className="card"><Empty icon={<Truck size={26} />} title={t('loading.noTripForTruck')}><p>{t('loading.noTripHint')}</p></Empty></div>}
+      {!plans.isLoading && dayPlans.length > 0 && !plan && truck !== 'none' && <StartTruck vehicleId={truck} date={day} onStarted={(id) => setPlanId(id)} />}
       {plan && <PlanLoad key={plan.id} plan={plan} dateLabel={fmt(plan.date, true)} />}
       {/* Take an order straight onto the truck being looked at. */}
       <Sheet open={adding} title={t('orders.new')} onClose={() => setAdding(false)}>
@@ -235,5 +235,37 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
               <td>{linesCases(o)}</td><td>{formatPaise(linesTotal(o))}</td></tr>))}</tbody></table>
       </div>
     </>
+  )
+}
+
+/** A truck with no trip that day: pick a route and start an empty trip, then add items (spares) and load it. */
+function StartTruck({ vehicleId, date, onStarted }: { vehicleId: string; date: string; onStarted: (planId: string) => void }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const routes = useRoutes()
+  const [route, setRoute] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const active = (routes.data ?? []).filter((r) => r.active)
+  const routeId = route || active[0]?.id || ''
+  const start = async () => {
+    setBusy(true); setErr(null)
+    try {
+      const id = await must<string>(supabase.rpc('start_truck_trip', { p_route_id: routeId, p_date: date, p_vehicle_id: vehicleId }))
+      await qc.invalidateQueries({ queryKey: ['plans'] })
+      onStarted(id)
+    } catch (e) { setErr(errorMessage(t, e)) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="card stack">
+      <Empty icon={<Truck size={26} />} title={t('loading.noTripForTruck')}><p>{t('loading.startHint')}</p></Empty>
+      <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <label className="field grow" style={{ maxWidth: 320 }}><span>{t('shops.route')}</span>
+          <select value={routeId} onChange={(e) => setRoute(e.target.value)}>{active.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
+        <button type="button" className="primary" disabled={busy || !routeId} onClick={() => void start()}><Plus size={18} aria-hidden="true" />{t('loading.startTruck')}</button>
+      </div>
+      {err && <Alert msg={{ kind: 'error', text: err }} />}
+    </div>
   )
 }
