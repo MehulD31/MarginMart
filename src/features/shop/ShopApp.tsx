@@ -276,7 +276,8 @@ function OrdersScreen({ onEdit }: { onEdit: (c: Cart) => void }) {
       <h1>{t('shop.tabOrders')}</h1>
       <Alert msg={msg} />
       {orders.isLoading ? <Skeleton rows={3} /> : !orders.data?.length ? (
-        <div className="card"><Empty icon={<ClipboardList size={26} />} title={t('shop.noOrders')}><p>{t('shop.noOrdersHint')}</p></Empty></div>
+        <div className="card"><Empty icon={<ClipboardList size={26} />} title={t('shop.noOrders')}><p>{t('shop.noOrdersHint')}</p>
+          <NavLink to="/shop" end className="button primary" style={{ marginTop: 8 }}>{t('shop.startOrder')}</NavLink></Empty></div>
       ) : orders.data.map((o) => (
         <article key={o.id} className={`card stack ${o.status === 'cancelled' ? 'dim' : ''}`}>
           <div className="row-between">

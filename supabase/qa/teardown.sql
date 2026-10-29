@@ -41,6 +41,9 @@ delete from auth.users where id in (
   where shop_id in (select id from public.shop where name like 'QA Stop %' or name like 'QA Shop %')
 );
 delete from auth.users where email like '900000010_@login.marginmart.app';
+-- replica mode skips ON DELETE CASCADE, so remove the profiles and PIN records of those users by hand.
+delete from public.pin_record r where not exists (select 1 from auth.users u where u.id = r.user_id);
+delete from public.profiles p where not exists (select 1 from auth.users u where u.id = p.user_id);
 
 delete from public.shop where phone in ('9000000150','9000000151') or name like 'QA Stop %' or name like 'QA Shop %';
 

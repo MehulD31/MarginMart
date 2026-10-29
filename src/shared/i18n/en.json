@@ -364,6 +364,7 @@
     "placedText": "You can change or cancel it until the cutoff. The driver brings it on the delivery day.",
     "noOrders": "No orders yet",
     "noOrdersHint": "Your orders will show up here.",
+    "startOrder": "Start an order",
     "edit": "Change order",
     "cancel": "Cancel order",
     "confirmCancel": "Cancel this order?",

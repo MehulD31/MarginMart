@@ -403,7 +403,8 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .flavours li .row { gap: 12px; }
 
 /* Motion: content eases in, cards lift on hover (respects reduced motion above) */
-.content > *, .app-main > * { animation: rise .28s ease-out both; }
+/* `backwards`, not `both`: a kept transform would trap position:fixed children (cart bar, sheets) inside the page. */
+.content > *, .app-main > * { animation: rise .28s ease-out backwards; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 .pack-card, .route-card, .product { transition: box-shadow .18s, transform .18s, border-color .18s; }
 @media (hover: hover) { .pack-card:hover, .route-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); } }
