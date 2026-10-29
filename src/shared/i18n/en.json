@@ -503,7 +503,8 @@
       "loaded": "Loaded",
       "out": "On the road",
       "closed": "Closed"
-    }
+    },
+    "allTrucks": "All trucks"
   },
   "khata": {
     "title": "Khata",

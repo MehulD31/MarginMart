@@ -27,16 +27,28 @@ export default function LoadingPage() {
   const day = date ?? dates[0] ?? ''
   const dayPlans = (plans.data ?? []).filter((p) => p.date === day)
   const [planId, setPlanId] = useState<string | null>(null)
-  const plan = dayPlans.find((p) => p.id === planId) ?? dayPlans[0]
+  const [truck, setTruck] = useState('all')
+  const vehicles = useVehicles()
+  const vName = (id: string | null) => vehicles.data?.find((v) => v.id === id)?.name
+  // Each trip goes on one vehicle; the vehicle filter narrows the day's trips to that truck.
+  const trucks = [...new Set(dayPlans.map((p) => p.vehicle_id ?? 'none'))]
+  const shown = dayPlans.filter((p) => truck === 'all' || (p.vehicle_id ?? 'none') === truck)
+  const plan = shown.find((p) => p.id === planId) ?? shown[0]
 
   return (
     <section className="stack-lg">
       <div className="no-print stack-lg">
         <PageHeader title={t('loading.title')} sub={t('loading.sub')} />
-        {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} onChange={(d) => { setDate(d); setPlanId(null) }} />}
-        {dayPlans.length > 1 && (
+        {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} onChange={(d) => { setDate(d); setPlanId(null); setTruck('all') }} />}
+        {dayPlans.length > 0 && (
+          <div className="segmented" role="tablist" aria-label={t('loading.vehicle')}>
+            {['all', ...trucks].map((k) => <button key={k} type="button" role="tab" className="btn-sm" aria-selected={truck === k} onClick={() => { setTruck(k); setPlanId(null) }}>
+              {k === 'all' ? t('loading.allTrucks') : k === 'none' ? t('orders.noVehicleYet') : vName(k)}</button>)}
+          </div>
+        )}
+        {shown.length > 1 && (
           <div className="segmented" role="tablist" aria-label={t('shops.route')}>
-            {dayPlans.map((p) => <button key={p.id} type="button" role="tab" className="btn-sm" aria-selected={plan?.id === p.id} onClick={() => setPlanId(p.id)}>{p.route.name}</button>)}
+            {shown.map((p) => <button key={p.id} type="button" role="tab" className="btn-sm" aria-selected={plan?.id === p.id} onClick={() => setPlanId(p.id)}>{p.route.name} · {vName(p.vehicle_id) ?? t('orders.noVehicleYet')}</button>)}
           </div>
         )}
       </div>
@@ -103,6 +115,13 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
     const { error } = await supabase.rpc('unlock_load', { p_plan_id: plan.id })
     if (error) setMsg({ kind: 'error', text: errorMessage(t, error) }); else { setMsg(null); refresh() }
   }
+  // Admin: the vehicle is saved on the trip straight away, so Orders and the truck filter agree.
+  const changeVehicle = async (id: string) => {
+    setVehicleId(id)
+    if (!id || profile?.role !== 'admin') return
+    const { error } = await supabase.rpc('add_delivery_day', { p_route_id: plan.route_id, p_date: plan.date, p_vehicle_id: id })
+    if (error) setMsg({ kind: 'error', text: errorMessage(t, error) }); else void qc.invalidateQueries({ queryKey: ['plans'] })
+  }
   const setSpare = (id: string, n: number) => setSpares((s) => ({ ...s, [id]: Math.max(0, Math.min(999, Math.floor(n) || 0)) }))
   const driverName = drivers.data?.find((d) => d.user_id === driverId)?.name
 
@@ -124,7 +143,7 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
 
         <div className="card form-grid">
           <label className="field"><span>{t('loading.vehicle')}</span>
-            <select value={vehicleId} disabled={locked} onChange={(e) => setVehicleId(e.target.value)}>
+            <select value={vehicleId} disabled={locked} onChange={(e) => void changeVehicle(e.target.value)}>
               <option value="">{t('loading.choose')}</option>
               {vehicles.data?.filter((v) => v.active).map((v) => <option key={v.id} value={v.id}>{v.name} ({t('network.cases', { n: v.capacity_cases })})</option>)}
             </select></label>
@@ -159,6 +178,19 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
               {[...name.entries()].filter(([id]) => !ordered.has(id) && !(id in spares)).sort((a, b) => a[1].sort - b[1].sort).map(([id, n]) => <option key={id} value={id}>{n.label}</option>)}
             </select></label>
         )}
+
+        <div className="stack">
+          <h2>{t('loading.stopsTitle')} ({stops.length})</h2>
+          {stops.length === 0 ? <p className="muted">{t('loading.nothing')}</p> : (
+            <div className="table-wrap"><table className="table-stack">
+              <thead><tr><th scope="col">{t('shops.name')}</th><th scope="col">{t('orders.cases')}</th><th scope="col">{t('shop.total')}</th></tr></thead>
+              <tbody>{stops.map((o) => (
+                <tr key={o.id}><td className="lead"><div className="cell-title">{o.shop.name}</div><div className="cell-sub">#{o.shop.stop_seq}{o.shop.phone ? ` · ${o.shop.phone}` : ''}</div></td>
+                  <td data-label={t('orders.cases')} className="num">{linesCases(o)}</td>
+                  <td data-label={t('shop.total')} className="num">{formatPaise(linesTotal(o))}</td></tr>))}</tbody>
+            </table></div>
+          )}
+        </div>
 
         <div className="page-actions">
           <button type="button" onClick={() => window.print()}><Printer size={18} aria-hidden="true" />{t('loading.print')}</button>
