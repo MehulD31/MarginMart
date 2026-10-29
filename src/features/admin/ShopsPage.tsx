@@ -11,6 +11,8 @@ import { csvRecords, toCsv } from '../../shared/csv'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, StatusBadge } from '../../shared/ui/kit'
 import { PinIssued, type Issued } from './PinIssued'
+import { useAuth } from '../../shared/api/auth'
+import { useConfirm } from '../../shared/ui/confirm'
 import { downloadText } from '../../shared/ui/util'
 
 const useShops = () => useQuery({
@@ -124,6 +126,8 @@ function ShopForm({ shop, routes, hasLogin, onClose }: { shop: Partial<Shop>; ro
     credit_limit: String((shop.credit_limit_paise ?? 0) / 100), credit_days: String(shop.credit_days ?? 7), active: shop.active ?? true,
   })
   const [createLogin, setCreateLogin] = useState(!shop.id)
+  const { profile } = useAuth()
+  const confirm = useConfirm()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof typeof f) => (v: string | boolean) => setF((x) => ({ ...x, [k]: v }))
@@ -151,6 +155,20 @@ function ShopForm({ shop, routes, hasLogin, onClose }: { shop: Partial<Shop>; ro
       }
       void qc.invalidateQueries({ queryKey: ['shop'] }); void qc.invalidateQueries({ queryKey: ['profiles'] })
       onClose(pin)
+    } catch (err) {
+      const dup = (err as { code?: string; message?: string })?.code === '23505' || /shop_phone_unique/.test((err as Error)?.message ?? '')
+      setError(dup ? t('errors.SHOP_PHONE_EXISTS') : errorMessage(t, err))
+    }
+    finally { setBusy(false) }
+  }
+
+  const remove = async () => {
+    if (!shop.id || !(await confirm({ title: t('shops.deleteTitle', { name: shop.name }), body: t('shops.deleteBody'), confirm: t('shops.delete'), danger: true }))) return
+    setBusy(true); setError(null)
+    try {
+      await must(supabase.rpc('delete_shop', { p_shop_id: shop.id }))
+      void qc.invalidateQueries({ queryKey: ['shop'] }); void qc.invalidateQueries({ queryKey: ['profiles'] })
+      onClose()
     } catch (err) { setError(errorMessage(t, err)) }
     finally { setBusy(false) }
   }
@@ -186,6 +204,7 @@ function ShopForm({ shop, routes, hasLogin, onClose }: { shop: Partial<Shop>; ro
       </div>
       <Alert msg={error ? { kind: 'error', text: error } : null} />
       <div className="sheet-foot">
+        {shop.id && profile?.role === 'admin' && <button type="button" className="danger" style={{ marginRight: 'auto' }} disabled={busy} onClick={() => void remove()}>{t('shops.delete')}</button>}
         <button type="button" onClick={() => onClose()}>{t('common.cancel')}</button>
         <button type="submit" className="primary" disabled={busy || !valid}>{busy ? t('common.loading') : t('common.save')}</button>
       </div>
