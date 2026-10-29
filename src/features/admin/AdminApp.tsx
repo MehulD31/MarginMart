@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Boxes, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Route as RouteIcon, Store, Tags, Truck, Users, type LucideIcon } from 'lucide-react'
+import { BookOpen, Boxes, Calculator, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Route as RouteIcon, Store, Tags, Truck, Users, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { isLowStock, useStock } from '../../shared/api/db'
 import { supabase } from '../../shared/api/supabase'
@@ -23,6 +23,7 @@ import ClosingPage, { needsAttention, useClosings } from './ClosingPage'
 import AuditPage from './AuditPage'
 import InventoryPage from './InventoryPage'
 import PurchasesPage from './PurchasesPage'
+import PricingPage from './PricingPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -55,6 +56,7 @@ export default function AdminApp() {
   const setup: Item[] = [
     { to: 'inventory', label: t('nav.inventory'), icon: Boxes, badge: lowStock },
     { to: 'purchases', label: t('nav.purchases'), icon: ShoppingCart },
+    { to: 'pricing', label: t('nav.pricing'), icon: Calculator },
     { to: 'shops', label: t('nav.shops'), icon: Store },
     { to: 'catalog', label: t('nav.catalog'), icon: Package },
     { to: 'prices', label: t('nav.prices'), icon: Tags },
@@ -115,6 +117,7 @@ export default function AdminApp() {
           <Route path="audit" element={<AuditPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<PurchasesPage />} />
+          <Route path="pricing" element={<PricingPage />} />
           <Route path="shops" element={<ShopsPage />} />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="prices" element={<PriceListsPage />} />

@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Plus, ShoppingCart, Trash2 } from 'lucide-react'
+import { FileSpreadsheet, Plus, ShoppingCart, Trash2 } from 'lucide-react'
+import { mergeByVariant, parseInvoice, type InvoiceLine } from '../../shared/purchaseImport'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
@@ -34,6 +35,7 @@ export default function PurchasesPage() {
   const { rows } = useStockRows()
   const [newOpen, setNewOpen] = useState(false)
   const [suppOpen, setSuppOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [view, setView] = useState<string | null>(null)
   const names = new Map(rows.map((r) => [r.variant_id, r.name]))
   const supp = new Map(suppliers.data?.map((s) => [s.id, s.name]))
@@ -45,6 +47,7 @@ export default function PurchasesPage() {
       <PageHeader title={t('purchases.title')} sub={t('purchases.sub')}
         actions={isAdmin && <>
           <button type="button" onClick={() => setSuppOpen(true)}>{t('purchases.suppliers', { n: suppliers.data?.length ?? 0 })}</button>
+          <button type="button" disabled={!suppliers.data?.length} onClick={() => setImportOpen(true)}><FileSpreadsheet size={18} aria-hidden="true" />{t('purchases.importExcel')}</button>
           <button type="button" className="primary" disabled={!suppliers.data?.length} onClick={() => setNewOpen(true)}><Plus size={18} aria-hidden="true" />{t('purchases.new')}</button>
         </>} />
       {isAdmin && suppliers.data && suppliers.data.length === 0 && <Alert msg={{ kind: 'warn', text: t('purchases.addSupplierFirst') }} />}
@@ -78,6 +81,9 @@ export default function PurchasesPage() {
       </Sheet>
       <Sheet open={newOpen} wide title={t('purchases.new')} onClose={() => setNewOpen(false)}>
         {newOpen && <PurchaseForm suppliers={(suppliers.data ?? []).filter((s) => s.active)} items={rows.filter((r) => r.active)} onDone={() => setNewOpen(false)} />}
+      </Sheet>
+      <Sheet open={importOpen} wide title={t('purchases.importExcel')} onClose={() => setImportOpen(false)}>
+        {importOpen && <ImportInvoice suppliers={(suppliers.data ?? []).filter((s) => s.active)} items={rows.filter((r) => r.active)} onDone={() => setImportOpen(false)} />}
       </Sheet>
       <Sheet open={suppOpen} title={t('purchases.suppliersTitle')} onClose={() => setSuppOpen(false)}>
         {suppOpen && <Suppliers list={suppliers.data ?? []} />}
@@ -183,6 +189,97 @@ function Suppliers({ list }: { list: Supplier[] }) {
         <Alert msg={msg} />
         <div className="row"><button type="submit" disabled={!name.trim() || (phone !== '' && !/^[6-9]\d{9}$/.test(phone))}><Plus size={18} aria-hidden="true" />{t('purchases.addSupplier')}</button></div>
       </form>
+    </div>
+  )
+}
+
+function cellValue(v: unknown): unknown {
+  if (v && typeof v === 'object') {
+    const o = v as { result?: unknown; richText?: { text: string }[]; text?: string }
+    if ('result' in o) return o.result
+    if (o.richText) return o.richText.map((r) => r.text).join('')
+    if (o.text !== undefined) return o.text
+  }
+  return v
+}
+
+/** Pepsi invoice/order Excel -> purchase. SKU codes are matched to flavours once and remembered. */
+function ImportInvoice({ suppliers, items, onDone }: { suppliers: Supplier[]; items: { variant_id: string; name: string }[]; onDone: () => void }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const [supplier, setSupplier] = useState(suppliers[0]?.id ?? '')
+  const [invoice, setInvoice] = useState('')
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }))
+  const [lines, setLines] = useState<InvoiceLine[] | null>(null)
+  const [map, setMap] = useState<Record<string, string>>({})
+  const [msg, setMsg] = useState<Msg>(null)
+  const [busy, setBusy] = useState(false)
+
+  const read = async (file: File | undefined) => {
+    if (!file) return
+    setMsg(null); setBusy(true)
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(await file.arrayBuffer())
+      const grid: unknown[][] = []
+      wb.worksheets[0].eachRow({ includeEmpty: true }, (row) => { grid.push((row.values as unknown[]).slice(1).map(cellValue)) })
+      const parsed = parseInvoice(grid)
+      const known = await must<{ sku_code: string; variant_id: string }[]>(supabase.from('supplier_sku').select('sku_code, variant_id').eq('supplier_id', supplier))
+      setMap(Object.fromEntries(known.map((k) => [k.sku_code, k.variant_id])))
+      setLines(parsed)
+    } catch (err) {
+      setMsg({ kind: 'error', text: (err as Error).message === 'SHEET_FORMAT' ? t('purchases.badSheet') : errorMessage(t, err) })
+    } finally { setBusy(false) }
+  }
+
+  const matched = (lines ?? []).filter((l) => map[l.sku])
+  const total = (lines ?? []).reduce((a, l) => a + l.valuePaise, 0)
+  const save = async () => {
+    if (!lines) return
+    setMsg(null); setBusy(true)
+    try {
+      await must(supabase.from('supplier_sku').upsert(matched.map((l) => ({ supplier_id: supplier, sku_code: l.sku, variant_id: map[l.sku] }))).select())
+      await must(supabase.rpc('record_purchase', {
+        p_supplier_id: supplier, p_invoice_no: invoice, p_date: date || null, p_note: null,
+        p_lines: mergeByVariant(matched.map((l) => ({ variant_id: map[l.sku], qty: l.qty, valuePaise: l.valuePaise }))),
+      }))
+      for (const k of ['purchase', 'stock', 'stock_move', 'month_stats']) void qc.invalidateQueries({ queryKey: [k] })
+      onDone()
+    } catch (err) { setMsg({ kind: 'error', text: errorMessage(t, err) }) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="stack-lg">
+      <div className="form-grid">
+        <label className="field"><span>{t('purchases.supplier')}</span>
+          <select value={supplier} disabled={!!lines} onChange={(e) => setSupplier(e.target.value)}>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        <label className="field"><span>{t('purchases.invoice')}</span><input maxLength={40} value={invoice} onChange={(e) => setInvoice(e.target.value)} /></label>
+        <label className="field"><span>{t('purchases.date')}</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <label className="field"><span>{t('purchases.excelFile')}</span><input type="file" accept=".xlsx" disabled={busy || !supplier} onChange={(e) => void read(e.target.files?.[0])} /></label>
+      </div>
+      <p className="muted">{t('purchases.importHint')}</p>
+      {lines && <>
+        <div className="table-wrap"><table className="table-stack">
+          <thead><tr><th scope="col">{t('purchases.pepsiItem')}</th><th scope="col">{t('orders.cases')}</th><th scope="col">{t('purchases.costPerCase')}</th><th scope="col">{t('inventory.item')}</th></tr></thead>
+          <tbody>{lines.map((l) => (
+            <tr key={l.sku}>
+              <td className="lead"><div className="cell-title">{l.desc}</div><div className="cell-sub">SKU {l.sku}</div></td>
+              <td data-label={t('orders.cases')} className="num">{l.qty}</td>
+              <td data-label={t('purchases.costPerCase')} className="num">{formatPaise(Math.round(l.valuePaise / l.qty))}</td>
+              <td data-label={t('inventory.item')}>
+                <select aria-label={`${t('inventory.item')}: ${l.desc}`} value={map[l.sku] ?? ''} onChange={(e) => setMap({ ...map, [l.sku]: e.target.value })}>
+                  <option value="">{t('purchases.skipLine')}</option>
+                  {items.map((x) => <option key={x.variant_id} value={x.variant_id}>{x.name}</option>)}
+                </select></td>
+            </tr>))}</tbody>
+        </table></div>
+        <div className="row-between"><span>{t('purchases.matched', { n: matched.length, total: lines.length })}</span><strong className="num">{formatPaise(total)}</strong></div>
+        {matched.length < lines.length && <Alert msg={{ kind: 'warn', text: t('purchases.unmatched', { n: lines.length - matched.length }) }} />}
+      </>}
+      <Alert msg={msg} />
+      <div className="row"><button type="button" className="primary" disabled={busy || !matched.length} onClick={() => void save()}>{t('purchases.save')}</button></div>
     </div>
   )
 }

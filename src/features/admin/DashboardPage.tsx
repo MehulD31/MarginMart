@@ -12,6 +12,8 @@ import { ProductImage } from '../../shared/ui/ProductImage'
 import { initials } from '../../shared/ui/util'
 import { isLowStock } from '../../shared/api/db'
 import { useStockRows } from './stockRows'
+import { useMargin } from './marginData'
+import { fixedTotal } from '../../shared/margin'
 import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
 
 const useSetup = () => useQuery({
@@ -83,6 +85,7 @@ export default function DashboardPage() {
   })
   const hi = i18n.language === 'hi'
   const stockRows = useStockRows()
+  const mg = useMargin()
   const lowStock = stockRows.rows.filter((r) => r.active && isLowStock(r)).sort((a, b) => a.on_hand - b.on_hand)
 
   const live = useMemo(() => (orders.data ?? []).filter(isLive), [orders.data])
@@ -158,6 +161,23 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {mg && (() => {
+        const { cases, sales_paise, cost_paise } = mg.stats
+        const perCase = cases ? (sales_paise - cost_paise) / cases : mg.s.default_margin_paise
+        const fixed = fixedTotal(mg.s)
+        const profit = sales_paise - cost_paise - mg.cost.variable * cases - fixed
+        const breakEven = perCase > mg.cost.variable ? Math.ceil(fixed / (perCase - mg.cost.variable)) : 0
+        return (
+          <div className="stack">
+            <div className="row-between"><h2>{t('pricing.dashTitle')}</h2><Link to="/admin/pricing" className="button btn-sm">{t('nav.pricing')}</Link></div>
+            <div className="stats">
+              <Kpi icon={<Package size={18} />} tone="blue" label={t('pricing.dashCases')} value={cases.toLocaleString('en-IN')} sub={breakEven ? t('pricing.dashBreakEven', { n: breakEven.toLocaleString('en-IN') }) : '—'} />
+              <Kpi icon={<TrendingUp size={18} />} tone="violet" label={t('pricing.dashMargin')} value={formatPaise(Math.round(perCase))} sub={t('pricing.dashCost', { v: formatPaise(mg.cost.total) })} />
+              <Kpi icon={<IndianRupee size={18} />} tone={profit >= 0 ? 'green' : 'amber'} label={t('pricing.dashProfit')} value={formatPaise(profit)} sub={breakEven > cases ? t('pricing.dashNeed', { n: (breakEven - cases).toLocaleString('en-IN') }) : t('pricing.dashCovered')} />
+            </div>
+          </div>)
+      })()}
 
       {lowStock.length > 0 && (
         <div className="card stack">
