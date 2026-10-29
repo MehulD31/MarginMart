@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Boxes, Calculator, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Route as RouteIcon, Store, Tags, Truck, Users, type LucideIcon } from 'lucide-react'
+import { BookOpen, Boxes, Calculator, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Route as RouteIcon, Store, Tags, Truck, Users, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { isLowStock, useStock } from '../../shared/api/db'
 import { supabase } from '../../shared/api/supabase'
@@ -24,6 +24,7 @@ import AuditPage from './AuditPage'
 import InventoryPage from './InventoryPage'
 import PurchasesPage from './PurchasesPage'
 import PricingPage from './PricingPage'
+import LivePage from './LivePage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -50,6 +51,7 @@ export default function AdminApp() {
     { to: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { to: 'orders', label: t('nav.orders'), icon: ClipboardList },
     { to: 'loading', label: t('nav.loading'), icon: Truck },
+    { to: 'live', label: t('nav.live'), icon: Radio },
     { to: 'khata', label: t('nav.khata'), icon: BookOpen },
     { to: 'closing', label: t('nav.closing'), icon: ClipboardCheck, badge: attention },
   ]
@@ -112,6 +114,7 @@ export default function AdminApp() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="loading" element={<LoadingPage />} />
+          <Route path="live" element={<LivePage />} />
           <Route path="khata" element={<KhataPage />} />
           <Route path="closing" element={<ClosingPage />} />
           <Route path="audit" element={<AuditPage />} />

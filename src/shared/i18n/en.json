@@ -27,7 +27,8 @@
     "audit": "Change history",
     "inventory": "Inventory",
     "purchases": "Purchases",
-    "pricing": "Pricing & margin"
+    "pricing": "Pricing & margin",
+    "live": "Live deliveries"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -857,5 +858,22 @@
     "dashProfit": "Profit so far",
     "dashNeed": "{{n}} more cases to cover expenses",
     "dashCovered": "Expenses covered"
+  },
+  "live": {
+    "title": "Live deliveries",
+    "updated": "Live · updated {{time}}",
+    "none": "No trucks out on {{date}}",
+    "noneHint": "Trips appear here once their load is locked.",
+    "delivered": "Shops delivered",
+    "cases": "{{n}} cases delivered",
+    "billed": "Billed",
+    "stopsDone": "Stops done",
+    "tripLine": "{{cases}} of {{ordered}} ordered cases · {{value}} billed · cash {{cash}} · UPI {{upi}}",
+    "lastAt": "Last delivery {{time}}",
+    "pending": "{{n}} stops still to go",
+    "feed": "Deliveries as they happen",
+    "noBills": "No deliveries yet today.",
+    "bill": "Bill",
+    "credit": "On credit"
   }
 }
