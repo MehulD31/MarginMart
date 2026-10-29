@@ -111,7 +111,7 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
   const ordered = new Map((locked ? frozen.data?.map((l) => [l.variant_id, l.qty_ordered_total]) : live.data?.map((l) => [l.variant_id, l.qty_ordered])) ?? [])
   const spare = locked ? new Map(frozen.data?.map((l) => [l.variant_id, l.qty_spare])) : new Map(Object.entries(spares))
   const ids = [...new Set([...ordered.keys(), ...spare.keys()])].filter((id) => (ordered.get(id) ?? 0) + (spare.get(id) ?? 0) > 0 || !locked)
-    .sort((a, b) => (name.get(a)?.sort ?? 0) - (name.get(b)?.sort ?? 0))
+    .sort((a, b) => (name.get(a)?.label ?? '').localeCompare(name.get(b)?.label ?? '', i18n.language))
   const totalOrdered = [...ordered.values()].reduce((s, n) => s + n, 0)
   const totalSpare = [...spare.values()].reduce((s, n) => s + n, 0)
   const vehicle = vehicles.data?.find((v) => v.id === vehicleId)
@@ -243,7 +243,7 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
         <table><thead><tr><th>#</th><th>{t('shops.name')}</th><th>{t('loading.items')}</th><th>{t('orders.cases')}</th><th>{t('shop.total')}</th></tr></thead>
           <tbody>{stops.map((o) => (
             <tr key={o.id}><td>{o.shop.stop_seq}</td><td>{o.shop.name}<br />{o.shop.phone}</td>
-              <td>{o.order_line.map((l) => `${name.get(l.variant_id)?.label} × ${l.qty_ordered}`).join(', ')}</td>
+              <td>{[...o.order_line].sort((a, b) => (name.get(a.variant_id)?.label ?? '').localeCompare(name.get(b.variant_id)?.label ?? '', i18n.language)).map((l) => `${name.get(l.variant_id)?.label} × ${l.qty_ordered}`).join(', ')}</td>
               <td>{linesCases(o)}</td><td>{formatPaise(linesTotal(o))}</td></tr>))}
             <tr><td></td><td><b>{t('loading.total')} ({stops.length})</b></td><td></td><td><b>{stops.reduce((a, o) => a + linesCases(o), 0)}</b></td><td><b>{formatPaise(stops.reduce((a, o) => a + linesTotal(o), 0))}</b></td></tr></tbody></table>
         <p style={{ marginTop: '10mm' }}>{t('loading.driver')}: ____________________ &nbsp; {t('loading.signLoaded')}: ____________________</p>
