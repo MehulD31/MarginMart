@@ -467,7 +467,8 @@
     "move": "Move",
     "tripVehicle": "{{route}} truck",
     "noOtherTrips": "No other open trips on this day. Use New order to add a trip.",
-    "moveHint": "Only trips not yet loaded are shown."
+    "moveHint": "Only trips not yet loaded are shown.",
+    "usually": "Not set (usually {{v}})"
   },
   "loading": {
     "title": "Loading sheet",

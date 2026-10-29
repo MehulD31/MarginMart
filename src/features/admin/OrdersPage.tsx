@@ -187,7 +187,9 @@ function AddOrder({ initialDate, onReady }: { initialDate: string; onReady: (s: 
   // Default trip: the shop's own route that day, else a new trip for it.
   const tripId = trip || (ownTrip?.status === 'planning' ? ownTrip.id : NEW)
   const chosen = open.find((p) => p.id === tripId)
-  const vehicleId = vehicle || chosen?.vehicle_id || ''
+  // A trip with no vehicle yet defaults to the vehicle this route usually goes on.
+  const usual = useUsualVehicles().data
+  const vehicleId = vehicle || chosen?.vehicle_id || usual?.[chosen?.route_id ?? shop?.route_id ?? ''] || ''
 
   const pickShop = (s: ShopWithRoute) => { setShop(s); setTrip(''); setVehicle(''); setErr(null) }
   const changeDate = (d: string) => { setDate(d); setTrip(''); setVehicle('') }
@@ -250,6 +252,7 @@ function TripBar({ plans }: { plans: Plan[] }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const vehicles = useVehicles()
+  const usual = useUsualVehicles().data
   const [err, setErr] = useState<string | null>(null)
   const set = async (p: Plan, vehicleId: string) => {
     setErr(null)
@@ -265,7 +268,7 @@ function TripBar({ plans }: { plans: Plan[] }) {
           <label key={p.id} className="field card" style={{ minWidth: 220, padding: 12 }}>
             <span><Truck size={14} aria-hidden="true" /> {t('orders.tripVehicle', { route: p.route.name })}</span>
             <select value={p.vehicle_id ?? ''} disabled={p.status !== 'planning'} onChange={(e) => e.target.value && void set(p, e.target.value)}>
-              <option value="">{t('orders.chooseAtLoading')}</option>
+              <option value="">{usual?.[p.route_id] ? t('orders.usually', { v: vehicles.data?.find((v) => v.id === usual[p.route_id])?.name }) : t('orders.chooseAtLoading')}</option>
               {vehicles.data?.filter((v) => v.active || v.id === p.vehicle_id).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </label>))}
@@ -312,4 +315,14 @@ function MoveOrder({ order, initialDate, onDone }: { order: AdminOrder; initialD
       {err && <Alert msg={{ kind: 'error', text: err }} />}
     </div>
   )
+}
+
+/** route_id -> the vehicle on that route's most recent trip that had one (past or upcoming). */
+function useUsualVehicles() {
+  return useQuery({
+    queryKey: ['plans', 'usual-vehicle'],
+    queryFn: () => must<{ route_id: string; vehicle_id: string }[]>(supabase.from('route_day_plan').select('route_id, vehicle_id')
+      .not('vehicle_id', 'is', null).order('date', { ascending: false }).limit(200)),
+    select: (rows) => rows.reduce<Record<string, string>>((m, r) => { m[r.route_id] ??= r.vehicle_id; return m }, {}),
+  })
 }
