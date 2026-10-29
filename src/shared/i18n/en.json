@@ -139,6 +139,8 @@
     "CANNOT_DEACTIVATE_SELF": "You can't deactivate yourself.",
     "NETWORK": "Couldn't reach the server. Check your internet and try again.",
     "generic": "Something went wrong. Please try again.",
+    "crashed": "This screen didn't load. Tap Reload to try again.",
+    "reload": "Reload",
     "SHOP_PHONE_EXISTS": "A shop with this phone number already exists. Search for it in the list.",
     "SHOP_HAS_HISTORY": "This shop has orders or khata entries, so it can't be deleted. Untick \"Shop is active\" instead.",
     "EMPTY_PRICE_LIST": "Add at least one price before making the list live.",

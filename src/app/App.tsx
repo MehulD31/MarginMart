@@ -2,7 +2,8 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '../shared/api/auth'
-import { HomeRedirect, RequireRole } from './RequireRole'
+import { HomeRedirect, RequireRole, Splash } from './RequireRole'
+import { ErrorBoundary } from './ErrorBoundary'
 import LoginPage from '../features/auth/LoginPage'
 import JoinPage from '../features/auth/JoinPage'
 import { ConfirmProvider } from '../shared/ui/confirm'
@@ -20,7 +21,8 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <ConfirmProvider>
-          <Suspense fallback={<p className="page">…</p>}>
+          <ErrorBoundary>
+          <Suspense fallback={<Splash />}>
             <Routes>
               <Route path="/" element={<HomeRedirect />} />
               <Route path="/login" element={<LoginPage />} />
@@ -31,6 +33,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
           </ConfirmProvider>
         </BrowserRouter>
       </AuthProvider>
