@@ -10,7 +10,7 @@ import { AuthLayout } from './AuthLayout'
 /** Shown after login whenever profiles.must_change_pin is true (first login or after a reset). */
 export default function ChangePinPage() {
   const { t } = useTranslation()
-  const { profile, refreshProfile, signOut } = useAuth()
+  const { profile, signIn, signOut } = useAuth()
   const [pin, setPin] = useState('')
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
@@ -23,7 +23,8 @@ export default function ChangePinPage() {
     setError(null)
     try {
       await callFunction('admin-users', { action: 'change_pin', new_pin: pin })
-      await refreshProfile()
+      // Changing the password ends every session on the server, so sign in again with the new PIN.
+      await signIn(profile!.phone, pin)
     } catch (err) {
       setError(errorMessage(t, err))
     } finally {
