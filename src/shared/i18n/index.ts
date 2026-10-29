@@ -7,7 +7,7 @@ const saved = localStorage.getItem('lang')
 
 void i18n.use(initReactI18next).init({
   resources: { en: { translation: en }, hi: { translation: hi } },
-  lng: saved === 'en' || saved === 'hi' ? saved : 'hi',
+  lng: saved === 'en' || saved === 'hi' ? saved : 'en',
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
 })
