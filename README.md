@@ -36,7 +36,7 @@ Schema changes go only through SQL migrations in `supabase/migrations/`, never t
 One-time setup in GitHub → Settings → Secrets and variables → Actions:
 | Secret | What |
 |---|---|
-| `SUPABASE_DB_URL` | Supabase → Connect → **Session pooler** connection string, with the database password filled in |
+| `SUPABASE_DB_PASSWORD` | The Supabase database password (just the password) |
 | `BACKUP_PASSPHRASE` | A long random passphrase. Store it somewhere safe outside GitHub; without it the backups can't be opened |
 
 Restore (test this once into a scratch project, not production):
