@@ -196,7 +196,7 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
           <label className="field" style={{ maxWidth: 420 }}><span>{t('loading.addSpare')}</span>
             <select value={adding} onChange={(e) => { if (e.target.value) setSpare(e.target.value, 1); setAdding('') }}>
               <option value="">{t('loading.choose')}</option>
-              {[...name.entries()].filter(([id]) => !ordered.has(id) && !(id in spares)).sort((a, b) => a[1].sort - b[1].sort).map(([id, n]) => <option key={id} value={id}>{n.label}</option>)}
+              {[...name.entries()].filter(([id]) => !ordered.has(id) && !(id in spares)).sort((a, b) => a[1].label.localeCompare(b[1].label, i18n.language)).map(([id, n]) => <option key={id} value={id}>{n.label}</option>)}
             </select></label>
         )}
 
