@@ -237,13 +237,16 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
         <p>{t('loading.vehicle')}: {vehicle?.name ?? '—'} · {t('loading.driver')}: {driverName ?? '—'} · {t('loading.onTruck')}: {totalOrdered + totalSpare}</p>
         <table><thead><tr><th>{t('loading.item')}</th><th>{t('loading.ordered')}</th><th>{t('loading.spare')}</th><th>{t('loading.total')}</th><th>✓</th></tr></thead>
           <tbody>{ids.filter((id) => (ordered.get(id) ?? 0) + (spare.get(id) ?? 0) > 0).map((id) => (
-            <tr key={id}><td>{name.get(id)?.label}</td><td>{ordered.get(id) ?? 0}</td><td>{spare.get(id) ?? 0}</td><td><b>{(ordered.get(id) ?? 0) + (spare.get(id) ?? 0)}</b></td><td></td></tr>))}</tbody></table>
+            <tr key={id}><td>{name.get(id)?.label}</td><td>{ordered.get(id) ?? 0}</td><td>{spare.get(id) ?? 0}</td><td><b>{(ordered.get(id) ?? 0) + (spare.get(id) ?? 0)}</b></td><td></td></tr>))}
+            <tr><td><b>{t('loading.total')}</b></td><td><b>{totalOrdered}</b></td><td><b>{totalSpare}</b></td><td><b>{totalOrdered + totalSpare}</b></td><td></td></tr></tbody></table>
         <h2>{t('loading.stopsTitle')}</h2>
         <table><thead><tr><th>#</th><th>{t('shops.name')}</th><th>{t('loading.items')}</th><th>{t('orders.cases')}</th><th>{t('shop.total')}</th></tr></thead>
           <tbody>{stops.map((o) => (
             <tr key={o.id}><td>{o.shop.stop_seq}</td><td>{o.shop.name}<br />{o.shop.phone}</td>
               <td>{o.order_line.map((l) => `${name.get(l.variant_id)?.label} × ${l.qty_ordered}`).join(', ')}</td>
-              <td>{linesCases(o)}</td><td>{formatPaise(linesTotal(o))}</td></tr>))}</tbody></table>
+              <td>{linesCases(o)}</td><td>{formatPaise(linesTotal(o))}</td></tr>))}
+            <tr><td></td><td><b>{t('loading.total')} ({stops.length})</b></td><td></td><td><b>{stops.reduce((a, o) => a + linesCases(o), 0)}</b></td><td><b>{formatPaise(stops.reduce((a, o) => a + linesTotal(o), 0))}</b></td></tr></tbody></table>
+        <p style={{ marginTop: '10mm' }}>{t('loading.driver')}: ____________________ &nbsp; {t('loading.signLoaded')}: ____________________</p>
       </div>
     </>
   )

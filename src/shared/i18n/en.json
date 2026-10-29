@@ -514,7 +514,8 @@
     "spaceLeft": "Space left on truck",
     "casesLeft": "{{n}} cases",
     "overBy": "{{n}} cases over",
-    "spaceUsed": "{{used}} of {{cap}} cases loaded ({{pct}}%)"
+    "spaceUsed": "{{used}} of {{cap}} cases loaded ({{pct}}%)",
+    "signLoaded": "Checked by"
   },
   "khata": {
     "title": "Khata",

@@ -514,7 +514,8 @@
     "spaceLeft": "गाड़ी में बची जगह",
     "casesLeft": "{{n}} पेटी",
     "overBy": "{{n}} पेटी ज़्यादा",
-    "spaceUsed": "{{cap}} में से {{used}} पेटी लोड ({{pct}}%)"
+    "spaceUsed": "{{cap}} में से {{used}} पेटी लोड ({{pct}}%)",
+    "signLoaded": "जाँचा"
   },
   "khata": {
     "title": "खाता",

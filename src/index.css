@@ -376,6 +376,16 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   .sidebar, .mobile-header, .bottom-nav, .no-print, .page-header { display: none !important; }
   .shell { display: block; }
   .content { padding: 0; max-width: none; }
+  /* Screen layout fixes heights and scroll areas; in print everything must flow onto as many pages as needed. */
+  html, body, #root, .shell, .content, main, .table-wrap, .table-scroll {
+    height: auto !important; min-height: 0 !important; max-height: none !important;
+    overflow: visible !important; position: static !important;
+  }
+  dialog, .sheet { display: none !important; }
+  .content > section, .content .stack-lg { display: block !important; }
+  .print-sheet thead { display: table-header-group; }
+  .print-sheet h2 { break-after: avoid; }
+  .print-sheet td { word-break: break-word; }
   .print-sheet { display: block; color: #000; font-size: 12pt; }
   .print-sheet h1 { font-size: 18pt; margin-bottom: 4mm; }
   .print-sheet h2 { font-size: 14pt; margin: 8mm 0 3mm; }
