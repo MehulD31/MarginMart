@@ -98,7 +98,9 @@ function StopList({ day }: { day: Day }) {
   const sorted = [...stops].sort((a, b) => Number(!!(a.invoice || a.queued)) - Number(!!(b.invoice || b.queued)) || Number(!a.order) - Number(!b.order) || a.shop.stop_seq - b.shop.stop_seq)
 
   const needle = q.trim().toLowerCase()
-  const found = needle ? sorted.filter((s) => `${s.shop.name} ${s.shop.owner_name ?? ''} ${s.shop.phone ?? ''}`.toLowerCase().includes(needle)) : sorted
+  // No search: today's route plus anyone with an order or bill. Search: every active shop (van sale anywhere).
+  const onTrip = sorted.filter((s) => s.order || s.invoice || s.queued || !s.shop.route_id || s.shop.route_id === snap.plan!.route_id)
+  const found = needle ? sorted.filter((s) => `${s.shop.name} ${s.shop.owner_name ?? ''} ${s.shop.phone ?? ''}`.toLowerCase().includes(needle)) : onTrip
 
   return (
     <div className="stack-lg">
@@ -267,6 +269,7 @@ function StopScreen({ day }: { day: Day }) {
               })}
             </ul>
           </div>
+          {extraChoices.length === 0 && lines.length === 0 && <Alert msg={{ kind: 'warn', text: t('driver.nothingSpare') }} />}
           {extraChoices.length > 0 && (
             <label className="field"><span>{t('driver.addFromTruck')}</span>
               <select value={adding} onChange={(e) => { if (e.target.value) setQty((x) => ({ ...x, [e.target.value]: 1 })); setAdding('') }}>

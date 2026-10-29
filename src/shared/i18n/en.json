@@ -597,7 +597,7 @@
     "queuedNote": "Delivered and saved on this phone. It will sync when online.",
     "showBill": "Bill",
     "collect": "Collect dues",
-    "vanOnly": "No order from this shop. Add items from the truck below if they buy.",
+    "vanOnly": "No order from this shop. Add what they take from the truck below.",
     "ordered": "ordered {{n}}",
     "extra": "extra from truck",
     "whyLess": "Why {{n}} less?",
@@ -634,7 +634,8 @@
     "firstLoadOffline": "No internet, and today's route is not saved on this phone yet. Connect once to load it; after that it works offline.",
     "truckStock_one": "On the truck: {{count}} case",
     "truckStock_other": "On the truck: {{count}} cases",
-    "searchShop": "Search shop name or phone"
+    "searchShop": "Search any shop name or phone",
+    "nothingSpare": "Nothing spare left on the truck to sell."
   },
   "eod": {
     "title": "End of day",

@@ -5,10 +5,10 @@ import { must, type Pack, type PriceListItem, type Variant } from '../../shared/
 import { useAuth } from '../../shared/api/auth'
 import { listQueue, loadSnapshot, onQueueChange, saveSnapshot, syncQueue, type QueuedAction } from './offline'
 
-export interface DShop { id: string; name: string; owner_name: string | null; phone: string | null; address: string | null; stop_seq: number }
+export interface DShop { id: string; name: string; owner_name: string | null; phone: string | null; address: string | null; stop_seq: number; route_id: string }
 export interface DOrder { id: string; shop_id: string; status: string; order_line: { variant_id: string; qty_ordered: number; unit_price_paise: number }[] }
 export interface DInvoice { id: string; number: string; shop_id: string; total_paise: number; created_at: string; delivery_line: { variant_id: string; qty_delivered: number; unit_price_paise: number }[] }
-export interface DPlan { id: string; date: string; status: string; route: { name: string }; vehicle: { name: string } | null }
+export interface DPlan { id: string; route_id: string; date: string; status: string; route: { name: string }; vehicle: { name: string } | null }
 export interface Snapshot {
   plan: DPlan | null
   shops: DShop[]
@@ -21,10 +21,10 @@ export interface Snapshot {
 }
 
 async function fetchSnapshot(): Promise<Snapshot> {
-  const plans = await must<DPlan[]>(supabase.from('route_day_plan').select('id, date, status, route(name), vehicle(name)').in('status', ['loaded', 'out']).order('date', { ascending: false }).limit(1))
+  const plans = await must<DPlan[]>(supabase.from('route_day_plan').select('id, route_id, date, status, route(name), vehicle(name)').in('status', ['loaded', 'out']).order('date', { ascending: false }).limit(1))
   const plan = plans[0] ?? null
   const [shops, packs, variants, prices] = await Promise.all([
-    must<DShop[]>(supabase.from('shop').select('id, name, owner_name, phone, address, stop_seq').eq('active', true).order('stop_seq')),
+    must<DShop[]>(supabase.from('shop').select('id, name, owner_name, phone, address, stop_seq, route_id').eq('active', true).order('stop_seq')),
     must<Pack[]>(supabase.from('pack').select('*')),
     must<Variant[]>(supabase.from('variant').select('*')),
     must<PriceListItem[]>(supabase.from('price_list_item').select('*, price_list!inner(status)').eq('price_list.status', 'active')),
