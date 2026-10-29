@@ -205,7 +205,7 @@ export default function DashboardPage() {
               const os = live.filter((o) => o.route_day_plan_id === p.id)
               const routeShops = (shops.data ?? []).filter((x) => x.route_id === p.route_id).length
               const c = os.reduce((a, o) => a + linesCases(o), 0)
-              const cap = vehicles.data?.find((v) => v.id === p.vehicle_id)?.capacity_cases ?? 100
+              const cap = vehicles.data?.find((v) => v.id === p.vehicle_id)?.capacity_cases ?? 120
               return (
                 <Link key={p.id} to="/admin/loading" className="card route-card">
                   <div className="row-between"><div className="row"><span className="icon-tile sm"><Truck size={18} aria-hidden="true" /></span><strong>{p.route.name}</strong></div>
