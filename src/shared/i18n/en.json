@@ -510,7 +510,11 @@
     "noTripForTruck": "No orders on this truck for this day",
     "assignTruck": "Assign truck",
     "startHint": "You can still load items on it. Pick the route it will go on, then add items as spares and lock the load. Orders can be added with New order.",
-    "startTruck": "Load items on this truck"
+    "startTruck": "Load items on this truck",
+    "spaceLeft": "Space left on truck",
+    "casesLeft": "{{n}} cases",
+    "overBy": "{{n}} cases over",
+    "spaceUsed": "{{used}} of {{cap}} cases loaded ({{pct}}%)"
   },
   "khata": {
     "title": "Khata",

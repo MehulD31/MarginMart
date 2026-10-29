@@ -155,6 +155,17 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
           <div className="stat"><div className="label">{t('loading.spare')}</div><div className="value">{totalSpare}</div></div>
           <div className="stat"><div className="label">{t('loading.onTruck')}</div><div className="value" style={over > 0 ? { color: 'var(--danger)' } : undefined}>{totalOrdered + totalSpare}{vehicle && <span className="muted"> / {vehicle.capacity_cases}</span>}</div></div>
         </div>
+        {vehicle && (() => {
+          const used = totalOrdered + totalSpare, cap = vehicle.capacity_cases, left = cap - used
+          return (
+            <div className="card stack" style={{ gap: 6 }}>
+              <div className="row-between"><strong>{t('loading.spaceLeft')}</strong>
+                <strong className="num" style={{ fontSize: 22, color: left < 0 ? 'var(--danger)' : undefined }}>{left < 0 ? t('loading.overBy', { n: -left }) : t('loading.casesLeft', { n: left })}</strong></div>
+              <div className={`bar${left < 0 ? ' bar-over' : ''}`} role="progressbar" aria-label={t('loading.spaceLeft')} aria-valuenow={used} aria-valuemin={0} aria-valuemax={cap}>
+                <i style={{ width: `${Math.min(100, Math.round((used / cap) * 100))}%` }} /></div>
+              <div className="cell-sub num">{t('loading.spaceUsed', { used, cap, pct: Math.round((used / cap) * 100) })}</div>
+            </div>)
+        })()}
         {over > 0 && <Alert msg={{ kind: 'warn', text: t('loading.overCapacity', { n: over }) }} />}
         <Alert msg={msg} />
         {locked && <Alert msg={{ kind: 'success', text: driverName
