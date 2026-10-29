@@ -160,7 +160,7 @@ type PlanRow = Plan & { vehicle: { name: string } | null }
  * The trip can be the shop's own route (added for that day if it doesn't usually run) or another
  * route's trip, so one truck can carry extra shops. The vehicle chosen here is pre-set for Loading.
  */
-function AddOrder({ initialDate, onReady }: { initialDate: string; onReady: (s: Shop, p: Plan, o?: AdminOrder) => void }) {
+export function AddOrder({ initialDate, initialVehicle, onReady }: { initialDate: string; initialVehicle?: string; onReady: (s: Shop, p: Plan, o?: AdminOrder) => void }) {
   const { t } = useTranslation()
   const fmt = useLocaleDate()
   const qc = useQueryClient()
@@ -189,7 +189,7 @@ function AddOrder({ initialDate, onReady }: { initialDate: string; onReady: (s: 
   const chosen = open.find((p) => p.id === tripId)
   // A trip with no vehicle yet defaults to the vehicle this route usually goes on.
   const usual = useUsualVehicles().data
-  const vehicleId = vehicle || chosen?.vehicle_id || usual?.[chosen?.route_id ?? shop?.route_id ?? ''] || ''
+  const vehicleId = vehicle || initialVehicle || chosen?.vehicle_id || usual?.[chosen?.route_id ?? shop?.route_id ?? ''] || ''
 
   const pickShop = (s: ShopWithRoute) => { setShop(s); setTrip(''); setVehicle(''); setErr(null) }
   const changeDate = (d: string) => { setDate(d); setTrip(''); setVehicle('') }

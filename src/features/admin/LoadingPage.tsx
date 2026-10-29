@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Lock, LockOpen, Printer, Truck } from 'lucide-react'
+import { Lock, LockOpen, Plus, Printer, Truck } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must, usePacks, useVariants, useVehicles } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
-import { Alert, Empty, PageHeader, Skeleton, type Msg } from '../../shared/ui/kit'
-import { DateChips } from './OrdersPage'
+import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import type { Shop } from '../../shared/api/db'
+import { AddOrder, DateChips } from './OrdersPage'
+import { OrderEditor } from './OrderEditor'
 import { useConfirm } from '../../shared/ui/confirm'
-import { isLive, linesCases, linesTotal, planDates, useDrivers, useLoadLines, useOrdersFor, usePlans, type Plan , useLocaleDate } from './opsData'
+import { isLive, linesCases, linesTotal, planDates, useDrivers, useLoadLines, useOrdersFor, usePlans, type AdminOrder, type Plan , useLocaleDate } from './opsData'
 
 const useRouteLoad = (planId: string | null) => useQuery({
   queryKey: ['route-load', planId],
@@ -35,11 +37,15 @@ export default function LoadingPage() {
   const shown = dayPlans.filter((p) => (p.vehicle_id ?? 'none') === truck)
   const plan = shown.find((p) => p.id === planId) ?? shown[0]
   const count = (k: string) => dayPlans.filter((p) => (p.vehicle_id ?? 'none') === k).length
+  const isAdmin = useAuth().profile?.role === 'admin'
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<{ shop: Shop; plan: Plan; order?: AdminOrder } | null>(null)
 
   return (
     <section className="stack-lg">
       <div className="no-print stack-lg">
-        <PageHeader title={t('loading.title')} sub={t('loading.sub')} />
+        <PageHeader title={t('loading.title')} sub={t('loading.sub')}
+          actions={isAdmin && dayPlans.length > 0 && <button type="button" className="primary" onClick={() => setAdding(true)}><Plus size={18} aria-hidden="true" />{t('orders.new')}</button>} />
         {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} onChange={(d) => { setDate(d); setPlanId(null); setTruck(null) }} />}
         {dayPlans.length > 0 && (
           <label className="field" style={{ maxWidth: 320 }}><span>{t('loading.vehicle')}</span>
@@ -57,6 +63,17 @@ export default function LoadingPage() {
       {!plans.isLoading && dayPlans.length === 0 && <div className="card"><Empty icon={<Truck size={26} />} title={t('loading.noPlans')} /></div>}
       {!plans.isLoading && dayPlans.length > 0 && !plan && <div className="card"><Empty icon={<Truck size={26} />} title={t('loading.noTripForTruck')}><p>{t('loading.noTripHint')}</p></Empty></div>}
       {plan && <PlanLoad key={plan.id} plan={plan} dateLabel={fmt(plan.date, true)} />}
+      {/* Take an order straight onto the truck being looked at. */}
+      <Sheet open={adding} title={t('orders.new')} onClose={() => setAdding(false)}>
+        {adding && <AddOrder initialDate={day} initialVehicle={truck !== 'none' ? truck : undefined}
+          onReady={(shop, p, order) => { setAdding(false); setEditing({ shop, plan: p, order }) }} />}
+      </Sheet>
+      <Sheet open={!!editing} wide title={editing ? `${editing.shop.name} · ${fmt(editing.plan.date)}` : ''} onClose={() => setEditing(null)}>
+        {editing && <OrderEditor key={editing.order?.id ?? editing.shop.id} shopId={editing.shop.id}
+          shopName={`${editing.plan.route.name} · ${fmt(editing.plan.date, true)}`} planId={editing.plan.id}
+          orderId={editing.order?.id} initial={Object.fromEntries((editing.order?.order_line ?? []).map((l) => [l.variant_id, l.qty_ordered]))}
+          editable onDone={() => { const p = editing.plan; setEditing(null); setDate(p.date); setTruck(p.vehicle_id ?? 'none'); setPlanId(p.id) }} />}
+      </Sheet>
     </section>
   )
 }
