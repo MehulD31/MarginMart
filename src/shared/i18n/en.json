@@ -505,8 +505,10 @@
       "out": "On the road",
       "closed": "Closed"
     },
-    "allTrucks": "All trucks",
-    "truckFixed": "This trip is on this truck. To send orders on another truck, use Move or New order on the Orders page."
+    "noTrip": "no orders",
+    "noTripForTruck": "No orders on this truck for this day",
+    "noTripHint": "Add orders for this truck from the Orders page (New order or Move).",
+    "assignTruck": "Assign truck"
   },
   "khata": {
     "title": "Khata",

@@ -27,32 +27,35 @@ export default function LoadingPage() {
   const day = date ?? dates[0] ?? ''
   const dayPlans = (plans.data ?? []).filter((p) => p.date === day)
   const [planId, setPlanId] = useState<string | null>(null)
-  const [truck, setTruck] = useState('all')
   const vehicles = useVehicles()
-  const vName = (id: string | null) => vehicles.data?.find((v) => v.id === id)?.name
-  // Each trip goes on one vehicle; the vehicle filter narrows the day's trips to that truck.
-  const trucks = [...new Set(dayPlans.map((p) => p.vehicle_id ?? 'none'))]
-  const shown = dayPlans.filter((p) => truck === 'all' || (p.vehicle_id ?? 'none') === truck)
+  // The Vehicle dropdown picks which truck you are looking at; only that truck's trips and orders show.
+  const firstTruck = dayPlans.find((p) => p.vehicle_id)?.vehicle_id ?? (dayPlans.length ? 'none' : '')
+  const [truckSel, setTruck] = useState<string | null>(null)
+  const truck = truckSel ?? firstTruck
+  const shown = dayPlans.filter((p) => (p.vehicle_id ?? 'none') === truck)
   const plan = shown.find((p) => p.id === planId) ?? shown[0]
+  const count = (k: string) => dayPlans.filter((p) => (p.vehicle_id ?? 'none') === k).length
 
   return (
     <section className="stack-lg">
       <div className="no-print stack-lg">
         <PageHeader title={t('loading.title')} sub={t('loading.sub')} />
-        {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} onChange={(d) => { setDate(d); setPlanId(null); setTruck('all') }} />}
+        {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} onChange={(d) => { setDate(d); setPlanId(null); setTruck(null) }} />}
         {dayPlans.length > 0 && (
-          <div className="segmented" role="tablist" aria-label={t('loading.vehicle')}>
-            {['all', ...trucks].map((k) => <button key={k} type="button" role="tab" className="btn-sm" aria-selected={truck === k} onClick={() => { setTruck(k); setPlanId(null) }}>
-              {k === 'all' ? t('loading.allTrucks') : k === 'none' ? t('orders.noVehicleYet') : vName(k)}</button>)}
-          </div>
+          <label className="field" style={{ maxWidth: 320 }}><span>{t('loading.vehicle')}</span>
+            <select value={truck} onChange={(e) => { setTruck(e.target.value); setPlanId(null) }}>
+              {vehicles.data?.filter((v) => v.active || count(v.id)).map((v) => <option key={v.id} value={v.id}>{v.name}{count(v.id) ? '' : ` (${t('loading.noTrip')})`}</option>)}
+              {count('none') > 0 && <option value="none">{t('orders.noVehicleYet')}</option>}
+            </select></label>
         )}
         {shown.length > 1 && (
           <div className="segmented" role="tablist" aria-label={t('shops.route')}>
-            {shown.map((p) => <button key={p.id} type="button" role="tab" className="btn-sm" aria-selected={plan?.id === p.id} onClick={() => setPlanId(p.id)}>{p.route.name} · {vName(p.vehicle_id) ?? t('orders.noVehicleYet')}</button>)}
+            {shown.map((p) => <button key={p.id} type="button" role="tab" className="btn-sm" aria-selected={plan?.id === p.id} onClick={() => setPlanId(p.id)}>{p.route.name}</button>)}
           </div>
         )}
       </div>
-      {!plans.isLoading && !plan && <div className="card"><Empty icon={<Truck size={26} />} title={t('loading.noPlans')} /></div>}
+      {!plans.isLoading && dayPlans.length === 0 && <div className="card"><Empty icon={<Truck size={26} />} title={t('loading.noPlans')} /></div>}
+      {!plans.isLoading && dayPlans.length > 0 && !plan && <div className="card"><Empty icon={<Truck size={26} />} title={t('loading.noTripForTruck')}><p>{t('loading.noTripHint')}</p></Empty></div>}
       {plan && <PlanLoad key={plan.id} plan={plan} dateLabel={fmt(plan.date, true)} />}
     </section>
   )
@@ -142,12 +145,12 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
           : t('loading.lockedNoteNoDriver', { vehicle: vehicle?.name ?? '—' }) }} />}
 
         <div className="card form-grid">
-          <label className="field"><span>{t('loading.vehicle')}</span>
+          <label className="field"><span>{plan.vehicle_id ? t('loading.vehicle') : t('loading.assignTruck')}</span>
             <select value={vehicleId} disabled={locked || !!plan.vehicle_id} onChange={(e) => void changeVehicle(e.target.value)}>
               <option value="">{t('loading.choose')}</option>
               {vehicles.data?.filter((v) => v.active).map((v) => <option key={v.id} value={v.id}>{v.name} ({t('network.cases', { n: v.capacity_cases })})</option>)}
             </select>
-            {!locked && plan.vehicle_id && <span className="hint">{t('loading.truckFixed')}</span>}</label>
+</label>
           <label className="field"><span>{t('loading.driver')}</span>
             <select value={driverId} disabled={locked} onChange={(e) => setDriverId(e.target.value)}>
               <option value="">{t('loading.choose')}</option>
