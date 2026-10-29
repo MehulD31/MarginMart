@@ -601,7 +601,7 @@
     "ordered": "{{n}} ऑर्डर",
     "extra": "गाड़ी से एक्स्ट्रा",
     "whyLess": "{{n}} कम क्यों?",
-    "addFromTruck": "गाड़ी से जोड़ें",
+    "addFromTruck": "गाड़ी से एक्स्ट्रा पेटी जोड़ें",
     "onTruck": "{{n}} खाली",
     "payment": "भुगतान",
     "payMode": "भुगतान का तरीका",
@@ -633,7 +633,8 @@
     "saveCollection": "{{amount}} सेव करें",
     "firstLoadOffline": "इंटरनेट नहीं है और आज का रूट इस फ़ोन में अभी सेव नहीं है। एक बार इंटरनेट से खोलें, फिर बिना इंटरनेट भी चलेगा।",
     "truckStock_one": "गाड़ी में: {{count}} पेटी",
-    "truckStock_other": "गाड़ी में: {{count}} पेटी"
+    "truckStock_other": "गाड़ी में: {{count}} पेटी",
+    "searchShop": "दुकान का नाम या फ़ोन खोजें"
   },
   "eod": {
     "title": "दिन का हिसाब",

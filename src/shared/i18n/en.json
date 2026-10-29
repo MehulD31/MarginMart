@@ -601,7 +601,7 @@
     "ordered": "ordered {{n}}",
     "extra": "extra from truck",
     "whyLess": "Why {{n}} less?",
-    "addFromTruck": "Add from the truck",
+    "addFromTruck": "Add extra crates from truck",
     "onTruck": "{{n}} free",
     "payment": "Payment",
     "payMode": "Payment mode",
@@ -633,7 +633,8 @@
     "saveCollection": "Save {{amount}}",
     "firstLoadOffline": "No internet, and today's route is not saved on this phone yet. Connect once to load it; after that it works offline.",
     "truckStock_one": "On the truck: {{count}} case",
-    "truckStock_other": "On the truck: {{count}} cases"
+    "truckStock_other": "On the truck: {{count}} cases",
+    "searchShop": "Search shop name or phone"
   },
   "eod": {
     "title": "End of day",

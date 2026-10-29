@@ -558,3 +558,8 @@ details[open].card summary::before { content: '− '; }
 .kpi-link > .stat { height: 100%; transition: box-shadow .15s, transform .15s; }
 .kpi-link:hover > .stat { box-shadow: 0 4px 14px rgb(0 0 0 / .08); transform: translateY(-1px); }
 .kpi-link:focus-visible { outline: 2px solid var(--green, #16a34a); outline-offset: 2px; }
+
+/* Driver: big search bar at the top of the stop list. */
+.driver-search { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface, #fff); border: 2px solid var(--border, #d0d5dd); border-radius: 14px; }
+.driver-search input { flex: 1; border: 0; outline: 0; font-size: 18px; min-height: 40px; background: transparent; padding: 0; box-shadow: none; }
+.driver-search:focus-within { border-color: var(--primary, #2563eb); }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Banknote, CircleCheck, CloudOff, Lock, LogOut, MapPin, MessageCircle, Package, Phone, RefreshCw, Smartphone, Truck, Wallet } from 'lucide-react'
+import { ArrowLeft, Banknote, CircleCheck, CloudOff, Lock, LogOut, MapPin, MessageCircle, Package, Phone, RefreshCw, Search, Smartphone, Truck, Wallet } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise, rupeesToPaise } from '../../shared/money'
 import { netRate } from '../../shared/pricing'
@@ -77,6 +77,7 @@ function StopList({ day }: { day: Day }) {
   const stops = useStops(snap, day.queue)
   const stock = useTruckStock(snap, day.queue)
   const [showStock, setShowStock] = useState(false)
+  const [q, setQ] = useState('')
   const { i18n } = useTranslation()
 
   if (!snap.plan) {
@@ -89,7 +90,6 @@ function StopList({ day }: { day: Day }) {
   }
 
   const withOrder = stops.filter((s) => s.order)
-  const done = stops.filter((s) => s.invoice || s.queued).length
   const doneOrders = withOrder.filter((s) => s.invoice || s.queued).length
   const queuedPay = day.queue.filter((q) => q.status === 'pending').map((q) => q.args.p_payment as { mode: string; amount_paise: number } | undefined ?? (q.kind === 'payment' ? { mode: q.args.p_mode as string, amount_paise: q.args.p_amount_paise as number } : undefined)).filter(Boolean) as { mode: string; amount_paise: number }[]
   const cash = snap.payments.filter((p) => p.payment_mode === 'cash').reduce((a, p) => a - p.amount_paise, 0) + queuedPay.filter((p) => p.mode === 'cash').reduce((a, p) => a + p.amount_paise, 0)
@@ -97,30 +97,24 @@ function StopList({ day }: { day: Day }) {
   const casesLeft = [...stock.values()].reduce((a, n) => a + Math.max(0, n), 0)
   const sorted = [...stops].sort((a, b) => Number(!!(a.invoice || a.queued)) - Number(!!(b.invoice || b.queued)) || Number(!a.order) - Number(!b.order) || a.shop.stop_seq - b.shop.stop_seq)
 
+  const needle = q.trim().toLowerCase()
+  const found = needle ? sorted.filter((s) => `${s.shop.name} ${s.shop.owner_name ?? ''} ${s.shop.phone ?? ''}`.toLowerCase().includes(needle)) : sorted
+
   return (
     <div className="stack-lg">
-      <section className="hero on-dark" aria-label={t('driver.today')}>
-        <div className="grow">
-          <p className="hero-kicker">{snap.plan.route.name} · {snap.plan.vehicle?.name}</p>
-          <h1>{fmt(snap.plan.date, true)}</h1>
-          <p className="hero-sub">{t('driver.progress', { done: doneOrders, total: withOrder.length })}</p>
-        </div>
-        <div className="ring" style={{ ['--p' as string]: withOrder.length ? Math.round((doneOrders / withOrder.length) * 100) : 0 }} aria-hidden="true">
-          <span><b>{doneOrders}</b><small>/ {withOrder.length}</small></span>
-        </div>
-      </section>
+      {/* Search first: type the shop name, tap it, deliver everything on one page. */}
+      <div className="driver-search">
+        <Search size={20} aria-hidden="true" />
+        <input type="search" autoFocus value={q} onChange={(e) => setQ(e.target.value)}
+          aria-label={t('driver.searchShop')} placeholder={t('driver.searchShop')} />
+      </div>
+      <p className="muted">{snap.plan.route.name} · {snap.plan.vehicle?.name} · {fmt(snap.plan.date)} · {t('driver.progress', { done: doneOrders, total: withOrder.length })}</p>
       {day.stale && <Alert msg={{ kind: 'warn', text: t('driver.staleNote', { time: new Date(day.savedAt!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }) }} />}
       <FailedActions day={day} />
 
-      <div className="stats">
-        <div className="stat kpi kpi-green"><span className="kpi-icon" aria-hidden="true"><Banknote size={18} /></span><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(cash)}</div></div>
-        <div className="stat kpi kpi-blue"><span className="kpi-icon" aria-hidden="true"><Smartphone size={18} /></span><div className="label">UPI</div><div className="value num">{formatPaise(upi)}</div></div>
-      </div>
-      <button type="button" className="btn-block" onClick={() => setShowStock(true)}><Package size={18} aria-hidden="true" />{t('driver.truckStock', { count: casesLeft })}</button>
-
-      <h2>{t('driver.stops', { n: done, total: stops.length })}</h2>
+      {found.length === 0 && <p className="muted">{t('common.noMatches')}</p>}
       <ul className="plain-list stop-list">
-        {sorted.map((s) => {
+        {found.map((s) => {
           const cases = s.order?.order_line.reduce((a, l) => a + l.qty_ordered, 0) ?? 0
           const state = s.invoice ? 'done' : s.queued ? (s.queued.status === 'failed' ? 'bad' : 'wait') : s.order ? 'todo' : 'none'
           return (
@@ -137,6 +131,11 @@ function StopList({ day }: { day: Day }) {
         })}
       </ul>
 
+      <div className="stats">
+        <div className="stat kpi kpi-green"><span className="kpi-icon" aria-hidden="true"><Banknote size={18} /></span><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(cash)}</div></div>
+        <div className="stat kpi kpi-blue"><span className="kpi-icon" aria-hidden="true"><Smartphone size={18} /></span><div className="label">UPI</div><div className="value num">{formatPaise(upi)}</div></div>
+      </div>
+      <button type="button" className="btn-block" onClick={() => setShowStock(true)}><Package size={18} aria-hidden="true" />{t('driver.truckStock', { count: casesLeft })}</button>
       <Link to="close" className="button btn-block"><Lock size={18} aria-hidden="true" />{t('eod.title')}</Link>
 
       <Sheet open={showStock} title={t('driver.truckStockTitle')} onClose={() => setShowStock(false)}>
@@ -217,6 +216,7 @@ function StopScreen({ day }: { day: Day }) {
 
   const lines = ids.filter((id) => cat.has(id))
   const extraChoices = snap.catalog.filter((c) => avail(c.variant.id) > 0 && !(c.variant.id in qty) && c.price)
+    .sort((a, b) => variantLabel(a, hi).localeCompare(variantLabel(b, hi), i18n.language))
 
   return (
     <div className="stack-lg">
