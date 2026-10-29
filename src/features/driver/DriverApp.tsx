@@ -13,6 +13,7 @@ import { useLocaleDate } from '../admin/opsData'
 import { dropAction, enqueue, retryFailed, type QueuedAction } from './offline'
 import { useDriverDay, useTruckStock, variantLabel, type DShop, type Snapshot } from './data'
 import { EndOfDay } from './EndOfDay'
+import { LoadTrip, TripStrip } from './DriverTrips'
 
 type Day = ReturnType<typeof useDriverDay>
 const REASONS = ['out_of_stock', 'shop_refused', 'damaged', 'shop_closed', 'other'] as const
@@ -28,6 +29,7 @@ export default function DriverApp() {
           <Routes>
             <Route index element={<StopList day={day} />} />
             <Route path="stop/:shopId" element={<StopScreen day={day} />} />
+            <Route path="load/:planId" element={day.snap ? <LoadTrip snap={day.snap} onLocked={() => void day.refetch()} /> : <Navigate to="/driver" replace />} />
             <Route path="close" element={day.snap?.plan ? <EndOfDay day={day} /> : <Navigate to="/driver" replace />} />
             <Route path="*" element={<Navigate to="/driver" replace />} />
           </Routes>
@@ -83,6 +85,7 @@ function StopList({ day }: { day: Day }) {
   if (!snap.plan) {
     return (
       <div className="stack-lg">
+        <TripStrip />
         <div className="card"><Empty icon={<Truck size={26} />} title={t('driver.noPlan')}><p>{t('driver.noPlanHint')}</p></Empty></div>
         <button type="button" className="danger btn-block" onClick={() => void signOut()}><LogOut size={18} aria-hidden="true" />{t('nav.logout')}</button>
       </div>
@@ -104,6 +107,7 @@ function StopList({ day }: { day: Day }) {
 
   return (
     <div className="stack-lg">
+      <TripStrip activeId={snap.plan.id} />
       {/* Search first: type the shop name, tap it, deliver everything on one page. */}
       <div className="driver-search">
         <Search size={20} aria-hidden="true" />

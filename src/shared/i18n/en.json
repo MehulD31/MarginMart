@@ -579,7 +579,7 @@
     "synced": "Synced",
     "today": "Today's route",
     "noPlan": "No route for you today",
-    "noPlanHint": "When the manager locks your truck, your stops show here.",
+    "noPlanHint": "Tap a date above to see its orders and load the truck.",
     "progress": "{{done}} of {{total}} orders delivered",
     "staleNote": "No internet. Showing data saved at {{time}}. Deliveries are saved on this phone and sync later.",
     "cash": "Cash",
@@ -644,7 +644,12 @@
     "truckStock_one": "On the truck: {{count}} case",
     "truckStock_other": "On the truck: {{count}} cases",
     "searchShop": "Search any shop name or phone",
-    "nothingSpare": "Nothing spare left on the truck to sell."
+    "nothingSpare": "Nothing spare left on the truck to sell.",
+    "myTrips": "My trips",
+    "tripOrders": "{{n}} orders",
+    "confirmLoad": "Lock the load: {{n}} shops, {{cases}} cases go on the truck and leave stock. Orders can no longer be changed.",
+    "orderedSpare": "{{o}} ordered + {{s}} spare",
+    "loadTruck": "Load truck ({{n}} cases)"
   },
   "eod": {
     "title": "End of day",

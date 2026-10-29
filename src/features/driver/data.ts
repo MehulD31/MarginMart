@@ -20,8 +20,35 @@ export interface Snapshot {
   catalog: { variant: Variant; pack: Pack; price: PriceListItem | null }[]
 }
 
+const tomorrowIST = () => new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+const yesterdayIST = () => new Date(Date.now() - 86_400_000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+
+export interface DTrip {
+  id: string; date: string; status: 'planning' | 'loaded' | 'out' | 'closed'; vehicle_id: string | null
+  route: { name: string }; vehicle: { name: string } | null; orders: { id: string; status: string }[]
+}
+/** This vehicle's trips from yesterday on: the date strip at the top of the driver app. Online only. */
+export function useDriverTrips() {
+  const { profile } = useAuth()
+  return useQuery({
+    queryKey: ['driver-trips', profile?.vehicle_id],
+    enabled: !!profile?.vehicle_id,
+    queryFn: () => must<DTrip[]>(supabase.from('route_day_plan').select('id, date, status, vehicle_id, route(name), vehicle(name), orders(id, status)')
+      .eq('vehicle_id', profile!.vehicle_id!).gte('date', yesterdayIST()).neq('status', 'closed').order('date').order('created_at')),
+    refetchInterval: 60_000,
+  })
+}
+
+export interface DTripOrder { id: string; status: string; shop: { name: string; stop_seq: number; phone: string | null }; order_line: { variant_id: string; qty_ordered: number }[] }
+export const useTripOrders = (planId: string | undefined) => useQuery({
+  queryKey: ['driver-trip-orders', planId],
+  enabled: !!planId,
+  queryFn: () => must<DTripOrder[]>(supabase.from('orders').select('id, status, shop(name, stop_seq, phone), order_line(variant_id, qty_ordered)')
+    .eq('route_day_plan_id', planId!).neq('status', 'cancelled')),
+})
+
 async function fetchSnapshot(): Promise<Snapshot> {
-  const plans = await must<DPlan[]>(supabase.from('route_day_plan').select('id, route_id, date, status, route(name), vehicle(name)').in('status', ['loaded', 'out']).order('date', { ascending: false }).limit(1))
+  const plans = await must<DPlan[]>(supabase.from('route_day_plan').select('id, route_id, date, status, route(name), vehicle(name)').in('status', ['loaded', 'out']).gte('date', yesterdayIST()).lte('date', tomorrowIST()).order('date').limit(1))
   const plan = plans[0] ?? null
   const [shops, packs, variants, prices] = await Promise.all([
     must<DShop[]>(supabase.from('shop').select('id, name, owner_name, phone, address, stop_seq, route_id').eq('active', true).order('stop_seq')),
