@@ -14,6 +14,8 @@ import { dropAction, enqueue, retryFailed, type QueuedAction } from './offline'
 import { useDriverDay, useTruckStock, variantLabel, type DShop, type Snapshot } from './data'
 import { EndOfDay } from './EndOfDay'
 import { LoadTrip, TripStrip } from './DriverTrips'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 type Day = ReturnType<typeof useDriverDay>
 const REASONS = ['out_of_stock', 'shop_refused', 'damaged', 'shop_closed', 'other'] as const
@@ -81,6 +83,17 @@ function StopList({ day }: { day: Day }) {
   const [showStock, setShowStock] = useState(false)
   const [q, setQ] = useState('')
   const { i18n } = useTranslation()
+  const vehicleId = useAuth().profile?.vehicle_id
+
+  const sorted = [...stops].sort((a, b) => Number(!!(a.invoice || a.queued)) - Number(!!(b.invoice || b.queued)) || Number(!a.order) - Number(!b.order) || a.shop.stop_seq - b.shop.stop_seq)
+
+  const needle = q.trim().toLowerCase()
+  // No search: today's route plus anyone with an order or bill. Search: every active shop (van sale anywhere).
+  // His whole area: every shop on a route this vehicle covers (3 rounds x 50), plus anyone with an order or bill.
+  const onTrip = sorted.filter((s) => s.order || s.invoice || s.queued || s.shop.route_id === snap.plan?.route_id
+    || (!!vehicleId && s.shop.route?.default_vehicle_id === vehicleId))
+  const found = needle ? sorted.filter((s) => `${s.shop.name} ${s.shop.owner_name ?? ''} ${s.shop.phone ?? ''}`.toLowerCase().includes(needle)) : onTrip
+  const pg = usePaged(found)
 
   if (!snap.plan) {
     return (
@@ -98,12 +111,6 @@ function StopList({ day }: { day: Day }) {
   const cash = snap.payments.filter((p) => p.payment_mode === 'cash').reduce((a, p) => a - p.amount_paise, 0) + queuedPay.filter((p) => p.mode === 'cash').reduce((a, p) => a + p.amount_paise, 0)
   const upi = snap.payments.filter((p) => p.payment_mode === 'upi').reduce((a, p) => a - p.amount_paise, 0) + queuedPay.filter((p) => p.mode === 'upi').reduce((a, p) => a + p.amount_paise, 0)
   const casesLeft = [...stock.values()].reduce((a, n) => a + Math.max(0, n), 0)
-  const sorted = [...stops].sort((a, b) => Number(!!(a.invoice || a.queued)) - Number(!!(b.invoice || b.queued)) || Number(!a.order) - Number(!b.order) || a.shop.stop_seq - b.shop.stop_seq)
-
-  const needle = q.trim().toLowerCase()
-  // No search: today's route plus anyone with an order or bill. Search: every active shop (van sale anywhere).
-  const onTrip = sorted.filter((s) => s.order || s.invoice || s.queued || !s.shop.route_id || s.shop.route_id === snap.plan!.route_id)
-  const found = needle ? sorted.filter((s) => `${s.shop.name} ${s.shop.owner_name ?? ''} ${s.shop.phone ?? ''}`.toLowerCase().includes(needle)) : onTrip
 
   return (
     <div className="stack-lg">
@@ -120,7 +127,7 @@ function StopList({ day }: { day: Day }) {
 
       {found.length === 0 && <p className="muted">{t('common.noMatches')}</p>}
       <ul className="plain-list stop-list">
-        {found.map((s) => {
+        {pg.rows.map((s) => {
           const cases = s.order?.order_line.reduce((a, l) => a + l.qty_ordered, 0) ?? 0
           const state = s.invoice ? 'done' : s.queued ? (s.queued.status === 'failed' ? 'bad' : 'wait') : s.order ? 'todo' : 'none'
           return (
@@ -136,6 +143,7 @@ function StopList({ day }: { day: Day }) {
             </li>)
         })}
       </ul>
+      <Pager p={pg} />
 
       <div className="stats">
         <div className="stat kpi kpi-green"><span className="kpi-icon" aria-hidden="true"><Banknote size={18} /></span><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(cash)}</div></div>
