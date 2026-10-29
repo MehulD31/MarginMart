@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, Phone, Plus } from 'lucide-react'
+import { ArrowRightLeft, ClipboardList, Phone, Plus, Truck } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must, useVehicles, type Shop } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
@@ -51,6 +51,9 @@ export default function OrdersPage() {
   const [picking, setPicking] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [moving, setMoving] = useState<AdminOrder | null>(null)
+  const vehicles = useVehicles()
+  const vName = (id: string | null) => vehicles.data?.find((v) => v.id === id)?.name
   const isAdmin = useAuth().profile?.role === 'admin'
 
   const planById = new Map(dayPlans.map((p) => [p.id, p]))
@@ -70,6 +73,7 @@ export default function OrdersPage() {
             <button key={p.route_id || 'all'} type="button" role="tab" className="btn-sm" aria-selected={route === p.route_id} onClick={() => setRoute(p.route_id)}>{p.route.name}</button>))}
         </div>
       )}
+      {isAdmin && dayPlans.length > 0 && <TripBar plans={dayPlans} />}
       {cancelledCount > 0 && <label className="chip"><input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />{t('orders.showCancelled', { n: cancelledCount })}</label>}
       {orders.isLoading ? <Skeleton rows={4} /> : list.length === 0 ? (
         <div className="card"><Empty icon={<ClipboardList size={26} />} title={t('orders.empty')}><p>{t('orders.emptyHint')}</p></Empty></div>
@@ -80,13 +84,14 @@ export default function OrdersPage() {
             <tbody>{list.map((o) => (
               <tr key={o.id} className={isLive(o) ? '' : 'dim'}>
                 <td className="lead"><div className="cell-title">{o.shop.name}</div>
-                  <div className="cell-sub">{planById.get(o.route_day_plan_id)?.route.name} · #{o.shop.stop_seq} · {t(`orders.source.${o.source}`)}</div></td>
+                  <div className="cell-sub">{planById.get(o.route_day_plan_id)?.route.name} · {vName(planById.get(o.route_day_plan_id)?.vehicle_id ?? null) ?? t('orders.noVehicleYet')} · #{o.shop.stop_seq} · {t(`orders.source.${o.source}`)}</div></td>
                 <td data-label={t('orders.cases')} className="num">{linesCases(o)}</td>
                 <td data-label={t('shop.total')} className="num"><strong>{formatPaise(linesTotal(o))}</strong></td>
                 <td data-label={t('users.status')}><span className={`badge ${STATUS_BADGE[o.status]}`}>{t(`shop.status.${o.status}`)}</span>
                   {o.cancel_reason && o.status === 'cancelled' && <div className="cell-sub">{o.cancel_reason}</div>}</td>
                 <td className="actions">
                   {o.shop.phone && <a className="button btn-sm" href={`tel:+91${o.shop.phone}`} aria-label={`${t('shops.call')} ${o.shop.name}`}><Phone size={16} aria-hidden="true" /></a>}
+                  {isAdmin && o.status === 'placed' && planById.get(o.route_day_plan_id)?.status === 'planning' && <button type="button" className="btn-sm" onClick={() => setMoving(o)}><ArrowRightLeft size={16} aria-hidden="true" />{t('orders.move')}</button>}
                   <button type="button" className="btn-sm" onClick={() => setOpen({ order: o, plan: planById.get(o.route_day_plan_id)! })}>{o.status === 'placed' ? t('common.edit') : t('common.view')}</button>
                 </td>
               </tr>))}
@@ -101,6 +106,9 @@ export default function OrdersPage() {
           const existing = (orders.data ?? []).find((o) => o.shop_id === shop.id && o.status === 'placed' && o.route_day_plan_id === plan.id)
           setOpen({ order: existing, shop, plan })
         }} />}
+      </Sheet>
+      <Sheet open={!!moving} title={moving ? `${t('orders.move')}: ${moving.shop.name}` : ''} onClose={() => setMoving(null)}>
+        {moving && <MoveOrder order={moving} initialDate={day} onDone={() => setMoving(null)} />}
       </Sheet>
       <Sheet open={adding} title={t('orders.new')} onClose={() => setAdding(false)}>
         {adding && <AddOrder initialDate={day || todayIST()} onReady={(shop, plan, order) => { setAdding(false); setDate(plan.date); setRoute(''); setOpen({ shop, plan, order }) }} />}
@@ -234,6 +242,74 @@ function AddOrder({ initialDate, onReady }: { initialDate: string; onReady: (s: 
         {err && <Alert msg={{ kind: 'error', text: err }} />}
         <div className="row"><button type="button" className="primary" disabled={busy || (tripId !== NEW && !chosen)} onClick={() => void go()}>{t('orders.continue')}</button></div>
       </>}
+    </div>
+  )
+}
+/** Admin: the trucks going on this day. Set or change the vehicle for each trip until it is loaded. */
+function TripBar({ plans }: { plans: Plan[] }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const vehicles = useVehicles()
+  const [err, setErr] = useState<string | null>(null)
+  const set = async (p: Plan, vehicleId: string) => {
+    setErr(null)
+    try {
+      await must(supabase.rpc('add_delivery_day', { p_route_id: p.route_id, p_date: p.date, p_vehicle_id: vehicleId }))
+      await qc.invalidateQueries({ queryKey: ['plans'] })
+    } catch (e) { setErr(errorMessage(t, e)) }
+  }
+  return (
+    <div className="stack">
+      <div className="row" style={{ flexWrap: 'wrap' }}>
+        {plans.map((p) => (
+          <label key={p.id} className="field card" style={{ minWidth: 220, padding: 12 }}>
+            <span><Truck size={14} aria-hidden="true" /> {t('orders.tripVehicle', { route: p.route.name })}</span>
+            <select value={p.vehicle_id ?? ''} disabled={p.status !== 'planning'} onChange={(e) => e.target.value && void set(p, e.target.value)}>
+              <option value="">{t('orders.chooseAtLoading')}</option>
+              {vehicles.data?.filter((v) => v.active || v.id === p.vehicle_id).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </label>))}
+      </div>
+      {err && <Alert msg={{ kind: 'error', text: err }} />}
+    </div>
+  )
+}
+
+/** Admin: move an open order onto another open trip (another truck and/or another day). */
+function MoveOrder({ order, initialDate, onDone }: { order: AdminOrder; initialDate: string; onDone: () => void }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const [date, setDate] = useState(initialDate)
+  const [err, setErr] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const trips = useQuery({
+    queryKey: ['plans', 'on', date],
+    enabled: !!date,
+    queryFn: () => must<PlanRow[]>(supabase.from('route_day_plan').select('id, route_id, date, status, vehicle_id, driver_id, route(name), vehicle(name)').eq('date', date).order('created_at')),
+  })
+  const list = (trips.data ?? []).filter((p) => p.status === 'planning' && p.id !== order.route_day_plan_id)
+  const move = async (p: PlanRow) => {
+    setErr(null); setBusy(true)
+    try {
+      await must(supabase.rpc('move_order', { p_order_id: order.id, p_plan_id: p.id }))
+      for (const k of ['plans', 'admin-orders', 'admin-order-counts']) void qc.invalidateQueries({ queryKey: [k] })
+      onDone()
+    } catch (e) { setErr(errorMessage(t, e)) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="stack">
+      <label className="field"><span>{t('orders.deliveryDay')}</span>
+        <input type="date" min={todayIST()} max={addDays(todayIST(), 14)} value={date} onChange={(e) => setDate(e.target.value)} /></label>
+      {trips.isLoading ? <Skeleton /> : list.length === 0 ? <p className="muted">{t('orders.noOtherTrips')}</p> : (
+        <ul className="plain-list more-list">{list.map((p) => (
+          <li key={p.id}><button type="button" className="btn-block" disabled={busy} onClick={() => void move(p)}>
+            <span className="grow" style={{ textAlign: 'left' }}><span className="cell-title">{p.route.name}</span>
+              <span className="cell-sub" style={{ display: 'block' }}>{p.vehicle?.name ?? t('orders.noVehicleYet')}</span></span>
+          </button></li>))}</ul>
+      )}
+      <p className="muted">{t('orders.moveHint')}</p>
+      {err && <Alert msg={{ kind: 'error', text: err }} />}
     </div>
   )
 }

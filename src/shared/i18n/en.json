@@ -161,7 +161,8 @@
     "ALREADY_DELIVERED": "This shop is already delivered.",
     "PLAN_NOT_OUT": "This route is not out for delivery.",
     "APPEND_ONLY": "Entries cannot be changed. Use Void instead.",
-    "ALREADY_VOIDED": "Already voided."
+    "ALREADY_VOIDED": "Already voided.",
+    "ORDER_EXISTS": "This shop already has an open order on that trip. Edit that order instead."
   },
   "days": {
     "1": "Mon",
@@ -462,7 +463,11 @@
     "chooseAtLoading": "Choose at loading",
     "vehicleHint": "The vehicle is set for the whole trip. You can still change it on the Loading page.",
     "changeShop": "Change",
-    "continue": "Continue"
+    "continue": "Continue",
+    "move": "Move",
+    "tripVehicle": "{{route}} truck",
+    "noOtherTrips": "No other open trips on this day. Use New order to add a trip.",
+    "moveHint": "Only trips not yet loaded are shown."
   },
   "loading": {
     "title": "Loading sheet",
