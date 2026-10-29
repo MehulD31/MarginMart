@@ -24,6 +24,18 @@ dist-ssr
 *.sw?
 MarginMart_Admin_Analysis.md
 
+# Secrets and runtime files
+.env
+*.session
+__pycache__/
+test-results/
+playwright-report/
+supabase/.temp/
+supabase/.branches/
+
 # Agents
 .agents/
 skills-lock.json
+# Local MCP config holds tokens
+.kiro/settings/
+scratch/

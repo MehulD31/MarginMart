@@ -1,0 +1,39 @@
+name: Nightly database backup
+
+on:
+  schedule:
+    - cron: '30 21 * * *' # 03:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Dump and encrypt
+        env:
+          # Session pooler URL (IPv4), e.g. postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_DB_URL" || { echo "SUPABASE_DB_URL secret missing"; exit 1; }
+          test -n "$BACKUP_PASSPHRASE" || { echo "BACKUP_PASSPHRASE secret missing"; exit 1; }
+          stamp=$(date -u +%Y-%m-%dT%H%M)
+          docker run --rm -e DB="$SUPABASE_DB_URL" postgres:17 \
+            sh -c 'pg_dump "$DB" --format=custom --no-owner --no-privileges --schema=public --schema=auth' > db.dump
+          test -s db.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 -o "marginmart-$stamp.dump.gpg" db.dump
+          rm db.dump
+          ls -lh marginmart-*.dump.gpg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: marginmart-*.dump.gpg
+          retention-days: 30
+          if-no-files-found: error

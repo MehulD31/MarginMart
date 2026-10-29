@@ -7,16 +7,21 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "review": "playwright test tests/review"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
-    "framer-motion": "^12.38.0",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
+    "@tanstack/react-query": "5.105.0",
+    "exceljs": "4.4.0",
+    "i18next": "26.5.11",
+    "idb": "8.0.4",
     "lucide-react": "^1.11.0",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "react-i18next": "17.1.9",
+    "react-router": "8.5.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -31,6 +36,8 @@
     "globals": "^17.5.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "5.0.5"
   }
 }

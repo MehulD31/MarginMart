@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# MarginMart
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+B2B ordering and distribution platform for a beverage dealer (PepsiCo first). Shops order from their phones, the manager plans truck loads, drivers deliver and collect, and admins see dues, stock and profit.
 
-Currently, two official plugins are available:
+Docs: [PRD](docs/PRD.md), [HLD](docs/HLD.md), [Release 1 tasks](docs/TASKS-R1.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
+React 19, Vite, TypeScript, React Router, TanStack Query, i18next (Hindi/English). Supabase handles Postgres, auth and storage. Hosted on Vercel. Everything runs on free tiers.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Setup
+```powershell
+npm install
+Copy-Item .env.example .env.local   # then fill in the Supabase URL and anon key
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+| Variable | What |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key. Never use the service role key here |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Commands
+| Command | What |
+|---|---|
+| `npm run dev` | Dev server at http://localhost:5173 |
+| `npm run build` | Type-check and production build |
+| `npm run lint` | ESLint |
+| `npm test` | Unit tests (Vitest) |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Database
+Schema changes go only through SQL migrations in `supabase/migrations/`, never through the dashboard. The old deal-sourcing app is archived at git tag `v0-deal-sourcing`.
+
+## Backups
+`.github/workflows/backup.yml` runs every night at 03:00 IST (and on demand from the Actions tab). It dumps the `public` and `auth` schemas, encrypts the dump with AES-256, and keeps it as a workflow artifact for 30 days.
+
+One-time setup in GitHub → Settings → Secrets and variables → Actions:
+| Secret | What |
+|---|---|
+| `SUPABASE_DB_URL` | Supabase → Connect → **Session pooler** connection string, with the database password filled in |
+| `BACKUP_PASSPHRASE` | A long random passphrase. Store it somewhere safe outside GitHub; without it the backups can't be opened |
+
+Restore (test this once into a scratch project, not production):
+```powershell
+gpg --decrypt marginmart-<stamp>.dump.gpg > db.dump
+pg_restore --no-owner --no-privileges --clean --if-exists -d "<target db url>" db.dump
 ```
+
+## Deploy (Vercel)
+1. Import the GitHub repo in Vercel. Framework preset: Vite. Build `npm run build`, output `dist`.
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under Project → Settings → Environment Variables.
+3. `vercel.json` already rewrites all paths to `index.html`, so deep links like `/driver/close` work.
+4. In Supabase → Authentication → URL Configuration, set the Site URL to the Vercel domain.
+
+Before the pilot, run `supabase/qa/teardown.sql` to remove test data and restart bill numbers.
