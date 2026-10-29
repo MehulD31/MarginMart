@@ -10,6 +10,8 @@ import { useCreditStatus, useLedger, type LedgerEntry } from '../../shared/ledge
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { BalanceCards, LedgerList } from '../../shared/ui/Khata'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 interface Row { shop: Shop; balance: number; overdue: number; lastPay: string | null }
 
@@ -41,6 +43,7 @@ export default function KhataPage() {
     .sort((a, b) => b.overdue - a.overdue || b.balance - a.balance), [list.data, filter, q])
   const totals = (list.data ?? []).reduce((a, r) => ({ due: a.due + Math.max(0, r.balance), overdue: a.overdue + r.overdue, adv: a.adv + Math.max(0, -r.balance) }), { due: 0, overdue: 0, adv: 0 })
 
+  const pg = usePaged(rows)
   return (
     <section className="stack-lg">
       <PageHeader title={t('khata.title')} sub={t('khata.adminSub')} />
@@ -58,7 +61,7 @@ export default function KhataPage() {
       ) : (
         <div className="table-wrap"><table className="table-stack">
           <thead><tr><th scope="col">{t('shops.name')}</th><th scope="col">{t('khata.due')}</th><th scope="col">{t('khata.overdue')}</th><th scope="col"><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
-          <tbody>{rows.map((r) => (
+          <tbody>{pg.rows.map((r) => (
             <tr key={r.shop.id}>
               <td className="lead"><div className="cell-title">{r.shop.name}</div><div className="cell-sub">{routeName.get(r.shop.route_id)}{r.lastPay ? ` · ${t('khata.lastPaid', { date: new Date(r.lastPay).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) })}` : ''}</div></td>
               <td data-label={t('khata.due')} className="num"><strong>{r.balance < 0 ? `${t('khata.advance')} ${formatPaise(-r.balance)}` : formatPaise(r.balance)}</strong></td>
@@ -69,7 +72,7 @@ export default function KhataPage() {
               </td>
             </tr>))}
           </tbody>
-        </table></div>
+        </table><Pager p={pg} /></div>
       )}
       <Sheet open={!!open} wide title={open?.name} onClose={() => setOpen(null)}>
         {open && <ShopKhata shop={open} />}

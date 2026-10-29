@@ -14,6 +14,8 @@ import { PinIssued, type Issued } from './PinIssued'
 import { useAuth } from '../../shared/api/auth'
 import { useConfirm } from '../../shared/ui/confirm'
 import { downloadText } from '../../shared/ui/util'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 const useShops = () => useQuery({
   queryKey: ['shop'],
@@ -47,6 +49,7 @@ export default function ShopsPage() {
     && (!q || `${s.name} ${s.owner_name ?? ''} ${s.phone ?? ''} ${s.code ?? ''}`.toLowerCase().includes(q.toLowerCase())))
   const withLogin = all.filter((s) => logins.data?.has(s.id)).length
 
+  const pg = usePaged(list)
   return (
     <section className="stack-lg">
       <PageHeader title={t('shops.title')} sub={t('shops.sub', { n: all.length, l: withLogin })}
@@ -84,7 +87,7 @@ export default function ShopsPage() {
               <th scope="col">{t('shops.creditLimit')}</th><th scope="col">{t('shops.login')}</th>
               <th scope="col"><span className="sr-only">{t('common.actions')}</span></th>
             </tr></thead>
-            <tbody>{list.map((s) => (
+            <tbody>{pg.rows.map((s) => (
               <tr key={s.id} className={s.active ? '' : 'dim'}>
                 <td className="lead">
                   <div className="cell-title">{s.name} {!s.active && <StatusBadge active={false} />}</div>
@@ -101,7 +104,7 @@ export default function ShopsPage() {
                 </td>
               </tr>))}
             </tbody>
-          </table>
+          </table><Pager p={pg} />
         </div>
       )}
 

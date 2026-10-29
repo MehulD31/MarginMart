@@ -11,6 +11,8 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton } from '../../shared/ui/kit'
 import { OrderEditor } from './OrderEditor'
 import { isLive, linesCases, linesTotal, ordersByDate, planDates, useOrderCounts, useOrdersFor, usePlans, todayIST, addDays, type AdminOrder, type Plan } from './opsData'
 import { useLocaleDate } from './opsData'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 export function DateChips({ dates, value, counts, onChange }: { dates: string[]; value: string; counts?: Record<string, number>; onChange: (d: string) => void }) {
   const { t } = useTranslation()
@@ -62,6 +64,7 @@ export default function OrdersPage() {
   const list = forRoute.filter((o) => showCancelled || isLive(o)).sort((a, b) => a.shop.stop_seq - b.shop.stop_seq)
   const live = list.filter(isLive)
 
+  const pg = usePaged(list)
   return (
     <section className="stack-lg">
       <PageHeader title={t('orders.title')} sub={day ? t('orders.sub', { date: fmt(day, true), n: live.length, total: formatPaise(live.reduce((s, o) => s + linesTotal(o), 0)) }) : undefined}
@@ -81,7 +84,7 @@ export default function OrdersPage() {
         <div className="table-wrap">
           <table className="table-stack">
             <thead><tr><th scope="col">{t('shops.name')}</th><th scope="col">{t('orders.cases')}</th><th scope="col">{t('shop.total')}</th><th scope="col">{t('users.status')}</th><th scope="col"><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
-            <tbody>{list.map((o) => (
+            <tbody>{pg.rows.map((o) => (
               <tr key={o.id} className={isLive(o) ? '' : 'dim'}>
                 <td className="lead"><div className="cell-title">{o.shop.name}</div>
                   <div className="cell-sub">{planById.get(o.route_day_plan_id)?.route.name} · {vName(planById.get(o.route_day_plan_id)?.vehicle_id ?? null) ?? t('orders.noVehicleYet')} · #{o.shop.stop_seq} · {t(`orders.source.${o.source}`)}</div></td>
@@ -96,7 +99,7 @@ export default function OrdersPage() {
                 </td>
               </tr>))}
             </tbody>
-          </table>
+          </table><Pager p={pg} />
         </div>
       )}
 

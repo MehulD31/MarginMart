@@ -9,6 +9,8 @@ import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 interface Move { id: number; qty: number; kind: string; reason: string | null; balance_after: number; at: string }
 
@@ -27,6 +29,7 @@ export default function InventoryPage() {
   const cases = rows.reduce((a, r) => a + Math.max(r.on_hand, 0), 0)
   const current = rows.find((r) => r.variant_id === open)
 
+  const pg = usePaged(list)
   return (
     <section className="stack-lg">
       <PageHeader title={t('inventory.title')} sub={t('inventory.sub', { cases, value: formatPaise(value), low })} />
@@ -41,7 +44,7 @@ export default function InventoryPage() {
       ) : (
         <div className="table-wrap"><table className="table-stack">
           <thead><tr><th scope="col">{t('inventory.item')}</th><th scope="col">{t('inventory.onHand')}</th><th scope="col">{t('inventory.threshold')}</th><th scope="col">{t('inventory.avgCost')}</th><th scope="col">{t('inventory.value')}</th><th scope="col"><span className="sr-only">{t('common.edit')}</span></th></tr></thead>
-          <tbody>{list.map((r) => (
+          <tbody>{pg.rows.map((r) => (
             <tr key={r.variant_id} className={r.active ? '' : 'dim'}>
               <td className="lead"><div className="cell-title">{r.name}</div>{r.sub && <div className="cell-sub">{r.sub}</div>}</td>
               <td data-label={t('inventory.onHand')} className="num"><strong>{r.on_hand}</strong>{' '}
@@ -52,7 +55,7 @@ export default function InventoryPage() {
               <td className="actions"><button type="button" className="btn-sm" onClick={() => setOpen(r.variant_id)}>{isAdmin ? t('common.edit') : t('common.view')}</button></td>
             </tr>))}
           </tbody>
-        </table></div>
+        </table><Pager p={pg} /></div>
       )}
       <Sheet open={!!current} wide title={current?.name} onClose={() => setOpen(null)}>
         {current && <StockEditor key={current.variant_id} row={current} canEdit={isAdmin} />}

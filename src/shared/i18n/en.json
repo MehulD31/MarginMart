@@ -50,7 +50,11 @@
     "noMatches": "Nothing matches your search.",
     "copy": "Copy message",
     "copied": "Copied",
-    "yes": "Yes"
+    "yes": "Yes",
+    "pages": "Pages",
+    "showing": "{{from}}–{{to}} of {{total}}",
+    "prev": "Previous page",
+    "next": "Next page"
   },
   "login": {
     "title": "Log in",

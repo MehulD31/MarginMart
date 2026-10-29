@@ -573,3 +573,6 @@ details[open].card summary::before { content: '− '; }
 .driver-search { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface, #fff); border: 2px solid var(--border, #d0d5dd); border-radius: 14px; }
 .driver-search input { flex: 1; border: 0; outline: 0; font-size: 18px; min-height: 40px; background: transparent; padding: 0; box-shadow: none; }
 .driver-search:focus-within { border-color: var(--primary, #2563eb); }
+
+.pager { padding: 10px 14px; border-top: 1px solid var(--line-2, #eef2f6); flex-wrap: wrap; gap: 8px; }
+@media print { .pager { display: none; } }
