@@ -69,7 +69,7 @@ export default function OrdersPage() {
       {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} counts={countsByDate} onChange={(d) => { setDate(d); setRoute('') }} />}
       {dayPlans.length > 1 && (
         <div className="segmented" role="tablist" aria-label={t('shops.route')}>
-          {[{ route_id: '', route: { name: t('common.all') } }, ...dayPlans].map((p) => (
+          {[{ route_id: '', route: { name: t('common.all') } }, ...dayPlans.filter((p, i, a) => a.findIndex((x) => x.route_id === p.route_id) === i)].map((p) => (
             <button key={p.route_id || 'all'} type="button" role="tab" className="btn-sm" aria-selected={route === p.route_id} onClick={() => setRoute(p.route_id)}>{p.route.name}</button>))}
         </div>
       )}
@@ -257,7 +257,7 @@ function TripBar({ plans }: { plans: Plan[] }) {
   const set = async (p: Plan, vehicleId: string) => {
     setErr(null)
     try {
-      await must(supabase.rpc('add_delivery_day', { p_route_id: p.route_id, p_date: p.date, p_vehicle_id: vehicleId }))
+      await must(supabase.rpc('set_trip_vehicle', { p_plan_id: p.id, p_vehicle_id: vehicleId }))
       await qc.invalidateQueries({ queryKey: ['plans'] })
     } catch (e) { setErr(errorMessage(t, e)) }
   }

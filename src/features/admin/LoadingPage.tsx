@@ -119,7 +119,7 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
   const changeVehicle = async (id: string) => {
     setVehicleId(id)
     if (!id || profile?.role !== 'admin') return
-    const { error } = await supabase.rpc('add_delivery_day', { p_route_id: plan.route_id, p_date: plan.date, p_vehicle_id: id })
+    const { error } = await supabase.rpc('set_trip_vehicle', { p_plan_id: plan.id, p_vehicle_id: id })
     if (error) setMsg({ kind: 'error', text: errorMessage(t, error) }); else void qc.invalidateQueries({ queryKey: ['plans'] })
   }
   const setSpare = (id: string, n: number) => setSpares((s) => ({ ...s, [id]: Math.max(0, Math.min(999, Math.floor(n) || 0)) }))
@@ -143,10 +143,11 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
 
         <div className="card form-grid">
           <label className="field"><span>{t('loading.vehicle')}</span>
-            <select value={vehicleId} disabled={locked} onChange={(e) => void changeVehicle(e.target.value)}>
+            <select value={vehicleId} disabled={locked || !!plan.vehicle_id} onChange={(e) => void changeVehicle(e.target.value)}>
               <option value="">{t('loading.choose')}</option>
               {vehicles.data?.filter((v) => v.active).map((v) => <option key={v.id} value={v.id}>{v.name} ({t('network.cases', { n: v.capacity_cases })})</option>)}
-            </select></label>
+            </select>
+            {!locked && plan.vehicle_id && <span className="hint">{t('loading.truckFixed')}</span>}</label>
           <label className="field"><span>{t('loading.driver')}</span>
             <select value={driverId} disabled={locked} onChange={(e) => setDriverId(e.target.value)}>
               <option value="">{t('loading.choose')}</option>

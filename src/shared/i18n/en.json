@@ -162,7 +162,8 @@
     "PLAN_NOT_OUT": "This route is not out for delivery.",
     "APPEND_ONLY": "Entries cannot be changed. Use Void instead.",
     "ALREADY_VOIDED": "Already voided.",
-    "ORDER_EXISTS": "This shop already has an open order on that trip. Edit that order instead."
+    "ORDER_EXISTS": "This shop already has an open order on that trip. Edit that order instead.",
+    "TRIP_EXISTS": "That truck already has a trip on this route and day. Move the orders to it instead."
   },
   "days": {
     "1": "Mon",
@@ -504,7 +505,8 @@
       "out": "On the road",
       "closed": "Closed"
     },
-    "allTrucks": "All trucks"
+    "allTrucks": "All trucks",
+    "truckFixed": "This trip is on this truck. To send orders on another truck, use Move or New order on the Orders page."
   },
   "khata": {
     "title": "Khata",
