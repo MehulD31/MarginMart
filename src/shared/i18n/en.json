@@ -116,7 +116,10 @@
     "empty": "No pending requests.",
     "approve": "Approve",
     "reject": "Reject",
-    "approvedNote": "Approved. Add the shop and its login from Shops (coming in the next update).",
+    "approveTitle": "Approve {{name}}",
+    "approveHint": "This creates the shop and its login. Set its route and credit terms.",
+    "approveCreate": "Create shop & login",
+    "approvedCreated": "Shop and login created. Share the PIN with the owner.",
     "requested": "Requested",
     "sub": "Shops that asked to join from the login screen.",
     "emptyHint": "New requests from shops show up here."
