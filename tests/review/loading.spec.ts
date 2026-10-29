@@ -9,6 +9,7 @@ async function rpc(tok: string, name: string, args: unknown) {
 
 let planId = ''
 let dateLabel = ''
+let pepsiVariantId = ''
 
 // The QA shop orders 3 × 300ml Can Pepsi for its next visit; every test starts from that, unlocked.
 test.beforeEach(async () => {
@@ -17,6 +18,7 @@ test.beforeEach(async () => {
   const plans = (await rest(admin, `route_day_plan?select=id,date,status,route!inner(name)&route.name=eq.Mon%2FThu&status=eq.loaded`)).body
   for (const p of plans) await rpc(admin, 'unlock_load', { p_plan_id: p.id })
   const v = (await rest(shop, 'variant?select=id,pack!inner(name_en)&flavour_en=eq.Pepsi&pack.name_en=eq.300ml%20Can')).body[0].id
+  pepsiVariantId = v
   const r = await rpc(shop, 'save_order', { p_lines: [{ variant_id: v, qty: 3 }] })
   expect(r.body?.order_id, JSON.stringify(r.body)).toBeTruthy()
   const o = (await rest(shop, `orders?select=route_day_plan_id,route_day_plan(date)&id=eq.${r.body.order_id}`)).body[0]
@@ -82,7 +84,8 @@ test.describe('Locking rules held by the database', () => {
     expect((await rpc(mgr, 'lock_load', { p_plan_id: planId, p_vehicle_id: vehicle, p_driver_id: driver, p_spares: [{ variant_id: vehicle, qty: 1 }] })).body.message).toBe('INVALID_INPUT')
     expect((await rpc(mgr, 'lock_load', { p_plan_id: planId, p_vehicle_id: vehicle, p_driver_id: driver })).status).toBe(204)
 
-    const lines = (await rest(mgr, `load_line?select=qty_ordered_total,qty_spare&route_day_plan_id=eq.${planId}`)).body
+    // Scope to the QA shop's own Pepsi line: other shops (incl. real pilot shops) may share this Mon/Thu plan.
+    const lines = (await rest(mgr, `load_line?select=qty_ordered_total,qty_spare&route_day_plan_id=eq.${planId}&variant_id=eq.${pepsiVariantId}`)).body
     expect(lines).toEqual([{ qty_ordered_total: 3, qty_spare: 0 }])
     const shopId = (await rest(await token(ACCOUNTS.shop), 'shop?select=id')).body[0].id
     const v = (await rest(mgr, 'variant?select=id&flavour_en=eq.Mirinda&limit=1')).body[0].id
