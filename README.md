@@ -5,7 +5,7 @@ B2B ordering and distribution platform for a beverage dealer (PepsiCo first). Sh
 Docs: [PRD](docs/PRD.md), [HLD](docs/HLD.md), [Release 1 tasks](docs/TASKS-R1.md).
 
 ## Stack
-React 19, Vite, TypeScript, React Router, TanStack Query, i18next (Hindi/English). Supabase handles Postgres, auth and storage. Hosted on Vercel. Everything runs on free tiers.
+React 19, Vite, TypeScript, React Router, TanStack Query, i18next (Hindi/English). Supabase handles Postgres, auth and storage. Hosted on Vercel at https://kdfoods.vercel.app. Everything runs on free tiers.
 
 ## Setup
 ```powershell
