@@ -19,7 +19,7 @@ export const normalizePhone = (raw: unknown): string | null => {
   return /^\d{10}$/.test(digits) ? digits : null
 }
 
-export const isValidPin = (pin: unknown): pin is string => typeof pin === 'string' && /^\d{6}$/.test(pin)
+export const isValidPin = (pin: unknown): pin is string => typeof pin === 'string' && /^\d{4}$/.test(pin)
 
 // Rejects PINs that are trivially guessable.
 export const isWeakPin = (pin: string): boolean =>
@@ -47,10 +47,7 @@ export async function passwordFor(phone: string, pin: string): Promise<string> {
   return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+// 4-digit PINs (owner decision). The weak-PIN check is no longer applied.
 export function randomPin(): string {
-  for (;;) {
-    const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000
-    const pin = n.toString().padStart(6, '0')
-    if (!isWeakPin(pin)) return pin
-  }
+  return (crypto.getRandomValues(new Uint32Array(1))[0] % 10_000).toString().padStart(4, '0')
 }

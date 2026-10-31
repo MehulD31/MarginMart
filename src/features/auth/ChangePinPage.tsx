@@ -42,13 +42,13 @@ export default function ChangePinPage() {
           <p className="muted" style={{ marginTop: 6 }}>{t('changePin.hello', { name: profile?.name ?? '' })} {t('changePin.intro')}</p>
         </div>
         <label className="field"><span>{t('changePin.newPin')}</span>
-          <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} className="pin"
+          <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={4} className="pin"
             value={pin} onChange={(e) => setPin(digits(e.target.value))} /></label>
         <label className="field"><span>{t('changePin.confirmPin')}</span>
-          <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} className="pin"
+          <input type="password" inputMode="numeric" autoComplete="new-password" maxLength={4} className="pin"
             value={confirm} onChange={(e) => setConfirm(digits(e.target.value))} /></label>
         <Alert msg={error ? { kind: 'error', text: error } : null} />
-        <button type="submit" className="primary btn-block" disabled={busy || pin.length !== 6 || confirm.length !== 6}>
+        <button type="submit" className="primary btn-block" disabled={busy || pin.length !== 4 || confirm.length !== 4}>
           {busy ? t('common.loading') : t('changePin.submit')}
         </button>
       </form>

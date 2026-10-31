@@ -48,11 +48,11 @@ export default function LoginPage() {
         </label>
         <label className="field">
           <span>{t('login.pin')}</span>
-          <input type="password" inputMode="numeric" autoComplete="current-password" maxLength={6} required
+          <input type="password" inputMode="numeric" autoComplete="current-password" maxLength={4} required
             className="pin" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} />
         </label>
         <Alert msg={error ? { kind: 'error', text: error } : null} />
-        <button type="submit" className="primary btn-block" disabled={busy || phone.length !== 10 || pin.length !== 6}>
+        <button type="submit" className="primary btn-block" disabled={busy || phone.length !== 10 || pin.length !== 4}>
           {busy ? t('common.loading') : t('login.submit')}
         </button>
         <p className="muted" style={{ textAlign: 'center' }}>{t('login.forgot')}</p>

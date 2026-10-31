@@ -61,16 +61,16 @@
   "login": {
     "title": "Log in",
     "phone": "Mobile number",
-    "pin": "6-digit PIN",
+    "pin": "4-digit PIN",
     "submit": "Log in",
     "noAccount": "Request to join",
     "forgot": "Forgot your PIN? Ask the manager to reset it.",
-    "subtitle": "Enter your mobile number and 6-digit PIN.",
+    "subtitle": "Enter your mobile number and 4-digit PIN.",
     "newShop": "Shop owner without a login?"
   },
   "changePin": {
     "title": "Set your new PIN",
-    "intro": "Choose a 6-digit PIN only you know.",
+    "intro": "Choose a 4-digit PIN only you know.",
     "newPin": "New PIN",
     "confirmPin": "Confirm new PIN",
     "mismatch": "The two PINs don't match.",
