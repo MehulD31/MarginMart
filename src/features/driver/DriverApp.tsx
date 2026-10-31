@@ -349,7 +349,7 @@ function Receipt({ day, stop, actionId, onDone }: { day: Day; stop: StopState; a
   const text = [
     `*${t('driver.billFor', { shop: stop.shop.name })}*`, `${t('driver.billNo')}: ${number}`, new Date().toLocaleDateString('en-IN'), '',
     ...lines.map((l) => `${variantLabel(cat.get(l.id)!, hi)} × ${l.qty} = ${formatPaise(l.qty * l.price)}`), '',
-    `${t('shop.total')}: ${formatPaise(total)}`, paid ? `${t('driver.paid')}: ${formatPaise(paid)}` : '', `— MarginMart`,
+    `${t('shop.total')}: ${formatPaise(total)}`, paid ? `${t('driver.paid')}: ${formatPaise(paid)}` : '', '', t('app.billFooter'),
   ].filter((x) => x !== '').join('\n')
   const wa = stop.shop.phone ? `https://wa.me/91${stop.shop.phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`
 

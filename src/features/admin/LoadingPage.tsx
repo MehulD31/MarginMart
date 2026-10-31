@@ -233,6 +233,7 @@ function PlanLoad({ plan, dateLabel }: { plan: Plan; dateLabel: string }) {
 
       {/* Printed for the helpers: what to load, then what to drop at each stop. */}
       <div className="print-sheet" aria-hidden="true">
+        <p style={{ margin: 0, fontWeight: 700 }}>{t('app.name')} · 9630012636</p>
         <h1>{t('loading.printTitle', { route: plan.route.name, date: dateLabel })}</h1>
         <p>{t('loading.vehicle')}: {vehicle?.name ?? '—'} · {t('loading.driver')}: {driverName ?? '—'} · {t('loading.onTruck')}: {totalOrdered + totalSpare}</p>
         <table><thead><tr><th>{t('loading.item')}</th><th>{t('loading.ordered')}</th><th>{t('loading.spare')}</th><th>{t('loading.total')}</th><th>✓</th></tr></thead>

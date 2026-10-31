@@ -1,12 +1,13 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CircleAlert, CircleCheck, X, Zap } from 'lucide-react'
+import { CircleAlert, CircleCheck, X } from 'lucide-react'
 
 export function Brand({ size = 18 }: { size?: number }) {
   return (
     <span className="brand">
-      <span className="brand-mark" aria-hidden="true"><Zap size={size} strokeWidth={2.5} fill="currentColor" /></span>
-      <span>Margin<b>Mart</b></span>
+      {/* Placeholder mark until the real K.D. Foods logo arrives. */}
+      <span className="brand-mark" aria-hidden="true" style={{ fontSize: size * 0.72, fontWeight: 800, letterSpacing: '-0.04em' }}>KD</span>
+      <span>K.D. <b>Foods</b></span>
     </span>
   )
 }

@@ -1,7 +1,8 @@
 {
   "app": {
-    "name": "MarginMart",
-    "tagline": "Order from your distributor"
+    "name": "K.D. Foods",
+    "tagline": "Order from your distributor",
+    "billFooter": "K.D. Foods\n141/20 Matoshree Complex, Maharaja Chowk, Mukt Nagar, Durg\nPh. 9630012636"
   },
   "nav": {
     "shop": "Shop",
@@ -101,7 +102,7 @@
     "pinShown": "PIN for {{name}}: {{pin}}",
     "pinHint": "Share it on WhatsApp now. It won't be shown again, and they must change it on first login.",
     "shareWhatsApp": "Share on WhatsApp",
-    "waMessage": "Your MarginMart login.\nNumber: {{phone}}\nPIN: {{pin}}\nOpen {{url}} and log in. You will set your own PIN.",
+    "waMessage": "Your K.D. Foods login.\nNumber: {{phone}}\nPIN: {{pin}}\nOpen {{url}} and log in. You will set your own PIN.",
     "confirmReset": "Reset the PIN for {{name}}? Their current PIN stops working.",
     "confirmDeactivate": "Deactivate {{name}}? They won't be able to log in.",
     "sub": "Who can log in, and what they can do.",
@@ -564,7 +565,7 @@
     "note": "Note",
     "paymentSaved": "Payment saved.",
     "openingTitle": "Opening balance (moving from paper khata)",
-    "openingHint": "Enter what the shop owed before MarginMart. Use a minus sign for an advance.",
+    "openingHint": "Enter what the shop owed before using this app. Use a minus sign for an advance.",
     "openingAmount": "Amount (₹)",
     "openingSaved": "Opening balance saved.",
     "voidTitle": "Void this entry?",
