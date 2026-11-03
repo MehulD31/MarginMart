@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { chromium } from '@playwright/test'
 
-const src = fs.readFileSync('docs/pepsi-meeting-brief.md', 'utf8').replace(/\r/g, '')
+const src = fs.readFileSync(process.argv[2] ?? 'docs/pepsi-meeting-brief.md', 'utf8').replace(/\r/g, '')
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/_{6,}/g, (m) => `<span class="blank" style="width:${Math.min(m.length, 60) * 0.6}em"></span>`)
 
@@ -55,6 +55,6 @@ strong { color: #0b1f3a; }
 
 const b = await chromium.launch(); const p = await b.newPage()
 await p.setContent(html, { waitUntil: 'load' })
-await p.pdf({ path: 'docs/pepsi-meeting-brief.pdf', format: 'A4', printBackground: true, displayHeaderFooter: true,
-  headerTemplate: '<span></span>', footerTemplate: '<div style="font-size:8px;width:100%;text-align:center;color:#888">K.D. Foods · Pepsi meeting brief · page <span class="pageNumber"></span>/<span class="totalPages"></span></div>' })
+await p.pdf({ path: (process.argv[2] ?? 'docs/pepsi-meeting-brief.md').replace(/\.md$/, '.pdf'), format: 'A4', landscape: process.argv[3] === 'landscape', printBackground: true, displayHeaderFooter: true,
+  headerTemplate: '<span></span>', footerTemplate: '<div style="font-size:8px;width:100%;text-align:center;color:#888">Prepared by K.D. Foods · page <span class="pageNumber"></span>/<span class="totalPages"></span></div>' })
 await b.close(); console.log('ok')
