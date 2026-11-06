@@ -231,7 +231,6 @@ function PackCard({ item, cart, hi, disabled }: { item: CatalogItem; cart: CartA
           </div>
           <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
             <span className="badge badge-green">{t('shop.youEarn', { amount: formatPaise(margin) })}</span>
-            {price.scheme_type === 'bogo_on_mrp' && <span className="badge badge-amber">{t('shop.bogo')}</span>}
           </div>
         </div>
         {single && <Stepper value={cart.cart[variants[0].id] ?? 0} onChange={(n) => cart.set(variants[0].id, n)} label={name} disabled={disabled} />}

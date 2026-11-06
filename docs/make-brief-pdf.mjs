@@ -20,6 +20,11 @@ while (i < lines.length) {
     out.push(`<table class="${answer ? 'answer' : ''}"><thead><tr>${head.map((x) => `<th>${inline(x)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((x) => `<td>${inline(x)}</td>`).join('')}</tr>`).join('')}</tbody></table>`)
     continue
   }
+  if (/^-\s/.test(l)) {
+    const items = []
+    while (i < lines.length && /^-\s/.test(lines[i])) items.push(lines[i++].replace(/^-\s/, ''))
+    out.push(`<ul>${items.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>`); continue
+  }
   if (/^\d+\.\s/.test(l)) {
     const items = []
     while (i < lines.length && /^\d+\.\s/.test(lines[i])) items.push(lines[i++].replace(/^\d+\.\s/, ''))
@@ -27,7 +32,7 @@ while (i < lines.length) {
   }
   if (/^_{6,}\s*$/.test(l.trim())) { out.push('<div class="line"></div>'); i++; continue }
   const para = []
-  while (i < lines.length && lines[i].trim() && !/^(#|\||---|\d+\.\s)/.test(lines[i]) && !/^_{6,}\s*$/.test(lines[i].trim())) para.push(inline(lines[i++]))
+  while (i < lines.length && lines[i].trim() && !/^(#|\||---|\d+\.\s|-\s)/.test(lines[i]) && !/^_{6,}\s*$/.test(lines[i].trim())) para.push(inline(lines[i++]))
   out.push(`<p>${para.join('<br>')}</p>`)
 }
 
@@ -48,7 +53,7 @@ td { border: 1px solid #cbd5e1; padding: 4pt 6pt; vertical-align: top; }
 tbody tr:nth-child(even) td { background: #f3f6fa; }
 table.answer td:last-child { width: 38%; height: 26pt; background: #fff !important; }
 table.answer td:first-child { width: 4%; text-align: center; color: #64748b; }
-strong { color: #0b1f3a; }
+strong { color: #0b1f3a; } th strong { color: #fff; } ul { margin: 3pt 0 3pt 16pt; padding: 0; }
 .blank { display: inline-block; border-bottom: 1px solid #111; height: 1em; vertical-align: bottom; }
 .line { border-bottom: 1px solid #111; height: 20pt; margin: 4pt 0; }
 </style></head><body>${out.join('\n')}</body></html>`
