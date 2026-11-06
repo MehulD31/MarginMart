@@ -1,0 +1,72 @@
+<!doctype html>
+<!-- K.D. Foods weekly-booking ladder poster, 1080x1350: "book N crates a week, get M bottles of water free".
+     Data via ?d=<base64 JSON>, see render.mjs. Never shows our selling price; all text comes from data. -->
+<html lang="hi"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mukta:wght@500;700;800&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1350px; overflow: hidden; }
+  body { font-family: 'Mukta', sans-serif; color: #fff; position: relative;
+    background: radial-gradient(1200px 800px at 50% 30%, #1f6fe0 0%, #0a3fa8 45%, #062a73 100%); }
+  .rays { position: absolute; inset: 0; background: repeating-conic-gradient(from 0deg at 50% 24%, rgba(255,255,255,.07) 0 6deg, transparent 6deg 18deg); }
+  header { position: absolute; top: 40px; left: 56px; right: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 14px; font-family: 'Baloo 2'; font-weight: 800; font-size: 40px; }
+  .mark { width: 64px; height: 64px; border-radius: 16px; background: #fff; color: #0a3fa8; display: grid; place-items: center; font-size: 30px; }
+  .tag { background: #e4002b; padding: 10px 26px; border-radius: 999px; font-weight: 800; font-size: 30px; box-shadow: 0 6px 0 #9b001d; }
+  .headline { position: absolute; top: 130px; left: 30px; right: 30px; text-align: center; font-family: 'Baloo 2'; font-weight: 800; font-size: 82px; line-height: 1.04; text-shadow: 0 5px 0 rgba(0,0,0,.28); }
+  .headline em { font-style: normal; color: #ffd200; }
+  .pair { position: absolute; top: 340px; left: 0; right: 0; height: 290px; display: flex; align-items: center; justify-content: center; gap: 24px; }
+  .pc { width: 270px; height: 290px; background: #fff; border-radius: 34px; position: relative; box-shadow: 0 18px 40px rgba(0,0,0,.4); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 14px; color: #062a73; }
+  .pc img { height: 210px; width: 100%; object-fit: contain; mix-blend-mode: multiply; filter: brightness(1.1) contrast(1.15) saturate(1.1); }
+  .pc b { font-family: 'Baloo 2'; font-size: 32px; line-height: 1; white-space: nowrap; max-width: 100%; overflow: hidden; }
+  .plus { font-family: 'Baloo 2'; font-weight: 800; font-size: 100px; color: #ffd200; text-shadow: 0 5px 0 rgba(0,0,0,.3); }
+  .stamp { position: absolute; top: -26px; right: -30px; width: 128px; height: 128px; border-radius: 50%; background: #e4002b; border: 5px solid #fff; display: grid; place-items: center; text-align: center; transform: rotate(14deg);
+    font-family: 'Baloo 2'; font-weight: 800; font-size: 44px; line-height: .95; box-shadow: 0 8px 0 #9b001d; }
+  .stamp span { display: block; font-size: 24px; font-weight: 600; }
+  .ladder { position: absolute; top: 660px; left: 50px; right: 50px; display: flex; flex-direction: column; gap: 12px; }
+  .step { height: 100px; border-radius: 26px; background: #fff; color: #062a73; display: flex; align-items: center; padding: 0 22px; gap: 20px; box-shadow: 0 7px 0 rgba(0,0,0,.22); position: relative; }
+  .step .n { background: #ffd200; border-radius: 20px; padding: 0 22px 4px; font-family: 'Baloo 2'; font-weight: 800; font-size: 60px; line-height: 1.15; min-width: 215px; text-align: center; white-space: nowrap; }
+  .step .n small { font-size: 34px; margin-left: 6px; }
+  .step .arrow { font-size: 44px; font-weight: 800; color: #0a3fa8; }
+  .step .g { font-family: 'Baloo 2'; font-weight: 800; font-size: 50px; line-height: 1; }
+  .step .g small { font-family: 'Mukta'; font-size: 30px; font-weight: 700; margin-left: 10px; color: #25a244; }
+  .step.best { background: #ffd200; box-shadow: 0 7px 0 #c79f00; }
+  .step.best .n { background: #062a73; color: #ffd200; }
+  .step.best .g small { color: #062a73; }
+  .badge { position: absolute; right: 18px; top: -16px; background: #e4002b; color: #fff; border-radius: 999px; padding: 2px 20px 4px; font-weight: 800; font-size: 26px; box-shadow: 0 4px 0 #9b001d; }
+  .rule { position: absolute; left: 56px; right: 56px; top: 1124px; text-align: center; font-weight: 700; font-size: 26px; line-height: 1.2; opacity: .95; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 190px; background: #fff; color: #062a73; display: flex; align-items: center; justify-content: space-between; padding: 0 56px; }
+  .valid { font-weight: 800; font-size: 36px; line-height: 1.1; }
+  .valid span { display: block; font-weight: 500; font-size: 27px; color: #4a5a7a; }
+  .call { background: #25a244; color: #fff; border-radius: 22px; padding: 16px 30px; font-weight: 800; font-size: 46px; box-shadow: 0 8px 0 #187a31; }
+  .call span { display: block; font-size: 24px; font-weight: 700; opacity: .9; }
+</style></head>
+<body>
+  <div class="rays"></div>
+  <header><div class="brand"><div class="mark">KD</div>K.D. Foods</div><div class="tag" id="tag"></div></header>
+  <div class="headline" id="headline"></div>
+  <div class="pair">
+    <div class="pc"><img id="pi" alt=""><b id="pn"></b></div>
+    <div class="plus">+</div>
+    <div class="pc"><div class="stamp">फ़्री<span>FREE</span></div><img id="wi" alt=""><b id="wn"></b></div>
+  </div>
+  <div class="ladder" id="ladder"></div>
+  <div class="rule" id="rule"></div>
+  <div class="foot"><div class="valid" id="valid"></div><div class="call" id="call"></div></div>
+<script>
+  const d = JSON.parse(decodeURIComponent(escape(atob(new URLSearchParams(location.search).get('d') || 'e30='))))
+  const $ = (id) => document.getElementById(id)
+  $('tag').textContent = d.tag || 'हफ़्ता बुकिंग ऑफ़र'
+  $('headline').innerHTML = d.headline || ''
+  $('pi').src = d.productImg; $('pn').textContent = d.productName
+  $('wi').src = d.freeImg; $('wn').textContent = d.freeName
+  const rows = d.rows || []
+  $('ladder').innerHTML = rows.map((r, i) => `<div class="step${i === rows.length - 1 ? ' best' : ''}">
+      <div class="n">${r.crates}<small>${d.crateUnit || 'पेटी'}</small></div><div class="arrow">→</div>
+      <div class="g">${r.bottles} बोतल<small>पानी फ़्री</small></div>${i === rows.length - 1 ? `<div class="badge">${d.bestLabel || 'सबसे बढ़िया'}</div>` : ''}</div>`).join('')
+  $('rule').textContent = d.rule || ''
+  $('valid').innerHTML = `${d.valid || ''}<span>${d.validSub || ''}</span>`
+  $('call').innerHTML = `${d.phone || '96300 12636'}<span>बुकिंग के लिए कॉल / WhatsApp</span>`
+</script>
+</body></html>
