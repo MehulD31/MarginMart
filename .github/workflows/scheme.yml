@@ -1,0 +1,38 @@
+name: scheme-bot
+# Started by the Telegram Apps Script (scripts/scheme-bot/telegram.gs). One job at a time.
+concurrency: { group: scheme-bot, cancel-in-progress: false }
+on:
+  workflow_dispatch:
+    inputs:
+      mode: { description: "explain | approve", required: true, default: explain }
+      task: { description: "Pepsi message (explain)", required: false, default: "" }
+      action: { description: "ok | no (approve)", required: false, default: "" }
+      draft: { description: "draft id (approve)", required: false, default: "" }
+      who: { description: "Telegram name", required: false, default: "" }
+permissions: { contents: read }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+      KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GEMINI_FREE_KEY: ${{ secrets.GEMINI_FREE_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      TASK: ${{ github.event.inputs.task }}
+      ACTION: ${{ github.event.inputs.action }}
+      DRAFT: ${{ github.event.inputs.draft }}
+      WHO: ${{ github.event.inputs.who }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - if: github.event.inputs.mode == 'explain'
+        run: |
+          npm i --no-save --no-package-lock @playwright/test@1.59.1
+          npx playwright install --with-deps chromium
+          node scripts/scheme-bot/explain.mjs
+      - if: github.event.inputs.mode == 'approve'
+        run: node scripts/scheme-bot/approve.mjs
