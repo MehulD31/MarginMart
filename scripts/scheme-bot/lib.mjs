@@ -39,16 +39,21 @@ export const say = (text, extra = {}) => tg('sendMessage', { chat_id: env('KD_CH
 export async function askJson(prompt) {
   const key = env('GEMINI_FREE_KEY', false)
   if (key) {
-    for (const model of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
-      try {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2 } }) })
-        const j = await r.json()
-        const text = j?.candidates?.[0]?.content?.parts?.[0]?.text
-        if (text) return JSON.parse(text)
-        console.log('gemini', model, r.status, JSON.stringify(j).slice(0, 200))
-      } catch (e) { console.log('gemini error', model, e.message) }
+    // Google retires models often (2.0 and 2.5 flash are already gone); VAJRA uses gemini-3.8-flash. Retry when busy (503/429).
+    for (const model of ['gemini-3.8-flash']) {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2 } }) })
+          const j = await r.json()
+          const text = j?.candidates?.[0]?.content?.parts?.[0]?.text
+          if (text) return JSON.parse(text)
+          console.log('gemini', model, r.status, JSON.stringify(j).slice(0, 200))
+          if (r.status !== 503 && r.status !== 429) break
+        } catch (e) { console.log('gemini error', model, e.message) }
+        await new Promise((res) => setTimeout(res, 8000 * (attempt + 1)))
+      }
     }
   }
   const g = env('GROQ_API_KEY', false)
