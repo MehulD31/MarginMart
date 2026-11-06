@@ -25,7 +25,7 @@ Shobhit forwards the poster to the retailers' WhatsApp Community by hand.
 Shobhit (Telegram "KD Schemes")
    │ pastes Pepsi message
    ▼
-Google Apps Script (free; polls every minute, instant via relay later)
+Vercel function api/scheme-tg.js (Telegram webhook, instant, free)
    │ only whitelisted users / this chat
    ▼
 GitHub Actions job "scheme.yml" (MarginMart repo, free minutes)
@@ -46,8 +46,8 @@ GitHub Actions job "scheme.yml" (MarginMart repo, free minutes)
 
 ## Step 2 — Telegram bot
 - Create bot with @BotFather; create group "KD Schemes"; add bot; note chat id and both user ids.
-- Apps Script copied from VAJRA's `telegram-webhook.gs`, cut down to: message → dispatch `scheme.yml`; button tap → dispatch `scheme-approve.yml`.
-- Secrets (GitHub + Apps Script properties): `KD_BOT_TOKEN`, `KD_CHAT_ID`, `KD_ALLOWED_USERS`, `GEMINI_FREE_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `GH_TOKEN`.
+- Telegram webhook = Vercel function `api/scheme-tg.js` (checks the webhook secret, the KD Schemes group and the allowed user ids), which starts the GitHub workflow `scheme.yml` (mode explain or approve).
+- Secrets (GitHub + Apps Script properties): `KD_BOT_TOKEN`, `KD_CHAT_ID`, `KD_ALLOWED`, `GEMINI_FREE_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `GH_TOKEN`.
 
 ## Step 3 — Explanation (Gemini)
 Gemini returns JSON: product(s), flavours, ₹ per case, type, start/end dates, confidence, open questions.
