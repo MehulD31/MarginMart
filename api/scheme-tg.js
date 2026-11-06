@@ -6,27 +6,30 @@
 //                  TG_SECRET (random string, also given to Telegram as the webhook secret),
 //                  GH_DISPATCH_TOKEN (fine-grained token: this repo only, Actions read+write), GH_REPO (owner/name)
 
+// Values are trimmed so a stray newline in a Vercel variable can never break a token or a comparison.
+const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
+
 const tg = (method, payload) =>
-  fetch(`https://api.telegram.org/bot${process.env.KD_BOT_TOKEN}/${method}`, {
+  fetch(`https://api.telegram.org/bot${env.KD_BOT_TOKEN}/${method}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   }).catch(() => null)
 
 async function dispatch(inputs) {
-  const r = await fetch(`https://api.github.com/repos/${process.env.GH_REPO}/actions/workflows/scheme.yml/dispatches`, {
+  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO}/actions/workflows/scheme.yml/dispatches`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.GH_DISPATCH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ ref: 'main', inputs }),
   })
-  if (!r.ok) await tg('sendMessage', { chat_id: process.env.KD_CHAT_ID, text: `⚠️ GitHub start nahi hua (${r.status}). Token ya workflow check karo.` })
+  if (!r.ok) await tg('sendMessage', { chat_id: env.KD_CHAT_ID, text: `⚠️ GitHub start nahi hua (${r.status}). Token ya workflow check karo.` })
 }
 
 const allowed = (from, chatId) =>
-  String(chatId) === String(process.env.KD_CHAT_ID) && !!from &&
-  String(process.env.KD_ALLOWED ?? '').split(',').map((s) => s.trim()).includes(String(from.id))
+  String(chatId) === String(env.KD_CHAT_ID) && !!from &&
+  String(env.KD_ALLOWED ?? '').split(',').map((s) => s.trim()).includes(String(from.id))
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
-  if (!process.env.TG_SECRET || req.headers['x-telegram-bot-api-secret-token'] !== process.env.TG_SECRET) return res.status(401).end()
+  if (!env.TG_SECRET || req.headers['x-telegram-bot-api-secret-token'] !== env.TG_SECRET) return res.status(401).end()
   try {
     const u = typeof req.body === 'string' ? JSON.parse(req.body) : req.body ?? {}
 
