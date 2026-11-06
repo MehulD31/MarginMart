@@ -39,9 +39,9 @@ export const say = (text, extra = {}) => tg('sendMessage', { chat_id: env('KD_CH
 export async function askJson(prompt) {
   const key = env('GEMINI_FREE_KEY', false)
   if (key) {
-    // Google retires models often (2.0 and 2.5 flash are already gone); VAJRA uses gemini-3.8-flash. Retry when busy (503/429).
-    for (const model of ['gemini-3.8-flash']) {
-      for (let attempt = 0; attempt < 4; attempt++) {
+    // Google retires models often (2.0 and 2.5 flash are already gone) and a model can be 'busy' (503) for minutes, so several are tried in turn.
+    for (const model of ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
@@ -50,9 +50,9 @@ export async function askJson(prompt) {
           const text = j?.candidates?.[0]?.content?.parts?.[0]?.text
           if (text) return JSON.parse(text)
           console.log('gemini', model, r.status, JSON.stringify(j).slice(0, 200))
-          if (r.status !== 503 && r.status !== 429) break
+          if (r.status !== 503 && r.status !== 429) break  // busy: retry once, then the next model
         } catch (e) { console.log('gemini error', model, e.message) }
-        await new Promise((res) => setTimeout(res, 8000 * (attempt + 1)))
+        await new Promise((res) => setTimeout(res, 5000))
       }
     }
   }
