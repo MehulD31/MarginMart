@@ -6,7 +6,6 @@ import { BookOpen, CalendarClock, ClipboardList, LogOut, Package, RotateCcw, Sho
 import { useAuth } from '../../shared/api/auth'
 import { supabase } from '../../shared/api/supabase'
 import { formatPaise } from '../../shared/money'
-import { netRate, shopMargin } from '../../shared/pricing'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Brand, Empty, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { LanguageToggle } from '../../shared/ui/LanguageToggle'
@@ -17,7 +16,7 @@ import { useConfirm } from '../../shared/ui/confirm'
 import { useBills, useCreditStatus, useLedger } from '../../shared/ledger'
 import { BalanceCards, LedgerList } from '../../shared/ui/Khata'
 import { cartCases, useCart, type Cart } from './cart'
-import { orderCases, orderTotal, useMyOrders, useNextDelivery, useShopCatalog, type CatalogItem, type Order } from './data'
+import { orderCases, useMyOrders, useNextDelivery, useShopCatalog, type CatalogItem, type Order } from './data'
 
 const useLocale = () => (useTranslation().i18n.language === 'hi' ? 'hi-IN' : 'en-IN')
 const dayLabel = (iso: string, locale: string) =>
@@ -87,7 +86,6 @@ function OrderScreen({ cart }: { cart: CartApi }) {
     return m
   }, [items, hi])
   const lines = Object.entries(cart.cart).filter(([id]) => byVariant.has(id))
-  const total = lines.reduce((s, [id, qty]) => s + qty * netRate(byVariant.get(id)!.item.price), 0)
   const cases = lines.reduce((s, [, qty]) => s + qty, 0)
   const dirty = openOrder ? !sameCart(cart.cart, openOrder) : cases > 0
 
@@ -115,7 +113,7 @@ function OrderScreen({ cart }: { cart: CartApi }) {
     <div className="stack-lg">
       <DeliveryCard delivery={delivery.data} loading={delivery.isLoading} locale={locale} />
       {credit.data?.blocked && <Alert msg={{ kind: 'error', text: t('khata.blocked', { amount: formatPaise(credit.data.overdue_paise || credit.data.balance_paise) }) }} />}
-      {openOrder && !dirty && <Alert msg={{ kind: 'success', text: t('shop.savedOrder', { n: orderCases(openOrder), total: formatPaise(orderTotal(openOrder)) }) }} />}
+      {openOrder && !dirty && <Alert msg={{ kind: 'success', text: t('shop.savedOrder', { n: orderCases(openOrder) }) }} />}
       {lastOrder && cases === 0 && (
         <button type="button" className="reorder" onClick={reorder}>
           <RotateCcw size={20} aria-hidden="true" />
@@ -132,7 +130,7 @@ function OrderScreen({ cart }: { cart: CartApi }) {
 
       {cases > 0 && (
         <div className="cart-bar" role="region" aria-label={t('shop.cart')}>
-          <div className="grow"><strong>{t('shop.casesCount', { count: cases })} · {formatPaise(total)}</strong>
+          <div className="grow"><strong>{t('shop.casesCount', { count: cases })}</strong>
             <span className="cell-sub">{dirty ? (openOrder ? t('shop.unsaved') : t('shop.notPlaced')) : t('shop.saved')}</span></div>
           <button type="button" className="primary" onClick={() => setOpen(true)}><ShoppingCart size={18} aria-hidden="true" />{t('shop.viewCart')}</button>
         </div>
@@ -143,17 +141,17 @@ function OrderScreen({ cart }: { cart: CartApi }) {
           {delivery.data && <p className="muted row"><CalendarClock size={16} aria-hidden="true" />{t('shop.deliveryOn', { date: dayLabel(delivery.data.delivery_date, locale) })}</p>}
           <ul className="plain-list">
             {lines.map(([id, qty]) => {
-              const { item, name } = byVariant.get(id)!
+              const { name } = byVariant.get(id)!
               return (
                 <li key={id} className="cart-line">
                   <div className="grow"><div className="cell-title">{name}</div>
-                    <div className="cell-sub num">{formatPaise(netRate(item.price))} × {qty} = <strong>{formatPaise(netRate(item.price) * qty)}</strong></div></div>
+                    <div className="cell-sub num">{t('shop.casesCount', { count: qty })}</div></div>
                   <Stepper value={qty} onChange={(n) => cart.set(id, n)} label={name} />
                 </li>
               )
             })}
           </ul>
-          <div className="row-between total-row"><span>{t('shop.total')}</span><strong className="num">{formatPaise(total)}</strong></div>
+          <div className="row-between total-row"><span>{t('shop.total')}</span><strong className="num">{t('shop.casesCount', { count: cases })}</strong></div>
           <p className="muted">{t('shop.payNote')}</p>
           <div className="sheet-foot">
             <button type="button" className="danger" onClick={() => { cart.clear(); setOpen(false) }}><Trash2 size={18} aria-hidden="true" />{t('shop.clear')}</button>
@@ -165,7 +163,7 @@ function OrderScreen({ cart }: { cart: CartApi }) {
 
       <Sheet open={!!placed} title={t('shop.placedTitle')} onClose={() => setPlaced(null)}>
         {placed && <div className="stack">
-          <div className="pin-reveal"><span className="muted">{t('shop.deliveryOn', { date: dayLabel(placed.date, locale) })}</span><span className="digits" style={{ letterSpacing: 0 }}>{formatPaise(placed.total)}</span></div>
+          <div className="pin-reveal"><span className="muted">{t('shop.deliveryOn', { date: dayLabel(placed.date, locale) })}</span></div>
           <p className="muted">{t('shop.placedText')}</p>
           <div className="sheet-foot"><button type="button" className="primary" onClick={() => setPlaced(null)}>OK</button></div>
         </div>}
@@ -213,9 +211,7 @@ function DeliveryCard({ delivery, loading, locale }: { delivery?: { delivery_dat
 
 function PackCard({ item, cart, hi, disabled }: { item: CatalogItem; cart: CartApi; hi: boolean; disabled: boolean }) {
   const { t } = useTranslation()
-  const { pack, price, variants } = item
-  const rate = netRate(price)
-  const margin = shopMargin({ ...price, units_per_case: pack.units_per_case, mrp_paise: pack.mrp_paise })
+  const { pack, variants } = item
   const name = (hi && pack.name_hi) || pack.name_en
   const single = variants.length === 1
   return (
@@ -225,13 +221,6 @@ function PackCard({ item, cart, hi, disabled }: { item: CatalogItem; cart: CartA
         <div className="grow">
           <h2 className="product-name">{name}</h2>
           <div className="cell-sub">{t('catalog.caseOf', { n: pack.units_per_case })} · MRP {formatPaise(pack.mrp_paise)}</div>
-          <div className="price-row">
-            <strong className="num">{formatPaise(rate)}</strong><span className="cell-sub">/{t('shop.case')}</span>
-            {price.scheme_value_paise > 0 && <s className="cell-sub num">{formatPaise(price.trade_price_paise)}</s>}
-          </div>
-          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-            <span className="badge badge-green">{t('shop.youEarn', { amount: formatPaise(margin) })}</span>
-          </div>
         </div>
         {single && <Stepper value={cart.cart[variants[0].id] ?? 0} onChange={(n) => cart.set(variants[0].id, n)} label={name} disabled={disabled} />}
       </div>
@@ -281,7 +270,7 @@ function OrdersScreen({ onEdit }: { onEdit: (c: Cart) => void }) {
         <article key={o.id} className={`card stack ${o.status === 'cancelled' ? 'dim' : ''}`}>
           <div className="row-between">
             <div><div className="cell-title">{dayLabel(o.route_day_plan.date, locale)}</div>
-              <div className="cell-sub">{t('shop.casesCount', { count: orderCases(o) })} · {formatPaise(orderTotal(o))}</div></div>
+              <div className="cell-sub">{t('shop.casesCount', { count: orderCases(o) })}</div></div>
             <span className={`badge ${STATUS_BADGE[o.status]}`}>{t(`shop.status.${o.status}`)}</span>
           </div>
           {editable(o) && (

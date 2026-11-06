@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Boxes, Calculator, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Route as RouteIcon, Store, Tags, Truck, Users, type LucideIcon } from 'lucide-react'
+import { BookOpen, Boxes, Calculator, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Route as RouteIcon, Store, Tags, Truck, Users, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { isLowStock, useStock } from '../../shared/api/db'
 import { supabase } from '../../shared/api/supabase'
@@ -24,6 +24,7 @@ import AuditPage from './AuditPage'
 import InventoryPage from './InventoryPage'
 import PurchasesPage from './PurchasesPage'
 import PricingPage from './PricingPage'
+import SchemesPage from './SchemesPage'
 import LivePage from './LivePage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
@@ -59,6 +60,7 @@ export default function AdminApp() {
     { to: 'inventory', label: t('nav.inventory'), icon: Boxes, badge: lowStock },
     { to: 'purchases', label: t('nav.purchases'), icon: ShoppingCart },
     { to: 'pricing', label: t('nav.pricing'), icon: Calculator },
+    { to: 'schemes', label: t('nav.schemes'), icon: Gift },
     { to: 'shops', label: t('nav.shops'), icon: Store },
     { to: 'catalog', label: t('nav.catalog'), icon: Package },
     { to: 'prices', label: t('nav.prices'), icon: Tags },
@@ -120,7 +122,7 @@ export default function AdminApp() {
           <Route path="audit" element={<AuditPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<PurchasesPage />} />
-          <Route path="pricing" element={<PricingPage />} />
+          <Route path="pricing" element={<PricingPage />} />`n          <Route path="schemes" element={<SchemesPage />} />
           <Route path="shops" element={<ShopsPage />} />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="prices" element={<PriceListsPage />} />

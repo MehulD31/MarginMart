@@ -32,3 +32,24 @@ describe('margin', () => {
     expect(suggestedPrice(p, 13500, 1000)).toBe(13500)
   })
 })
+
+import { schemeFor, schemePrice, withFunding, type Scheme } from './margin'
+
+describe('schemes', () => {
+  const sch = (o: Partial<Scheme>): Scheme => ({ id: 'x', pack_id: 'p400', variant_ids: null, kind: 'pass_through', amount_paise: 1000,
+    starts_on: '2026-11-05', ends_on: '2026-11-08', active: true, note: null, ...o })
+  it('applies only between the dates, to the right flavours, and not when ended early', () => {
+    expect(schemeFor([sch({})], 'p400', 'pepsi', '2026-11-06').off).toBe(1000)
+    expect(schemeFor([sch({})], 'p400', 'pepsi', '2026-11-09').off).toBe(0)
+    expect(schemeFor([sch({ variant_ids: ['dew'] })], 'p400', 'pepsi', '2026-11-06').off).toBe(0)
+    expect(schemeFor([sch({ active: false })], 'p400', 'pepsi', '2026-11-06').off).toBe(0)
+    expect(schemeFor([sch({ kind: 'our_discount' })], 'p400', 'pepsi', '2026-11-06')).toMatchObject({ off: 1000, funded: 0 })
+  })
+  it('a Pepsi-funded ₹10 lowers buy, minimum and floor, and the order price', () => {
+    const p = packPrice(s, 53000, 49150, costPerCase(s, 10000))
+    const q = withFunding(p, 1000)
+    expect(q.buy).toBe(48150); expect(q.min).toBe(p.min - 1000); expect(q.floor).toBe(p.floor - 1000)
+    expect(schemePrice(p, 53000, 0, 1000)).toBe(52000)
+    expect(priceLevel(q, 52000)).toBe('ok')
+  })
+})

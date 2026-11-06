@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../shared/api/supabase'
 import { must, usePacks, useStock, useVariants, useVehicles, type PriceListItem } from '../../shared/api/db'
-import { costPerCase, isOnSeason, monthCases, packPrice, type BusinessSettings, type PackPrice } from '../../shared/margin'
+import { costPerCase, isOnSeason, monthCases, packPrice, schemeFor, withFunding, type BusinessSettings, type PackPrice, type Scheme } from '../../shared/margin'
+import { todayIST } from './opsData'
 
 export const useBusinessSettings = () => useQuery({
   queryKey: ['business_settings'],
@@ -18,6 +19,16 @@ export const useMonthStats = () => useQuery({
   refetchInterval: 300_000,
 })
 
+/** Schemes not yet over (running or upcoming), newest first. */
+export const useSchemes = (all = false) => useQuery({
+  queryKey: ['scheme', all],
+  queryFn: () => {
+    let q = supabase.from('scheme').select('*').order('starts_on', { ascending: false }).order('created_at', { ascending: false })
+    if (!all) q = q.eq('active', true).gte('ends_on', todayIST())
+    return must<Scheme[]>(q.limit(200))
+  },
+})
+
 const useActivePrices = () => useQuery({
   queryKey: ['price_list_item', 'active'],
   queryFn: () => must<(PriceListItem & { price_list: { status: string } })[]>(supabase.from('price_list_item').select('*, price_list!inner(status)').eq('price_list.status', 'active')),
@@ -27,6 +38,7 @@ const useActivePrices = () => useQuery({
 export function useMargin() {
   const settings = useBusinessSettings(); const stats = useMonthStats(); const stock = useStock()
   const prices = useActivePrices(); const packs = usePacks(); const variants = useVariants(); const vehicles = useVehicles()
+  const schemes = useSchemes()
   return useMemo(() => {
     const s = settings.data
     if (!s || !stats.data || !prices.data || !variants.data || !stock.data) return null
@@ -43,7 +55,14 @@ export function useMargin() {
     }
     const packOf = new Map(variants.data.map((v) => [v.id, v.pack_id]))
     const trucks = (vehicles.data ?? []).filter((v) => v.active).length
+    const today = todayIST()
+    const live = schemes.data ?? []
+    const schemeOf = (id: string) => schemeFor(live, packOf.get(id) ?? '', id, today)
+    // Base price (no scheme), for working out the slab price.
+    const baseFor = (id: string) => byPack.get(packOf.get(id) ?? '')
     return { s, onSeason, volume, cost, byPack, packOf, stats: stats.data, prices: prices.data, packs: packs.data ?? [], trucks,
-      forVariant: (id: string) => byPack.get(packOf.get(id) ?? '') }
-  }, [settings.data, stats.data, prices.data, variants.data, stock.data, packs.data, vehicles.data])
+      schemes: live, schemeOf, baseFor,
+      // Minimum and floor for this flavour today, after any Pepsi-funded scheme.
+      forVariant: (id: string) => { const p = baseFor(id); return p && withFunding(p, schemeOf(id).funded) } }
+  }, [settings.data, stats.data, prices.data, variants.data, stock.data, packs.data, vehicles.data, schemes.data])
 }

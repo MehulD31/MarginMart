@@ -29,7 +29,8 @@
     "inventory": "Inventory",
     "purchases": "Purchases",
     "pricing": "Pricing & margin",
-    "live": "Live deliveries"
+    "live": "Live deliveries",
+    "schemes": "Schemes"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -347,7 +348,7 @@
     "hoursLeft_one": "{{count}} hour left",
     "hoursLeft_other": "{{count}} hours left",
     "noDelivery": "No delivery is scheduled for your route yet. Please call the manager.",
-    "savedOrder": "Your order is saved: {{n}} cases, {{total}}. Change anything below and press Update.",
+    "savedOrder": "Your order is saved: {{n}} cases. Change anything below and press Update.",
     "reorder": "Order again",
     "reorderSub": "Same as your {{date}} order ({{n}} cases)",
     "reordered": "Added your last order. Check it and place it.",
@@ -879,5 +880,34 @@
     "noBills": "No deliveries yet today.",
     "bill": "Bill",
     "credit": "On credit"
+  },
+  "schemes": {
+    "title": "Schemes",
+    "sub": "Time-limited offers. Between the dates they take the amount off staff order prices. Shops never see this page.",
+    "new": "New scheme",
+    "empty": "No schemes yet",
+    "amount": "Off per case",
+    "amountRs": "₹ off per case",
+    "dates": "Dates",
+    "from": "From",
+    "to": "To (last day)",
+    "allFlavours": "All flavours",
+    "flavours": "Flavours",
+    "flavoursHint": "Only some flavours? Tick them (none = all):",
+    "who": "Who pays",
+    "kind": {
+      "pass_through": "Pepsi pays (our cost drops too)",
+      "our_discount": "We pay (our margin drops)"
+    },
+    "state": {
+      "running": "Running",
+      "upcoming": "Upcoming",
+      "over": "Over",
+      "ended": "Ended early"
+    },
+    "notePh": "e.g. Pepsi: 400 ml pe ₹80 TS, 4 din",
+    "save": "Save scheme",
+    "endNow": "End now",
+    "endBody": "End the {{name}} scheme now? Prices go back to normal straight away."
   }
 }

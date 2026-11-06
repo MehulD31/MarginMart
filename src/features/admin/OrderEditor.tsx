@@ -13,7 +13,7 @@ import { setQty, type Cart } from '../shop/cart'
 import { useShopCatalog } from '../shop/data'
 import { CANCEL_REASONS } from './opsData'
 import { useMargin } from './marginData'
-import { priceLevel, slabOff, suggestedPrice } from '../../shared/margin'
+import { priceLevel, schemePrice, slabOff } from '../../shared/margin'
 import { useConfirm } from '../../shared/ui/confirm'
 
 /** Staff editor for one shop's order on one delivery day. Saves through save_order, so the same rules apply. */
@@ -46,8 +46,8 @@ export function OrderEditor({ shopId, shopName, planId, initial, orderId, editab
   const priceOf = (id: string) => {
     const typed = Number(custom[id])
     if (custom[id] && typed > 0) return Math.round(typed * 100)
-    const p = m?.forVariant(id); const list = listRate.get(id) ?? 0
-    return p ? suggestedPrice(p, list, off) : list
+    const p = m?.baseFor(id); const list = listRate.get(id) ?? 0
+    return p ? schemePrice(p, list, off, m!.schemeOf(id).off) : list
   }
   const levelOf = (id: string) => { const p = m?.forVariant(id); return p ? priceLevel(p, priceOf(id)) : 'ok' }
   const total = Object.entries(cart).reduce((s, [id, n]) => s + n * priceOf(id), 0)

@@ -65,3 +65,25 @@ export function suggestedPrice(p: PackPrice, listPrice: number, off: number) {
 
 export type PriceLevel = 'ok' | 'belowMin' | 'belowFloor'
 export const priceLevel = (p: PackPrice, price: number): PriceLevel => (price < p.floor ? 'belowFloor' : price < p.min ? 'belowMin' : 'ok')
+
+export interface Scheme {
+  id: string; pack_id: string; variant_ids: string[] | null; kind: 'pass_through' | 'our_discount'
+  amount_paise: number; starts_on: string; ends_on: string; active: boolean; note: string | null
+}
+
+/** Schemes running on `day` (YYYY-MM-DD) for one flavour: total off per case, and the part Pepsi pays. */
+export function schemeFor(schemes: Scheme[], packId: string, variantId: string, day: string) {
+  const live = schemes.filter((s) => s.active && s.pack_id === packId && s.starts_on <= day && day <= s.ends_on
+    && (!s.variant_ids?.length || s.variant_ids.includes(variantId)))
+  const off = live.reduce((a, s) => a + s.amount_paise, 0)
+  const funded = live.filter((s) => s.kind === 'pass_through').reduce((a, s) => a + s.amount_paise, 0)
+  return { off, funded, schemes: live }
+}
+
+/** Pepsi-funded schemes lower our buy price, so minimum and floor drop by the same amount. */
+export const withFunding = (p: PackPrice, funded: number): PackPrice =>
+  funded ? { ...p, buy: p.buy - funded, margin: p.margin + funded, min: p.min - funded, floor: p.floor - funded } : p
+
+/** Order price: the usual slab price, then the running scheme taken off on top. */
+export const schemePrice = (p: PackPrice, listPrice: number, slabOffPaise: number, schemeOff: number) =>
+  Math.max(suggestedPrice(p, listPrice, slabOffPaise) - schemeOff, 1)

@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- K.D. Foods scheme poster, 1080x1350. Data comes in ?d=<base64 JSON>, see render.mjs.
+     Text is always from data (never AI-drawn), so prices and dates are exact. -->
+<html lang="hi"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mukta:wght@500;700;800&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1350px; overflow: hidden; }
+  body { font-family: 'Mukta', sans-serif; color: #fff; position: relative;
+    background: radial-gradient(1200px 800px at 50% 38%, #1f6fe0 0%, #0a3fa8 45%, #062a73 100%); }
+  /* light rays + soft dots for energy */
+  .rays { position: absolute; inset: 0; background: repeating-conic-gradient(from 0deg at 50% 46%, rgba(255,255,255,.07) 0 6deg, transparent 6deg 18deg); }
+  .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.12) 2px, transparent 2.5px); background-size: 36px 36px; mask: linear-gradient(#000, transparent 40%); }
+  header { position: absolute; top: 44px; left: 56px; right: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 14px; font-family: 'Baloo 2'; font-weight: 800; font-size: 40px; }
+  .mark { width: 64px; height: 64px; border-radius: 16px; background: #fff; color: #0a3fa8; display: grid; place-items: center; font-size: 30px; }
+  .tag { background: #e4002b; padding: 10px 26px; border-radius: 999px; font-weight: 800; font-size: 30px; letter-spacing: .5px; box-shadow: 0 6px 0 #9b001d; }
+  .head { position: absolute; top: 160px; left: 0; right: 0; text-align: center; }
+  .head .pre { font-family: 'Baloo 2'; font-weight: 600; font-size: 46px; opacity: .95; }
+  .burst { margin: 6px auto 0; width: 620px; height: 300px; position: relative; display: grid; place-items: center; }
+  .burst::before { content: ''; position: absolute; inset: 0; background: #ffd200; border-radius: 40px; transform: rotate(-3deg); box-shadow: 0 18px 0 #c79f00, 0 30px 60px rgba(0,0,0,.35); }
+  .burst .amt { position: relative; color: #062a73; font-family: 'Baloo 2'; font-weight: 800; font-size: 210px; line-height: 1; letter-spacing: -4px; }
+  .burst .amt small { font-size: 90px; vertical-align: 60px; margin-right: 6px; }
+  .burst .unit { position: absolute; bottom: 22px; color: #062a73; font-weight: 800; font-size: 40px; }
+  .product { position: absolute; top: 560px; left: 0; right: 0; text-align: center; font-family: 'Baloo 2'; font-weight: 800; font-size: 64px; text-shadow: 0 4px 0 rgba(0,0,0,.25); }
+  .product .fl { display: block; font-family: 'Mukta'; font-weight: 700; font-size: 32px; opacity: .9; margin-top: 2px; }
+  /* Product photos have white/grey backgrounds, so they sit on a white stage and blend into it. */
+  .shelf { position: absolute; left: 56px; right: 56px; top: 745px; height: 330px; background: #fff; border-radius: 36px; display: flex; align-items: center; justify-content: space-evenly; padding: 18px 20px; box-shadow: 0 22px 50px rgba(0,0,0,.35); overflow: hidden; }
+  .shelf img { height: 290px; width: 210px; object-fit: contain; mix-blend-mode: multiply; filter: brightness(1.12) contrast(1.18) saturate(1.1); }
+  .floor { display: none; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 200px; background: #fff; color: #062a73; display: flex; align-items: center; justify-content: space-between; padding: 0 56px; }
+  .valid { font-weight: 800; font-size: 38px; line-height: 1.1; }
+  .valid span { display: block; font-weight: 500; font-size: 28px; color: #4a5a7a; }
+  .call { background: #25a244; color: #fff; border-radius: 22px; padding: 18px 30px; font-weight: 800; font-size: 46px; box-shadow: 0 8px 0 #187a31; }
+  .call span { display: block; font-size: 24px; font-weight: 700; opacity: .9; }
+  .note { position: absolute; bottom: 222px; color: #fff; left: 0; right: 0; text-align: center; font-size: 24px; opacity: .8; }
+</style></head>
+<body>
+  <div class="rays"></div><div class="dots"></div>
+  <header>
+    <div class="brand"><div class="mark">KD</div>K.D. Foods</div>
+    <div class="tag" id="tag"></div>
+  </header>
+  <div class="head">
+    <div class="pre" id="pre"></div>
+    <div class="burst"><div class="amt"><small>₹</small><span id="amt"></span></div><div class="unit" id="unit"></div></div>
+  </div>
+  <div class="product"><span id="prod"></span><span class="fl" id="fl"></span></div>
+  <div class="shelf" id="shelf"></div><div class="floor"></div>
+  <div class="note" id="note"></div>
+  <div class="foot">
+    <div class="valid" id="valid"></div>
+    <div class="call" id="call"></div>
+  </div>
+<script>
+  const d = JSON.parse(decodeURIComponent(escape(atob(new URLSearchParams(location.search).get('d') || 'e30='))))
+  const set = (id, v) => { document.getElementById(id).textContent = v ?? '' }
+  set('tag', d.tag || 'सीमित समय ऑफ़र')
+  set('pre', d.pre || 'हर पेटी पर एक्स्ट्रा छूट')
+  set('amt', d.amount)
+  set('unit', d.unit || 'प्रति पेटी')
+  set('prod', d.product)
+  set('fl', (d.flavours || []).join(' • '))
+  set('note', d.note || '')
+  document.getElementById('valid').innerHTML = `${d.valid || ''}<span>${d.validSub || 'स्टॉक रहने तक'}</span>`
+  document.getElementById('call').innerHTML = `${d.phone || '96300 12636'}<span>ऑर्डर के लिए कॉल / WhatsApp</span>`
+  const shelf = document.getElementById('shelf')
+  for (const src of (d.images || []).slice(0, 5)) { const i = new Image(); i.src = src; shelf.appendChild(i) }
+</script>
+</body></html>
