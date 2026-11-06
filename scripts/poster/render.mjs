@@ -1,14 +1,14 @@
-// Render a scheme poster: node scripts/poster/render.mjs <data.json> <out.jpg>
+// Render a poster: node scripts/poster/render.mjs <data.json> <out.jpg> [scheme|combo]
 // data.json fields: amount, product, flavours[], images[] (public URLs), valid, validSub, tag, pre, unit, note, phone
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { chromium } from '@playwright/test'
 
-const [dataFile, out = 'poster.jpg'] = process.argv.slice(2)
+const [dataFile, out = 'poster.jpg', template = 'scheme'] = process.argv.slice(2)
 const data = JSON.parse(fs.readFileSync(dataFile, 'utf8'))
 const b64 = Buffer.from(JSON.stringify(data), 'utf8').toString('base64')
-const url = pathToFileURL(path.resolve('scripts/poster/scheme.html')).href + '?d=' + encodeURIComponent(b64)
+const url = pathToFileURL(path.resolve(`scripts/poster/${template}.html`)).href + '?d=' + encodeURIComponent(b64)
 
 const b = await chromium.launch()
 const p = await b.newPage({ viewport: { width: 1080, height: 1350 } })
