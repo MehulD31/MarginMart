@@ -10,6 +10,7 @@ import { compressImage } from '../../shared/image'
 import { ProductImage } from '../../shared/ui/ProductImage'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 
 export default function CatalogPage() {
   const { t } = useTranslation()
@@ -105,7 +106,9 @@ function PackEditor({ pack, variants, canEdit }: { pack: Pack; variants: Variant
             <label className="chip"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />{t('catalog.activeLabel')}</label>
           </div>
           <Alert msg={msg} />
-          {canEdit && <div className="row"><button type="submit" className="primary" disabled={!valid}>{t('common.save')}</button></div>}
+          {canEdit && <div className="row"><button type="submit" className="primary" disabled={!valid}>{t('common.save')}</button>
+            <DeleteButton kind="pack" id={pack.id} name={pack.name_en} invalidate={['pack', 'variant', 'stock', 'counter-catalog']}
+              onError={(text) => setMsg({ kind: 'error', text })} /></div>}
         </fieldset>
       </form>
 
@@ -162,6 +165,7 @@ function VariantCard({ v, canEdit }: { v: Variant; canEdit: boolean }) {
         <label className="field"><span>{t('catalog.flavourHi')}</span>
           <input lang="hi" value={hi} onChange={(e) => setHi(e.target.value)} onBlur={() => hi !== (v.flavour_hi ?? '') && void update({ flavour_hi: hi.trim() || null })} /></label>
         {canEdit && <label className="chip"><input type="checkbox" checked={v.active} onChange={(e) => void update({ active: e.target.checked })} />{t('catalog.showToShops')}</label>}
+        {canEdit && <div><DeleteButton kind="variant" id={v.id} name={v.flavour_en} invalidate={['variant', 'stock', 'counter-catalog']} onError={setError} /></div>}
         {error && <p className="error" role="alert">{error}</p>}
       </fieldset>
     </li>

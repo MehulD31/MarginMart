@@ -10,6 +10,7 @@ import { formatPaise, rupeesToPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { useStockRows } from './stockRows'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 
 interface Supplier { id: string; name: string; phone: string | null; gstin: string | null; active: boolean }
 interface Purchase {
@@ -41,6 +42,7 @@ export default function PurchasesPage() {
   const supp = new Map(suppliers.data?.map((s) => [s.id, s.name]))
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
   const current = purchases.data?.find((p) => p.id === view)
+  const [msg, setMsg] = useState<Msg>(null)
 
   return (
     <section className="stack-lg">
@@ -51,6 +53,7 @@ export default function PurchasesPage() {
           <button type="button" className="primary" disabled={!suppliers.data?.length} onClick={() => setNewOpen(true)}><Plus size={18} aria-hidden="true" />{t('purchases.new')}</button>
         </>} />
       {isAdmin && suppliers.data && suppliers.data.length === 0 && <Alert msg={{ kind: 'warn', text: t('purchases.addSupplierFirst') }} />}
+      {!view && <Alert msg={msg} />}
       {purchases.isLoading ? <Skeleton rows={5} /> : !purchases.data?.length ? (
         <div className="card"><Empty icon={<ShoppingCart size={26} />} title={t('purchases.empty')} /></div>
       ) : (
@@ -77,6 +80,12 @@ export default function PurchasesPage() {
               <span className="num">{l.qty} × {formatPaise(l.cost_paise)} = <strong>{formatPaise(l.qty * l.cost_paise)}</strong></span></li>))}
           </ul>
           <div className="row-between"><strong>{t('purchases.total')}</strong><strong className="num">{formatPaise(current.total_paise)}</strong></div>
+          <div className="sheet-foot">
+            <DeleteButton kind="purchase" id={current.id} name={`${supp.get(current.supplier_id) ?? ''} ${current.invoice_no ?? ''}`.trim()}
+              invalidate={['purchase', 'stock', 'stock_move', 'month_stats', 'counter-catalog']}
+              onDone={(text) => { setView(null); setMsg({ kind: 'success', text }) }} onError={(text) => setMsg({ kind: 'error', text })} />
+          </div>
+          <Alert msg={msg?.kind === 'error' ? msg : null} />
         </div>}
       </Sheet>
       <Sheet open={newOpen} wide title={t('purchases.new')} onClose={() => setNewOpen(false)}>
@@ -178,7 +187,11 @@ function Suppliers({ list }: { list: Supplier[] }) {
       <ul className="plain-list stack">{list.map((s) => (
         <li key={s.id} className={`row-between ${s.active ? '' : 'dim'}`}>
           <div><div className="cell-title">{s.name}</div>{s.phone && <div className="cell-sub">{s.phone}</div>}</div>
-          <label className="chip"><input type="checkbox" checked={s.active} onChange={() => void toggle(s)} />{t('users.active')}</label>
+          <span className="row" style={{ gap: 6 }}>
+            <label className="chip"><input type="checkbox" checked={s.active} onChange={() => void toggle(s)} />{t('users.active')}</label>
+            <DeleteButton kind="supplier" id={s.id} name={s.name} invalidate={['supplier']}
+              onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} />
+          </span>
         </li>))}
       </ul>
       <form className="stack" onSubmit={add} noValidate>

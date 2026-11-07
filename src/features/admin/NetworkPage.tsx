@@ -6,6 +6,7 @@ import { supabase } from '../../shared/api/supabase'
 import { must, useRoutes, useVehicles, WEEKDAYS, type Route, type Vehicle } from '../../shared/api/db'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, StatusBadge } from '../../shared/ui/kit'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 
 export default function NetworkPage() {
   const { t } = useTranslation()
@@ -96,6 +97,7 @@ function RouteForm({ route, onDone }: { route: Partial<Route>; onDone: () => voi
       <label className="chip"><input type="checkbox" checked={r.active ?? true} onChange={(e) => setR({ ...r, active: e.target.checked })} />{t('users.active')}</label>
       <Alert msg={error ? { kind: 'error', text: error } : null} />
       <div className="sheet-foot">
+        {r.id && <DeleteButton kind="route" id={r.id} name={r.name ?? ''} invalidate={['route', 'plans']} className="mr-auto" onDone={() => onDone()} onError={setError} />}
         <button type="button" onClick={onDone}>{t('common.cancel')}</button>
         <button type="submit" className="primary" disabled={!r.name?.trim() || !r.visit_days?.length}>{t('common.save')}</button>
       </div>
@@ -130,6 +132,7 @@ function VehicleForm({ vehicle, onDone }: { vehicle: Partial<Vehicle>; onDone: (
       <label className="chip"><input type="checkbox" checked={v.active ?? true} onChange={(e) => setV({ ...v, active: e.target.checked })} />{t('users.active')}</label>
       <Alert msg={error ? { kind: 'error', text: error } : null} />
       <div className="sheet-foot">
+        {v.id && <DeleteButton kind="vehicle" id={v.id} name={v.name ?? ''} invalidate={['vehicle', 'route', 'plans']} className="mr-auto" onDone={() => onDone()} onError={setError} />}
         <button type="button" onClick={onDone}>{t('common.cancel')}</button>
         <button type="submit" className="primary" disabled={!v.name?.trim() || !(cap >= 1 && cap <= 5000)}>{t('common.save')}</button>
       </div>

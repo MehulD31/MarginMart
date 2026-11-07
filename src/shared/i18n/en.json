@@ -172,7 +172,19 @@
     "APPEND_ONLY": "Entries cannot be changed. Use Void instead.",
     "ALREADY_VOIDED": "This bill is already cancelled.",
     "ORDER_EXISTS": "This shop already has an open order on that trip. Edit that order instead.",
-    "TRIP_EXISTS": "That truck already has a trip on this route and day. Move the orders to it instead."
+    "TRIP_EXISTS": "That truck already has a trip on this route and day. Move the orders to it instead.",
+    "ORDER_DELIVERED": "This order is already delivered, so it cannot be deleted.",
+    "PURCHASE_STOCK_USED": "Some cases from this purchase are already sold or loaded, so it cannot be deleted. Fix the stock first.",
+    "CANNOT_DELETE_SELF": "You cannot delete your own login.",
+    "LAST_ADMIN": "This is the last admin login, so it cannot be deleted.",
+    "USER_HAS_HISTORY": "This login has orders, deliveries or payments, so it cannot be deleted. Turn it off instead.",
+    "ROUTE_PROTECTED": "This route is used by the Telegram bot for new shops, so it cannot be deleted.",
+    "ROUTE_HAS_SHOPS": "Shops are still on this route. Move them to another route first.",
+    "ROUTE_HAS_ORDERS": "This route has orders or trips, so it cannot be deleted. Untick Active instead.",
+    "VEHICLE_HAS_LOGIN": "A driver login uses this vehicle. Delete or change that login first.",
+    "VEHICLE_IN_USE": "This vehicle has trips, so it cannot be deleted. Untick Active instead.",
+    "ITEM_IN_USE": "This item was already ordered, bought, sold or stocked, so it cannot be deleted. Untick Active instead.",
+    "SUPPLIER_HAS_PURCHASES": "There are purchases from this supplier, so it cannot be deleted. Untick Active instead."
   },
   "days": {
     "1": "Mon",
@@ -963,6 +975,23 @@
       "badLine": "Every item needs whole cases (1 or more) and a rate of ₹{{min}} or more.",
       "saveSale": "Save sale",
       "saveChanges": "Save changes"
+    }
+  },
+  "del": {
+    "title": "Delete {{name}}?",
+    "done": "Deleted {{name}}.",
+    "body": {
+      "counter_sale": "The bill is removed completely and its cases go back into stock. It also disappears from the Google Sheet. This cannot be undone.",
+      "order": "The order is removed completely. Only possible before the truck is loaded. This cannot be undone.",
+      "purchase": "The purchase is removed and its cases are taken back out of stock. Not possible if some of those cases are already sold or loaded. This cannot be undone.",
+      "user": "This login is removed. The person can no longer sign in. Logins with orders, deliveries or payments cannot be deleted: turn them off instead.",
+      "route": "The route and its empty delivery days are removed. Only possible when no shop is on it and no order uses it.",
+      "vehicle": "The vehicle is removed. Only possible when no driver login uses it and it has no trips.",
+      "scheme": "The scheme is removed. Prices of orders already saved do not change.",
+      "pack": "The product and all its flavours are removed. Only possible if it was never ordered, bought, sold or stocked.",
+      "variant": "This flavour is removed. Only possible if it was never ordered, bought, sold or stocked.",
+      "supplier": "The supplier is removed. Only possible if there are no purchases from them.",
+      "join_request": "The request is removed. No shop or login is created."
     }
   }
 }

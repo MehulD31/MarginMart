@@ -576,3 +576,6 @@ details[open].card summary::before { content: '− '; }
 
 .pager { padding: 10px 14px; border-top: 1px solid var(--line-2, #eef2f6); flex-wrap: wrap; gap: 8px; }
 @media print { .pager { display: none; } }
+
+/* Pushes a footer button (e.g. Delete) to the far left of a sheet footer. */
+.mr-auto { margin-right: auto; }

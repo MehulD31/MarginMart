@@ -61,7 +61,11 @@ begin
     if r.id is null then raise exception 'NOT_FOUND'; end if;
     if r.name = 'Direct sales' then raise exception 'ROUTE_PROTECTED'; end if;
     if exists (select 1 from public.shop where route_id = p_id) then raise exception 'ROUTE_HAS_SHOPS'; end if;
-    if exists (select 1 from public.route_day_plan p where p.route_id = p_id and (p.status <> 'planning' or exists (select 1 from public.orders o where o.route_day_plan_id = p.id)))
+    -- a day that ever had an order, a load, stock moves, bills, payments or a cash count is history: keep it
+    if exists (select 1 from public.route_day_plan p where p.route_id = p_id and (p.status <> 'planning'
+       or exists (select 1 from public.orders o where o.route_day_plan_id = p.id) or exists (select 1 from public.stock_move m where m.route_day_plan_id = p.id)
+       or exists (select 1 from public.load_line l where l.route_day_plan_id = p.id) or exists (select 1 from public.invoice i where i.route_day_plan_id = p.id)
+       or exists (select 1 from public.ledger_entry x where x.route_day_plan_id = p.id) or exists (select 1 from public.cash_handover h where h.route_day_plan_id = p.id)))
     then raise exception 'ROUTE_HAS_ORDERS'; end if;
     delete from public.route_day_plan where route_id = p_id;
     delete from public.route where id = p_id;

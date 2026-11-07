@@ -10,6 +10,7 @@ import type { Scheme } from '../../shared/margin'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Skeleton, type Msg } from '../../shared/ui/kit'
 import { useConfirm } from '../../shared/ui/confirm'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { addDays, todayIST, useLocaleDate } from './opsData'
 import { useSchemes } from './marginData'
 
@@ -28,6 +29,7 @@ export default function SchemesPage() {
   const today = todayIST()
   const state = (s: Scheme) => !s.active ? 'ended' : s.ends_on < today ? 'over' : s.starts_on > today ? 'upcoming' : 'running'
 
+  const [msg, setMsg] = useState<Msg>(null)
   const end = async (s: Scheme) => {
     if (!(await confirm({ title: t('schemes.endNow'), body: t('schemes.endBody', { name: packName.get(s.pack_id) }), confirm: t('schemes.endNow'), danger: true }))) return
     await must(supabase.from('scheme').update({ active: false }).eq('id', s.id).select())
@@ -38,6 +40,7 @@ export default function SchemesPage() {
     <section className="stack-lg">
       <PageHeader title={t('schemes.title')} sub={t('schemes.sub')} />
       {isAdmin && <NewScheme />}
+      <Alert msg={msg} />
       {list.isLoading ? <Skeleton rows={4} /> : !list.data?.length ? (
         <div className="card"><Empty icon={<Gift size={26} />} title={t('schemes.empty')} /></div>
       ) : (
@@ -53,7 +56,9 @@ export default function SchemesPage() {
                   <div className="cell-sub">{t(`schemes.kind.${s.kind}`)}</div></td>
                 <td data-label={t('schemes.dates')} className="nowrap">{fmt(s.starts_on)} – {fmt(s.ends_on)}</td>
                 <td data-label={t('users.status')}><span className={`badge ${st === 'running' ? 'badge-green' : st === 'upcoming' ? 'badge-blue' : ''}`}>{t(`schemes.state.${st}`)}</span></td>
-                <td className="actions">{isAdmin && (st === 'running' || st === 'upcoming') && <button type="button" className="btn-sm danger" onClick={() => void end(s)}>{t('schemes.endNow')}</button>}</td>
+                <td className="actions">{isAdmin && (st === 'running' || st === 'upcoming') && <button type="button" className="btn-sm danger" onClick={() => void end(s)}>{t('schemes.endNow')}</button>}
+                  <DeleteButton kind="scheme" id={s.id} name={packName.get(s.pack_id) ?? ''} invalidate={['scheme']}
+                    onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} /></td>
               </tr>)
           })}</tbody>
         </table></div>

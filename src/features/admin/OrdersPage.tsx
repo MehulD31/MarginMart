@@ -7,7 +7,8 @@ import { must, useVehicles, type Shop } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
 import { useAuth } from '../../shared/api/auth'
 import { errorMessage } from '../../shared/ui/errors'
-import { Alert, Empty, PageHeader, Sheet, Skeleton } from '../../shared/ui/kit'
+import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { OrderEditor } from './OrderEditor'
 import { isLive, linesCases, linesTotal, ordersByDate, planDates, useOrderCounts, useOrdersFor, usePlans, todayIST, addDays, type AdminOrder, type Plan } from './opsData'
 import { useLocaleDate } from './opsData'
@@ -57,6 +58,7 @@ export default function OrdersPage() {
   const vehicles = useVehicles()
   const vName = (id: string | null) => vehicles.data?.find((v) => v.id === id)?.name
   const isAdmin = useAuth().profile?.role === 'admin'
+  const [msg, setMsg] = useState<Msg>(null)
 
   const planById = new Map(dayPlans.map((p) => [p.id, p]))
   const forRoute = (orders.data ?? []).filter((o) => !route || planById.get(o.route_day_plan_id)?.route_id === route)
@@ -69,6 +71,7 @@ export default function OrdersPage() {
     <section className="stack-lg">
       <PageHeader title={t('orders.title')} sub={day ? t('orders.sub', { date: fmt(day, true), n: live.length, total: formatPaise(live.reduce((s, o) => s + linesTotal(o), 0)) }) : undefined}
         actions={<button type="button" className="primary" disabled={!isAdmin && !dayPlans.length} onClick={() => (isAdmin ? setAdding(true) : setPicking(true))}><Plus size={18} aria-hidden="true" />{t('orders.new')}</button>} />
+      <Alert msg={msg} />
       {plans.isLoading ? <Skeleton rows={2} /> : <DateChips dates={dates} value={day} counts={countsByDate} onChange={(d) => { setDate(d); setRoute('') }} />}
       {dayPlans.length > 1 && (
         <div className="segmented" role="tablist" aria-label={t('shops.route')}>
@@ -96,6 +99,9 @@ export default function OrdersPage() {
                   {o.shop.phone && <a className="button btn-sm" href={`tel:+91${o.shop.phone}`} aria-label={`${t('shops.call')} ${o.shop.name}`}><Phone size={16} aria-hidden="true" /></a>}
                   {isAdmin && o.status === 'placed' && planById.get(o.route_day_plan_id)?.status === 'planning' && <button type="button" className="btn-sm" onClick={() => setMoving(o)}><ArrowRightLeft size={16} aria-hidden="true" />{t('orders.move')}</button>}
                   <button type="button" className="btn-sm" onClick={() => setOpen({ order: o, plan: planById.get(o.route_day_plan_id)! })}>{o.status === 'placed' ? t('common.edit') : t('common.view')}</button>
+                  {(o.status === 'placed' || o.status === 'cancelled') && (
+                    <DeleteButton kind="order" id={o.id} name={o.shop.name} invalidate={['admin-orders', 'admin-order-counts', 'load-lines', 'plans']}
+                      onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} />)}
                 </td>
               </tr>))}
             </tbody>

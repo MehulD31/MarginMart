@@ -8,6 +8,7 @@ import { callFunction } from '../../shared/api/functions'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { PinIssued, type Issued } from './PinIssued'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 
 interface JoinRequest { id: string; phone: string; shop_name: string; owner_name: string; address: string; created_at: string }
 
@@ -62,6 +63,8 @@ export default function JoinRequestsPage() {
                 <button type="button" className="danger grow" disabled={reject.isPending}
                   onClick={() => reject.mutate(r.id)}><X size={18} aria-hidden="true" />{t('joinRequests.reject')}</button>
               </div>
+              <div><DeleteButton kind="join_request" id={r.id} name={r.shop_name} invalidate={['join_requests']}
+                onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} /></div>
             </article>
           ))}
         </div>

@@ -9,6 +9,7 @@ import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 
 const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 const dayIST = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
@@ -120,13 +121,13 @@ export default function CounterSalesPage() {
                   {b.lines.map((l) => <li key={l.variant_id}>{l.item}: {l.qty} × {formatPaise(l.price_paise)} = {formatPaise(l.qty * l.price_paise)}</li>)}
                 </ul>
                 {b.voided && <p className="cell-sub">{t('sales.voidReason', { reason: b.void_reason ?? '' })}</p>}
-                {!b.voided && (
-                  <div className="row" style={{ gap: 8 }}>
-                    <button type="button" className="btn-sm" onClick={() => { setMsg(null); setEditing(b) }}><Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>
-                    {isAdmin && <button type="button" className="btn-sm danger" onClick={() => { setVoiding(b); setReason(''); setError(null) }}>
-                      <Ban size={16} aria-hidden="true" />{t('sales.void')}</button>}
-                  </div>
-                )}
+                <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                  {!b.voided && <button type="button" className="btn-sm" onClick={() => { setMsg(null); setEditing(b) }}><Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>}
+                  {!b.voided && isAdmin && <button type="button" className="btn-sm danger" onClick={() => { setVoiding(b); setReason(''); setError(null) }}>
+                    <Ban size={16} aria-hidden="true" />{t('sales.void')}</button>}
+                  <DeleteButton kind="counter_sale" id={b.id} name={b.number} invalidate={['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats']}
+                    onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} />
+                </div>
               </li>))}
           </ul>
         )}

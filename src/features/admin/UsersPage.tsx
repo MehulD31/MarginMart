@@ -10,6 +10,7 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton, StatusBadge, type Msg } from
 import { initials } from '../../shared/ui/util'
 import { PinIssued, type Issued } from './PinIssued'
 import { useConfirm } from '../../shared/ui/confirm'
+import { DeleteButton } from '../../shared/ui/DeleteButton'
 
 const ROLES: Role[] = ['admin', 'manager', 'driver', 'shop']
 const ROLE_BADGE: Record<Role, string> = { admin: 'badge-blue', manager: 'badge-amber', driver: 'badge-green', shop: '' }
@@ -104,6 +105,9 @@ export default function UsersPage() {
                         <Power size={16} aria-hidden="true" />{u.active ? t('users.deactivate') : t('users.activate')}
                       </button>
                     )}
+                    {u.user_id !== me?.user_id && (
+                      <DeleteButton kind="user" id={u.user_id} name={u.name} invalidate={['profiles', 'shop']}
+                        onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} />)}
                   </td>
                 </tr>
               ))}
