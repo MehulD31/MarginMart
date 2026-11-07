@@ -1,0 +1,27 @@
+name: ci
+# Every push to main and every pull request: type-check + build, lint, unit tests. A failure on main goes to the KD Telegram group
+# (thumb rule: failures are never silent). Vercel still deploys on its own; this tells us when a deploy would be broken.
+on:
+  push: { branches: [main] }
+  pull_request:
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+permissions: { contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - name: Tell Telegram
+        if: failure() && github.ref == 'refs/heads/main'
+        env:
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          MSG: "❌ CI fail hua: ${{ github.event.head_commit.message }} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: curl -s "https://api.telegram.org/bot${KD_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${KD_CHAT_ID}" --data-urlencode "text=${MSG:0:900}" > /dev/null
