@@ -64,7 +64,6 @@ function OrderScreen({ cart }: { cart: CartApi }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
   const [placed, setPlaced] = useState<{ total: number; date: string } | null>(null)
-  const credit = useCreditStatus()
   const hi = i18n.language === 'hi'
 
   // The saved order for the next visit, if any. An empty cart picks it up so editing feels natural.
@@ -112,7 +111,6 @@ function OrderScreen({ cart }: { cart: CartApi }) {
   return (
     <div className="stack-lg">
       <DeliveryCard delivery={delivery.data} loading={delivery.isLoading} locale={locale} />
-      {credit.data?.blocked && <Alert msg={{ kind: 'error', text: t('khata.blocked', { amount: formatPaise(credit.data.overdue_paise || credit.data.balance_paise) }) }} />}
       {openOrder && !dirty && <Alert msg={{ kind: 'success', text: t('shop.savedOrder', { n: orderCases(openOrder) }) }} />}
       {lastOrder && cases === 0 && (
         <button type="button" className="reorder" onClick={reorder}>

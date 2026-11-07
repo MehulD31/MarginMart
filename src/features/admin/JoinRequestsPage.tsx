@@ -5,7 +5,6 @@ import { Check, Inbox, MapPin, Phone, X } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must, useRoutes, type Route, type Shop } from '../../shared/api/db'
 import { callFunction } from '../../shared/api/functions'
-import { parseRupees } from '../../shared/pricing'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { PinIssued, type Issued } from './PinIssued'
@@ -84,13 +83,12 @@ function ApproveForm({ req, routes, onDone }: { req: JoinRequest; routes: Route[
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [f, setF] = useState({
-    route_id: routes[0]?.id ?? '', stop_seq: '0', credit_limit: '0', credit_days: '7',
+    route_id: routes.find((r) => r.active)?.id ?? routes[0]?.id ?? '', stop_seq: '0',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }))
-  const limit = parseRupees(f.credit_limit)
-  const valid = f.route_id && limit !== null && limit >= 0 && Number(f.credit_days) >= 0 && Number(f.credit_days) <= 90
+  const valid = !!f.route_id
 
   const approve = async (e: FormEvent) => {
     e.preventDefault()
@@ -100,7 +98,7 @@ function ApproveForm({ req, routes, onDone }: { req: JoinRequest; routes: Route[
       const [shop] = await must<Shop[]>(supabase.from('shop').insert({
         name: req.shop_name.trim(), owner_name: req.owner_name.trim() || null, phone: req.phone,
         address: req.address?.trim() || null, route_id: f.route_id, stop_seq: Number(f.stop_seq) || 0,
-        credit_limit_paise: limit!, credit_days: Number(f.credit_days), active: true,
+        active: true,
       }).select())
       const res = await callFunction<{ pin: string }>('admin-users', {
         action: 'create', role: 'shop', name: req.owner_name.trim() || req.shop_name.trim(), phone: req.phone, shop_id: shop.id,
@@ -128,10 +126,6 @@ function ApproveForm({ req, routes, onDone }: { req: JoinRequest; routes: Route[
           </select></label>
         <label className="field"><span>{t('shops.stopSeq')} <span className="hint">{t('shops.stopHint')}</span></span>
           <input type="number" inputMode="numeric" min={0} value={f.stop_seq} onChange={(e) => set('stop_seq')(e.target.value)} /></label>
-        <label className="field"><span>{t('shops.creditLimit')}</span>
-          <input type="text" inputMode="numeric" value={f.credit_limit} onChange={(e) => set('credit_limit')(e.target.value)} /></label>
-        <label className="field"><span>{t('shops.creditDays')}</span>
-          <input type="number" inputMode="numeric" min={0} max={90} value={f.credit_days} onChange={(e) => set('credit_days')(e.target.value)} /></label>
       </div>
       <Alert msg={error ? { kind: 'error', text: error } : null} />
       <div className="sheet-foot">

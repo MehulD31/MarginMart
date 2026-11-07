@@ -293,7 +293,7 @@
     },
     "savingShops": "Saving {{n}} shops…",
     "creatingLogins": "Creating logins {{i}}/{{n}}…",
-    "csvHint": "Columns: name, owner_name, phone, route, stop_seq, credit_limit (₹), credit_days, address, gstin, code. Route must be one of: {{routes}}.",
+    "csvHint": "Columns: name, owner_name, phone, route, stop_seq, address, locality, type, lat, lng, gstin, code. Route must be one of: {{routes}}.",
     "downloadTemplate": "Download template",
     "csvReady": "{{ok}} rows ready, {{bad}} with errors (skipped).",
     "line": "Line {{n}}",
@@ -319,7 +319,15 @@
     "step2": "Route must be exactly one of: {{routes}}.",
     "step3": "Upload the file and check the rows before importing.",
     "ready": "Ready to import",
-    "withErrors": "Have errors (skipped)"
+    "withErrors": "Have errors (skipped)",
+    "area": "Area",
+    "locality": "Locality / area",
+    "type": "Shop type",
+    "gps": "GPS location",
+    "gpsHint": "(lat, lng or a Google Maps link)",
+    "gpsBad": "Enter lat, lng like 21.2145, 81.3578",
+    "map": "Open in Maps",
+    "hasCooler": "Has Pepsi cooler"
   },
   "auth": {
     "heroTitle": "Orders, deliveries and dues in one place.",
@@ -655,7 +663,8 @@
     "loadTruck": "Load truck ({{n}} cases)",
     "laterOrder": "This shop also has an order for {{date}} ({{n}} cases).",
     "deliverNow": "Deliver that order now",
-    "laterHasToday": "It also has an order today. Deliver today's order; ask the office to cancel or merge the other one."
+    "laterHasToday": "It also has an order today. Deliver today's order; ask the office to cancel or merge the other one.",
+    "navigate": "Navigate"
   },
   "eod": {
     "title": "End of day",

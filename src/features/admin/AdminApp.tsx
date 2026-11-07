@@ -122,7 +122,8 @@ export default function AdminApp() {
           <Route path="audit" element={<AuditPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={<PurchasesPage />} />
-          <Route path="pricing" element={<PricingPage />} />`n          <Route path="schemes" element={<SchemesPage />} />
+          <Route path="pricing" element={<PricingPage />} />
+          <Route path="schemes" element={<SchemesPage />} />
           <Route path="shops" element={<ShopsPage />} />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="prices" element={<PriceListsPage />} />

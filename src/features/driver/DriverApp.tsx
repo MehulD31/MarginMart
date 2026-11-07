@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Banknote, CircleCheck, CloudOff, Lock, LogOut, MapPin, MessageCircle, Package, Phone, RefreshCw, Search, Smartphone, Truck, Wallet } from 'lucide-react'
+import { ArrowLeft, Banknote, CircleCheck, CloudOff, Lock, LogOut, MapPin, MessageCircle, Navigation, Package, Phone, RefreshCw, Search, Smartphone, Truck, Wallet } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise, rupeesToPaise } from '../../shared/money'
 import { netRate } from '../../shared/pricing'
@@ -18,7 +18,7 @@ import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../shared/api/supabase'
-import { must } from '../../shared/api/db'
+import { mapsUrl, must } from '../../shared/api/db'
 import { errorMessage } from '../../shared/ui/errors'
 
 type Day = ReturnType<typeof useDriverDay>
@@ -89,7 +89,10 @@ function StopList({ day }: { day: Day }) {
   const { i18n } = useTranslation()
   const vehicleId = useAuth().profile?.vehicle_id
 
-  const sorted = [...stops].sort((a, b) => Number(!!(a.invoice || a.queued)) - Number(!!(b.invoice || b.queued)) || Number(!a.order) - Number(!b.order) || a.shop.stop_seq - b.shop.stop_seq)
+  // Done last, then orders first, then today's route before the vehicle's other days, then stop order.
+  const todayRoute = snap.plan?.route_id
+  const sorted = [...stops].sort((a, b) => Number(!!(a.invoice || a.queued)) - Number(!!(b.invoice || b.queued)) || Number(!a.order) - Number(!b.order)
+    || Number(a.shop.route_id !== todayRoute) - Number(b.shop.route_id !== todayRoute) || a.shop.stop_seq - b.shop.stop_seq)
 
   const needle = q.trim().toLowerCase()
   // No search: today's route plus anyone with an order or bill. Search: every active shop (van sale anywhere).
@@ -240,11 +243,14 @@ function StopScreen({ day }: { day: Day }) {
     <div className="stack-lg">
       <div className="row-between">
         <button type="button" className="ghost" style={{ paddingLeft: 0 }} onClick={() => navigate('/driver')}><ArrowLeft size={18} aria-hidden="true" />{t('driver.allStops')}</button>
-        {stop.shop.phone && <a className="button btn-sm" href={`tel:+91${stop.shop.phone}`}><Phone size={16} aria-hidden="true" />{t('shops.call')}</a>}
+        <span className="row" style={{ gap: 8 }}>
+          {mapsUrl(stop.shop) && <a className="button btn-sm" href={mapsUrl(stop.shop)!} target="_blank" rel="noopener noreferrer"><Navigation size={16} aria-hidden="true" />{t('driver.navigate')}</a>}
+          {stop.shop.phone && <a className="button btn-sm" href={`tel:+91${stop.shop.phone}`}><Phone size={16} aria-hidden="true" />{t('shops.call')}</a>}
+        </span>
       </div>
       <div>
         <h1>{stop.shop.name}</h1>
-        {stop.shop.address && <p className="muted row" style={{ marginTop: 4 }}><MapPin size={14} aria-hidden="true" />{stop.shop.address}</p>}
+        {(stop.shop.address || stop.shop.locality) && <p className="muted row" style={{ marginTop: 4 }}><MapPin size={14} aria-hidden="true" />{[stop.shop.address, stop.shop.locality].filter(Boolean).join(' · ')}</p>}
       </div>
       <div className="stats">
         <div className="stat"><div className="label">{t('driver.oldDue')}</div><div className={`value num ${stop.due > 0 ? 'text-warn' : ''}`}>{formatPaise(Math.max(0, stop.due))}</div>{stop.due < 0 && <div className="cell-sub">{t('driver.advance', { amount: formatPaise(-stop.due) })}</div>}</div>

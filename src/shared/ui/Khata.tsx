@@ -13,7 +13,6 @@ export function BalanceCards({ status }: { status?: CreditStatus }) {
       <div className={`stat kpi ${due > 0 ? 'kpi-amber' : 'kpi-green'}`}>
         <div className="label">{due < 0 ? t('khata.advance') : t('khata.due')}</div>
         <div className="value num">{formatPaise(Math.abs(due))}</div>
-        <div className="cell-sub">{status.credit_limit_paise > 0 ? t('khata.limit', { amount: formatPaise(status.credit_limit_paise) }) : t('khata.noLimit')}</div>
       </div>
       <div className={`stat kpi ${status.overdue_paise > 0 ? 'kpi-amber' : 'kpi-green'}`}>
         <div className="label">{t('khata.overdue')}</div>

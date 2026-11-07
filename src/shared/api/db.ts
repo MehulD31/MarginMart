@@ -24,7 +24,15 @@ export interface Shop {
   id: string; code: string | null; name: string; owner_name: string | null; phone: string | null
   alt_phone: string | null; address: string | null; gstin: string | null; route_id: string; stop_seq: number
   credit_limit_paise: number; credit_days: number; active: boolean
+  locality: string | null; lat: number | null; lng: number | null; channel: string | null; sub_channel: string | null
+  outlet_type: string | null; has_cooler: boolean | null; cooler: string | null; visit_freq: string | null
 }
+
+/** Google Maps directions to a shop: GPS when known, else the address text. */
+export const mapsUrl = (s: { lat?: number | null; lng?: number | null; address?: string | null; name?: string }) =>
+  s.lat != null && s.lng != null
+    ? `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`
+    : s.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${s.name ?? ''} ${s.address}`.trim())}` : null
 
 /** Throws the Supabase error so React Query / errorMessage can show it. */
 export async function must<T>(p: PromiseLike<{ data: unknown; error: unknown }>): Promise<T> {

@@ -26,11 +26,12 @@ const cancelBtn = { text: '❌ Cancel', callback_data: 's:cancel' }
 
 async function showShops(chat, q) {
   const shops = await rpc('bot_shops', { p_q: q || null })
-  const rows = pairs(shops.map((s) => ({ text: s.name.slice(0, 30), callback_data: `s:shop:${s.id}` })))
+  // Many shops share a name ("Dewangan Kirana" x7), so the button also shows the area.
+  const rows = pairs(shops.map((s) => ({ text: `${s.name.slice(0, 26)}${s.locality ? ' · ' + s.locality.slice(0, 16) : ''}`, callback_data: `s:shop:${s.id}` })))
   if (q) rows.push([{ text: `➕ Nayi dukan: ${q.slice(0, 25)}`, callback_data: 's:add' }])
   rows.push([cancelBtn])
   const head = q ? (shops.length ? `"${q}" se ye dukane mili. Chuno, ya nayi jodo:` : `"${q}" naam ki koi dukan nahi. Nayi jodni hai?`)
-    : (shops.length ? 'Kis dukan ka sale? Chuno, ya naam likh kar dhoondho:' : 'Abhi koi dukan nahi hai. Dukan ka naam likho, main jod dunga.')
+    : (shops.length ? 'Kis dukan ka sale? Naam, area ya phone likh kar dhoondho, ya neeche chuno:' : 'Abhi koi dukan nahi hai. Dukan ka naam likho, main jod dunga.')
   await send(chat, head, rows)
 }
 

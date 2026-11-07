@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, IndianRupee, Phone, Unlock, Wallet } from 'lucide-react'
+import { BookOpen, IndianRupee, Phone, Wallet } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must, useRoutes, type Shop } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
@@ -112,18 +112,11 @@ function ShopKhata({ shop }: { shop: Shop }) {
       setAmount(''); setRef(''); setNote('')
     }
   }
-  const overrideBlock = () => run(() => supabase.rpc('override_credit_block', { p_shop_id: shop.id, p_until: new Date(Date.now() + 2 * 86_400_000).toISOString() }), t('khata.unblocked'))
 
   return (
     <div className="stack-lg">
       <BalanceCards status={status.data} />
       <Alert msg={msg} />
-      {status.data?.blocked && (
-        <div className="alert alert-warn" style={{ alignItems: 'center' }}>
-          <span className="grow">{t('khata.blockedStaff')}</span>
-          <button type="button" className="btn-sm" disabled={busy} onClick={() => void overrideBlock()}><Unlock size={16} aria-hidden="true" />{t('khata.allow2Days')}</button>
-        </div>
-      )}
       <div className="card stack">
         <h2>{t('khata.recordPayment')}</h2>
         <fieldset className="days"><legend className="sr-only">{t('driver.payMode')}</legend>

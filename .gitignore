@@ -39,3 +39,5 @@ skills-lock.json
 # Local MCP config holds tokens
 .kiro/settings/
 scratch/
+.vercel
+.env*

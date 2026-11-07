@@ -293,7 +293,7 @@
     },
     "savingShops": "{{n}} दुकानें सेव हो रही हैं…",
     "creatingLogins": "लॉगिन बन रहे हैं {{i}}/{{n}}…",
-    "csvHint": "कॉलम: name, owner_name, phone, route, stop_seq, credit_limit (₹), credit_days, address, gstin, code। रूट इनमें से हो: {{routes}}।",
+    "csvHint": "कॉलम: name, owner_name, phone, route, stop_seq, address, locality, type, lat, lng, gstin, code। रूट इनमें से हो: {{routes}}।",
     "downloadTemplate": "टेम्पलेट डाउनलोड करें",
     "csvReady": "{{ok}} लाइन तैयार, {{bad}} में गलती (छोड़ी जाएँगी)।",
     "line": "लाइन {{n}}",
@@ -319,7 +319,15 @@
     "step2": "रूट इनमें से ही हो: {{routes}}।",
     "step3": "फ़ाइल डालें और इम्पोर्ट से पहले लाइनें जाँचें।",
     "ready": "इम्पोर्ट के लिए तैयार",
-    "withErrors": "गलती वाली (छोड़ी जाएँगी)"
+    "withErrors": "गलती वाली (छोड़ी जाएँगी)",
+    "area": "इलाका",
+    "locality": "इलाका",
+    "type": "दुकान का प्रकार",
+    "gps": "GPS लोकेशन",
+    "gpsHint": "(lat, lng या Google Maps लिंक)",
+    "gpsBad": "lat, lng ऐसे लिखें: 21.2145, 81.3578",
+    "map": "मैप में खोलें",
+    "hasCooler": "पेप्सी कूलर है"
   },
   "auth": {
     "heroTitle": "ऑर्डर, डिलीवरी और उधार, सब एक जगह।",
@@ -655,7 +663,8 @@
     "loadTruck": "गाड़ी लोड करें ({{n}} पेटी)",
     "laterOrder": "इस दुकान का {{date}} का भी ऑर्डर है ({{n}} पेटी)।",
     "deliverNow": "वह ऑर्डर अभी डिलीवर करें",
-    "laterHasToday": "इसका आज का भी ऑर्डर है। आज का डिलीवर करें; दूसरे को रद्द या जोड़ने के लिए ऑफ़िस को बताएं।"
+    "laterHasToday": "इसका आज का भी ऑर्डर है। आज का डिलीवर करें; दूसरे को रद्द या जोड़ने के लिए ऑफ़िस को बताएं।",
+    "navigate": "रास्ता"
   },
   "eod": {
     "title": "दिन का हिसाब",
