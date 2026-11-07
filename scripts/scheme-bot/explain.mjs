@@ -2,7 +2,7 @@
 // Env (plus lib.mjs): TASK = the message text, WHO = Telegram name.  Run: node scripts/scheme-bot/explain.mjs
 import fs from 'node:fs'
 import { execFileSync } from 'node:child_process'
-import { addDays, askJson, db, env, hiDate, rs, say, tgPhoto, todayIST } from './lib.mjs'
+import { addDays, askJson, db, env, hiDate, rs, say, tgPhoto, todayIST, upload } from './lib.mjs'
 
 const task = env('TASK').slice(0, 2000)
 const who = process.env.WHO ?? ''
@@ -84,6 +84,8 @@ Never invent a pack, amount or date that the message does not support; use null 
     note: `${pack.bottles} बोतल की पेटी • MRP ₹${pack.mrp}` }
   fs.writeFileSync('poster.json', JSON.stringify(poster))
   execFileSync('node', ['scripts/poster/render.mjs', 'poster.json', 'poster.jpg'], { stdio: 'inherit' })
+  // Keep the poster online so an approved scheme can be posted to Facebook/Instagram later (approve.mjs queues it).
+  await upload(`posters/${draft.id}.jpg`, 'poster.jpg').catch((e) => console.log('poster upload failed', e.message))
 
   const lines = [
     `📢 ${pack.name}${vids ? ' (' + flv.map((f) => f.name).join(', ') + ')' : ''}: ${rs(amount)}/peti extra, ${hiDate(starts)}–${hiDate(ends)} (${days} din)`,

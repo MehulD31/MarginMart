@@ -16,8 +16,8 @@ const tg = (method, payload) =>
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   }).catch(() => null)
 
-async function dispatch(inputs) {
-  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO}/actions/workflows/scheme.yml/dispatches`, {
+async function dispatch(inputs, workflow = 'scheme.yml') {
+  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO}/actions/workflows/${workflow}/dispatches`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ ref: 'main', inputs }),
@@ -53,8 +53,18 @@ export default async function handler(req, res) {
     if (!text) return res.status(200).end()
     // Counter sales: "/sale" and anything typed while a sale is open.
     if (await handleSaleMessage(msg)) return res.status(200).end()
+    // Autopilot: "/ask <question>" answers from live numbers; "/report" = today's hisaab now; "/week" = weekly report now.
+    const cmd = /^\/(ask|report|week|check)(?:@\w+)?\s*([\s\S]*)$/i.exec(text)
+    if (cmd) {
+      const c = cmd[1].toLowerCase(), q = cmd[2].trim()
+      if (c === 'ask' && !q) { await tg('sendMessage', { chat_id: msg.chat.id, text: 'Aise likho: /ask aaj kitni peti biki?' }); return res.status(200).end() }
+      await tg('sendMessage', { chat_id: msg.chat.id, text: '⏳ Dekh raha hun…' })
+      const mode = { ask: 'ask', report: 'night', week: 'weekly', check: 'watchdog' }[c]
+      await dispatch({ mode, question: q.slice(0, 800), force: c === 'ask' ? '' : '1' }, 'ops.yml')
+      return res.status(200).end()
+    }
     if (text.startsWith('/')) {
-      if (/^\/(start|help)/i.test(text)) await tg('sendMessage', { chat_id: msg.chat.id, text: 'Main 2 kaam karta hun:\n\n🧾 Sale likhna: /sale likho aur buttons se karo, ya ek line me: /sale Sharma Kirana: sting 50 @495, nimbooz 30 @515, cash\n\n📢 Pepsi scheme: Pepsi wale ka message yahan paste karo. Matlab, poster aur ✅ Approve milega.' })
+      if (/^\/(start|help)/i.test(text)) await tg('sendMessage', { chat_id: msg.chat.id, text: 'Main ye kaam karta hun:\n\n🧾 /sale likho aur buttons se sale likho, ya ek line me: /sale Sharma Kirana: sting 50 @495, nimbooz 30 @515, cash\n\n📢 Pepsi scheme: Pepsi wale ka message yahan paste karo. Matlab, poster aur ✅ Approve milega. Approve hote hi poster Facebook/Instagram pe bhi jayega.\n\n📊 /report = aaj ka hisaab · /week = hafte ka report · /ask <sawal> = kuch bhi poochho (jaise /ask kis dukan ka sabse zyada udhaar hai?) · /check = system check\n\nRoz apne aap: 8:00 subah ka plan, 21:30 din ka hisaab, Monday hafte ka report.' })
       return res.status(200).end()
     }
     // A reply to the bot's own message is a correction: send the original and the correction together.

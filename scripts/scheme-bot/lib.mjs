@@ -70,3 +70,13 @@ export const addDays = (iso, n) => { const d = new Date(`${iso}T00:00:00Z`); d.s
 export const rs = (paise) => '₹' + (paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })
 const HI_MONTHS = ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर']
 export const hiDate = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d} ${HI_MONTHS[m - 1]}` }
+
+// ---------- Storage (public bucket product-images; upsert so a re-run overwrites) ----------
+export async function upload(path, file, type = 'image/jpeg') {
+  const fs = await import('node:fs')
+  const r = await fetch(`${env('SUPABASE_URL')}/storage/v1/object/product-images/${path}`, {
+    method: 'POST', headers: { apikey: env('SUPABASE_SERVICE_KEY'), Authorization: `Bearer ${env('SUPABASE_SERVICE_KEY')}`,
+      'Content-Type': type, 'x-upsert': 'true' }, body: fs.readFileSync(file) })
+  if (!r.ok) throw new Error(`upload ${r.status}: ${(await r.text()).slice(0, 200)}`)
+  return `${env('SUPABASE_URL')}/storage/v1/object/public/product-images/${path}`
+}

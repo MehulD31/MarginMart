@@ -16,6 +16,11 @@ try {
     amount_paise: f.amount_paise, starts_on: f.starts_on, ends_on: f.ends_on, note: (f.note ?? '').slice(0, 300), source_text: d.source_text }) })
   await db(`scheme_draft?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'approved', scheme_id: s.id }) })
   const [p] = await db(`pack?id=eq.${f.pack_id}&select=name_en`)
+  // Queue the poster for Facebook + Instagram (ops.mjs social posts it at 19:30). One row per scheme, so a re-tap can't post twice.
+  const caption = `🔥 Dukandar bhaiyon ke liye offer: ${p?.name_en} pe ${rs(f.amount_paise)}/peti extra, ${hiDate(f.starts_on)}–${hiDate(f.ends_on)}.\n\nOrder: KD Foods ke MarginMart app se ya WhatsApp/call karo.\n\n#PepsiDistributor #ColdDrinkWholesale #KDFoods #MarginMart #Durg #Bhilai #Raipur`
+  await db('social_post?on_conflict=kind,source_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify({ kind: 'scheme', source_id: s.id, caption,
+      image_url: `${env('SUPABASE_URL')}/storage/v1/object/public/product-images/posters/${id}.jpg` }) }).catch((e) => console.log('social queue failed', e.message))
   await say(`✅ ${who}: ${p?.name_en} pe ${rs(f.amount_paise)}/peti scheme app me chalu, ${hiDate(f.starts_on)}–${hiDate(f.ends_on)}. Poster retailers ke WhatsApp group me forward kar do.\n(App → Setup → Schemes me dekh/band kar sakte ho.)`)
 } catch (e) {
   console.error(e)

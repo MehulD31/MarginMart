@@ -1,0 +1,52 @@
+name: ops
+# KD Foods autopilot (scripts/ops/ops.mjs). Every mode is idempotent (public.ops_log), so a double trigger never sends twice.
+# Triggers: cron-job.org -> workflow_dispatch (exact times, preferred) AND the GitHub schedule below as a fallback
+# (GitHub runs late; the watchdog re-sends anything still missing).
+on:
+  workflow_dispatch:
+    inputs:
+      mode: { description: "morning | night | weekly | watchdog | social | ask", required: true, default: watchdog }
+      question: { description: "for mode=ask", required: false, default: "" }
+      force: { description: "1 = send again even if already sent today", required: false, default: "" }
+  schedule:
+    - cron: '30 2 * * *'    # 08:00 IST morning
+    - cron: '0 16 * * *'    # 21:30 IST night
+    - cron: '30 3 * * 1'    # Mon 09:00 IST weekly
+    - cron: '30 4 * * *'    # 10:00 IST watchdog
+    - cron: '30 17 * * *'   # 23:00 IST watchdog
+    - cron: '0 14 * * *'    # 19:30 IST social
+concurrency: { group: "ops-${{ github.event.inputs.mode || github.event.schedule }}", cancel-in-progress: false }
+permissions: { contents: read, actions: write }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: Pick mode
+        id: m
+        run: |
+          case "${{ github.event.schedule }}" in
+            '30 2 * * *') m=morning ;; '0 16 * * *') m=night ;; '30 3 * * 1') m=weekly ;;
+            '30 4 * * *'|'30 17 * * *') m=watchdog ;; '0 14 * * *') m=social ;;
+            *) m="${{ github.event.inputs.mode }}" ;;
+          esac
+          echo "mode=$m" >> "$GITHUB_OUTPUT"
+      - name: Run
+        env:
+          MODE: ${{ steps.m.outputs.mode }}
+          QUESTION: ${{ github.event.inputs.question }}
+          FORCE: ${{ github.event.inputs.force }}
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_FREE_KEY: ${{ secrets.GEMINI_FREE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ops/ops.mjs
