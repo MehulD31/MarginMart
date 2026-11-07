@@ -65,15 +65,20 @@ async function showConfirm(chat, state) {
 // ---------- typed one-line sale, read by AI ----------
 async function askJson(prompt) {
   // gemini-3.8-flash can hang for 40s+, which kills the 60s webhook, so it is not used; each try is capped at 15s.
-  for (const model of ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST', signal: AbortSignal.timeout(12000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0 } }) })
-      const j = await r.json()
-      const t = j?.candidates?.[0]?.content?.parts?.[0]?.text
-      if (t) return JSON.parse(t)
-    } catch { /* next model */ }
+  // Free-key rate limits (429) are common when notes come quickly: walk the models twice, with a short pause between rounds.
+  for (const round of [0, 1]) {
+    if (round) await new Promise((ok) => setTimeout(ok, 2500))
+    for (const model of ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']) {
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+          method: 'POST', signal: AbortSignal.timeout(12000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0 } }) })
+        const j = await r.json()
+        const t = j?.candidates?.[0]?.content?.parts?.[0]?.text
+        if (t) return JSON.parse(t)
+        console.log('sale-ai', model, r.status, JSON.stringify(j).slice(0, 160))
+      } catch (e) { console.log('sale-ai error', model, e.message) }
+    }
   }
   throw new Error('AI busy, button wala /sale use karo')
 }
@@ -84,8 +89,8 @@ export async function transcribe(buf, mime) {
   if (buf.length > 4_000_000) throw new Error('Recording bahut lambi hai. 30 second se chhota bolo.')
   const data = Buffer.from(buf).toString('base64')
   const prompt = `This is a short voice note from an Indian beverage (Pepsi) distributor recording a counter sale, in Hindi, Hinglish or English.
-Write exactly what is said, in Roman (English) letters, Hinglish style. Write every number as digits (pachaas = 50, chaar sau pachaanve = 495, dedh sau = 150, dhai sau = 250, saade paanch sau = 550).
-Keep shop names and brand names as spoken (Sting, Nimbooz, Kurkure, Lays, Aquafina, Pepsi, 7up, Mirinda, Mountain Dew, Slice, Creambell).
+Write exactly what is said, word by word, in Roman (English) letters, Hinglish style. Do not add, guess or correct any word. Write every number as digits (pachaas = 50, saath = 60, chaar sau pachaanve = 495, dedh sau = 150, dhai sau = 250, saade paanch sau = 550).
+The first words are usually a shop name (often "<name> Kirana", "<name> General Store", "<name> Traders"); write it as heard.
 If there is no clear speech, return an empty text. Return {"text": string}`
   for (const model of ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']) {
     try {
@@ -116,6 +121,7 @@ Pick shop_id only if the note clearly names that shop (a "Shri"/"Shree" prefix m
 Items: ${JSON.stringify(cat.map((c) => ({ id: c.variant_id, name: c.label, stock: Number(c.on_hand) })))}
 If a spoken item fits several items, use the one with stock > 0. If several items with stock > 0 still fit (e.g. "pepsi" with no size), do NOT add that line: put a short Hinglish note in unclear asking which size.
 "crate", "case", "peti", "dabba", "carton" all mean one case. A number after @ or "ka"/"rate"/"ke"/"me"/"rupay", or the second number for an item (e.g. "sting 50 crate 495" = 50 cases at 495), is the price per case in rupees.
+Numbers may be Hindi words: das 10, bees 20, tees 30, chaalis 40, pachaas 50, saath 60, sattar 70, assi 80, nabbe 90, sau 100, paanch sau 500, chaar sau pachaanve 495, dedh sau 150, dhai sau 250, saade = +half.
 "upi", "online", "gpay", "phonepe", "paytm" = upi; "cash", "nakad" = cash. Notes may come from speech, so shop names can be slightly misspelt: match the closest known shop.
 Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number}], "mode": "cash"|"upi"|null, "unclear": [short Hinglish notes]}
 Every line needs BOTH a number of cases and a rate. If either is missing or unclear, do NOT guess it and do NOT add that line: put a short Hinglish note in unclear instead.
