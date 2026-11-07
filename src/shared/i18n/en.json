@@ -922,7 +922,7 @@
   },
   "sales": {
     "title": "Counter sales",
-    "sub": "Bills entered from Telegram (/sale). Cash or UPI, paid in full. Stock goes down when a bill is saved.",
+    "sub": "Bills from Telegram (/sale), the Google Sheet and this page. Cash or UPI, paid in full. Stock follows every change.",
     "from": "From",
     "to": "To",
     "badRange": "The start date must not be after the end date.",
@@ -938,6 +938,31 @@
     "voidTitle": "Cancel {{n}}",
     "voidBody": "Cancel the bill for {{shop}} ({{total}})? The cases go back into stock. This cannot be undone.",
     "reason": "Reason",
-    "voidReason": "Cancelled: {{reason}}"
+    "voidReason": "Cancelled: {{reason}}",
+    "new": "New sale",
+    "editTitle": "Edit {{n}}",
+    "savedNew": "Saved {{n}}. Stock is updated and it shows in the sheet within a minute.",
+    "savedEdit": "Saved changes to {{n}}. Stock is updated.",
+    "byDay": "By day",
+    "day": "Day",
+    "form": {
+      "shop": "Shop",
+      "searchShop": "Search shop by name, phone or area",
+      "noShop": "No shop found. Add it on the Shops page first.",
+      "changeShop": "Change",
+      "items": "Items",
+      "addItem": "Add an item: type Sting, Nimbooz…",
+      "rate": "Rate",
+      "remove": "Remove",
+      "inStock": "{{n}} in stock",
+      "overStock": "only {{n}} in stock",
+      "belowFloor": "below loss line {{floor}}",
+      "pay": "Payment",
+      "needShop": "Pick the shop.",
+      "needItem": "Add at least one item.",
+      "badLine": "Every item needs whole cases (1 or more) and a rate of ₹{{min}} or more.",
+      "saveSale": "Save sale",
+      "saveChanges": "Save changes"
+    }
   }
 }

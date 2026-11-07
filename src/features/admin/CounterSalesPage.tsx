@@ -1,23 +1,19 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Ban, Receipt } from 'lucide-react'
+import { Ban, Pencil, Plus, Receipt } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
-import { Alert, Empty, PageHeader, Sheet, Skeleton } from '../../shared/ui/kit'
-
-interface Bill {
-  id: string; number: string; at: string; shop: string; locality: string | null; phone: string | null
-  mode: 'cash' | 'upi'; total_paise: number; by: string | null; voided: boolean; void_reason: string | null
-  margin_paise: number | null; lines: { item: string; qty: number; price_paise: number }[]
-}
+import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
 
 const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+const dayIST = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 
-/** Counter sales entered from Telegram (/sale). Same numbers as the Google Sheet. */
+/** Counter sales (Telegram /sale, the Google Sheet and this page all write the same bills). */
 export default function CounterSalesPage() {
   const { t, i18n } = useTranslation()
   const { profile } = useAuth()
@@ -25,26 +21,29 @@ export default function CounterSalesPage() {
   const qc = useQueryClient()
   const [from, setFrom] = useState(todayIST)
   const [to, setTo] = useState(todayIST)
-  const [voiding, setVoiding] = useState<Bill | null>(null)
+  const [editing, setEditing] = useState<CounterBill | 'new' | null>(null)
+  const [voiding, setVoiding] = useState<CounterBill | null>(null)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [msg, setMsg] = useState<Msg>(null)
 
   const valid = !!from && !!to && from <= to
   const sales = useQuery({
     queryKey: ['counter-sales', from, to],
     enabled: valid,
-    queryFn: () => must<Bill[] | null>(supabase.rpc('counter_sales', { p_from: from, p_to: to })).then((r) => r ?? []),
+    queryFn: () => must<CounterBill[] | null>(supabase.rpc('counter_sales', { p_from: from, p_to: to })).then((r) => r ?? []),
     refetchInterval: 30_000,
   })
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
-  const live = (sales.data ?? []).filter((b) => !b.voided)
-  const sum = (f: (b: Bill) => number) => live.reduce((a, b) => a + f(b), 0)
-  const cases = sum((b) => b.lines.reduce((a, l) => a + l.qty, 0))
-  const total = sum((b) => b.total_paise)
-  const cash = sum((b) => (b.mode === 'cash' ? b.total_paise : 0))
-  const upi = sum((b) => (b.mode === 'upi' ? b.total_paise : 0))
-  const margin = sum((b) => b.margin_paise ?? 0)
+  const live = useMemo(() => (sales.data ?? []).filter((b) => !b.voided), [sales.data])
+  const sum = (bs: CounterBill[], f: (b: CounterBill) => number) => bs.reduce((a, b) => a + f(b), 0)
+  const casesOf = (b: CounterBill) => b.lines.reduce((a, l) => a + l.qty, 0)
+  const days = useMemo(() => {
+    const m = new Map<string, CounterBill[]>()
+    for (const b of live) { const d = dayIST(b.at); m.set(d, [...(m.get(d) ?? []), b]) }
+    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  }, [live])
 
   const doVoid = async (e: FormEvent) => {
     e.preventDefault()
@@ -52,14 +51,16 @@ export default function CounterSalesPage() {
     setBusy(true); setError(null)
     try {
       await must(supabase.rpc('void_cash_sale', { p_id: voiding.id, p_reason: reason.trim() }))
-      for (const k of ['counter-sales', 'stock', 'stock_move', 'month_stats']) void qc.invalidateQueries({ queryKey: [k] })
+      for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats']) void qc.invalidateQueries({ queryKey: [k] })
       setVoiding(null); setReason('')
     } catch (err) { setError(errorMessage(t, err)) } finally { setBusy(false) }
   }
 
   return (
     <section className="stack-lg">
-      <PageHeader title={t('sales.title')} sub={t('sales.sub')} />
+      <PageHeader title={t('sales.title')} sub={t('sales.sub')}
+        actions={<button type="button" className="primary" onClick={() => { setMsg(null); setEditing('new') }}><Plus size={18} aria-hidden="true" />{t('sales.new')}</button>} />
+      <Alert msg={msg} />
       <div className="form-grid" style={{ maxWidth: 440 }}>
         <label className="field"><span>{t('sales.from')}</span><input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} /></label>
         <label className="field"><span>{t('sales.to')}</span><input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></label>
@@ -68,12 +69,32 @@ export default function CounterSalesPage() {
 
       <div className="stats" aria-label={t('sales.summary')}>
         <div className="stat"><div className="label">{t('sales.bills')}</div><div className="value num">{live.length}</div></div>
-        <div className="stat"><div className="label">{t('sales.cases')}</div><div className="value num">{cases}</div></div>
-        <div className="stat"><div className="label">{t('sales.total')}</div><div className="value num">{formatPaise(total)}</div></div>
-        <div className="stat"><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(cash)}</div></div>
-        <div className="stat"><div className="label">UPI</div><div className="value num">{formatPaise(upi)}</div></div>
-        {isAdmin && <div className="stat"><div className="label">{t('sales.margin')}</div><div className="value num">{formatPaise(margin)}</div></div>}
+        <div className="stat"><div className="label">{t('sales.cases')}</div><div className="value num">{sum(live, casesOf)}</div></div>
+        <div className="stat"><div className="label">{t('sales.total')}</div><div className="value num">{formatPaise(sum(live, (b) => b.total_paise))}</div></div>
+        <div className="stat"><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'cash' ? b.total_paise : 0)))}</div></div>
+        <div className="stat"><div className="label">UPI</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'upi' ? b.total_paise : 0)))}</div></div>
+        {isAdmin && <div className="stat"><div className="label">{t('sales.margin')}</div><div className="value num">{formatPaise(sum(live, (b) => b.margin_paise ?? 0))}</div></div>}
       </div>
+
+      {days.length > 1 && (
+        <div className="table-wrap">
+          <table className="table-stack" aria-label={t('sales.byDay')}>
+            <caption className="cell-title" style={{ textAlign: 'left', padding: '0 0 8px' }}>{t('sales.byDay')}</caption>
+            <thead><tr><th scope="col">{t('sales.day')}</th><th scope="col">{t('sales.bills')}</th><th scope="col">{t('sales.cases')}</th>
+              <th scope="col">{t('sales.total')}</th><th scope="col">{t('driver.cash')}</th><th scope="col">UPI</th>{isAdmin && <th scope="col">{t('sales.margin')}</th>}</tr></thead>
+            <tbody>{days.map(([d, bs]) => (
+              <tr key={d} data-testid="day-row">
+                <td className="lead">{new Date(d + 'T00:00:00').toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                <td data-label={t('sales.bills')} className="num">{bs.length}</td>
+                <td data-label={t('sales.cases')} className="num">{sum(bs, casesOf)}</td>
+                <td data-label={t('sales.total')} className="num"><strong>{formatPaise(sum(bs, (b) => b.total_paise))}</strong></td>
+                <td data-label={t('driver.cash')} className="num">{formatPaise(sum(bs, (b) => (b.mode === 'cash' ? b.total_paise : 0)))}</td>
+                <td data-label="UPI" className="num">{formatPaise(sum(bs, (b) => (b.mode === 'upi' ? b.total_paise : 0)))}</td>
+                {isAdmin && <td data-label={t('sales.margin')} className="num">{formatPaise(sum(bs, (b) => b.margin_paise ?? 0))}</td>}
+              </tr>))}</tbody>
+          </table>
+        </div>
+      )}
 
       {sales.isLoading ? <Skeleton rows={4} /> : sales.isError ? <Alert msg={{ kind: 'error', text: errorMessage(t, sales.error) }} />
         : !sales.data?.length ? <div className="card"><Empty icon={<Receipt size={26} />} title={t('sales.empty')}><p>{t('sales.emptyHint')}</p></Empty></div>
@@ -96,16 +117,28 @@ export default function CounterSalesPage() {
                   </div>
                 </div>
                 <ul className="plain-list cell-sub">
-                  {b.lines.map((l, i) => <li key={i}>{l.item}: {l.qty} × {formatPaise(l.price_paise)} = {formatPaise(l.qty * l.price_paise)}</li>)}
+                  {b.lines.map((l) => <li key={l.variant_id}>{l.item}: {l.qty} × {formatPaise(l.price_paise)} = {formatPaise(l.qty * l.price_paise)}</li>)}
                 </ul>
                 {b.voided && <p className="cell-sub">{t('sales.voidReason', { reason: b.void_reason ?? '' })}</p>}
-                {isAdmin && !b.voided && (
-                  <div><button type="button" className="btn-sm danger" onClick={() => { setVoiding(b); setReason(''); setError(null) }}>
-                    <Ban size={16} aria-hidden="true" />{t('sales.void')}</button></div>
+                {!b.voided && (
+                  <div className="row" style={{ gap: 8 }}>
+                    <button type="button" className="btn-sm" onClick={() => { setMsg(null); setEditing(b) }}><Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>
+                    {isAdmin && <button type="button" className="btn-sm danger" onClick={() => { setVoiding(b); setReason(''); setError(null) }}>
+                      <Ban size={16} aria-hidden="true" />{t('sales.void')}</button>}
+                  </div>
                 )}
               </li>))}
           </ul>
         )}
+
+      <Sheet open={!!editing} wide title={editing === 'new' ? t('sales.new') : editing ? t('sales.editTitle', { n: editing.number }) : ''} onClose={() => setEditing(null)}>
+        {editing && <CounterSaleForm key={editing === 'new' ? 'new' : editing.id} bill={editing === 'new' ? undefined : editing}
+          onDone={(number) => {
+            const wasNew = editing === 'new'
+            setEditing(null)
+            if (number) { setMsg({ kind: 'success', text: wasNew ? t('sales.savedNew', { n: number }) : t('sales.savedEdit', { n: number }) }); if (wasNew) { setFrom(todayIST()); setTo(todayIST()) } }
+          }} />}
+      </Sheet>
 
       <Sheet open={!!voiding} title={voiding ? t('sales.voidTitle', { n: voiding.number }) : ''} onClose={() => setVoiding(null)}>
         {voiding && (
