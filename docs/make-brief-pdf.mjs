@@ -37,7 +37,7 @@ while (i < lines.length) {
 }
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-@page { size: A4; margin: 14mm 14mm 16mm; }
+@page { size: A4${process.argv[3] === 'landscape' ? ' landscape' : ''}; margin: 14mm 14mm 16mm; }
 * { box-sizing: border-box; }
 body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #111827; line-height: 1.4; margin: 0; }
 h1 { font-size: 19pt; margin: 0 0 6pt; color: #004b93; border-bottom: 3px solid #004b93; padding-bottom: 4pt; }
