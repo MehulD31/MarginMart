@@ -1,5 +1,5 @@
 name: scheme-bot
-# Started by the Telegram Apps Script (scripts/scheme-bot/telegram.gs). One job at a time.
+# Started by the Telegram webhook (api/scheme-tg.js on Vercel) via workflow_dispatch on ref "main". One job at a time.
 concurrency: { group: scheme-bot, cancel-in-progress: false }
 on:
   workflow_dispatch:

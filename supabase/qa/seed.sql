@@ -1,4 +1,4 @@
--- QA persona-review seed (docs/REVIEW-PERSONAS.md). TEST DATA ONLY.
+-- QA persona-review seed (used by tests/review). TEST DATA ONLY.
 -- Creates the fixed QA accounts (90000001xx, PIN 482915) and the two QA shops the
 -- Playwright review suite (tests/review/*) logs in with. Idempotent: safe to re-run.
 --

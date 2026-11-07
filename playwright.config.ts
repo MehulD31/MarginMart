@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// Persona review gate (docs/REVIEW-PERSONAS.md): every check runs on a phone and a laptop.
+// Persona review gate: every check runs on a phone and a laptop.
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,

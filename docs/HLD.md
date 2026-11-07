@@ -297,3 +297,10 @@ There are no paid channels:
 1. Reuse the existing Supabase project, or create a fresh one? Fresh is cleaner. Reusing keeps the URL and keys.
 2. ~~Which SMS provider?~~ Resolved: phone + PIN login, no SMS (D8).
 3. Should the shop app also allow a WhatsApp-share order fallback ("send this cart to the manager")? Cheap to add, but it creates a second path.
+
+## Added after Release 1 (Nov 2026)
+- **Schemes**: `scheme` and `scheme_draft` tables. Pepsi scheme messages pasted in Telegram are explained by the `scheme-bot` GitHub workflow, which makes a poster and saves a draft. A ✅ tap in Telegram approves it into the app.
+- **Counter sales**: `cash_sale` and `cash_sale_line`, with stock moves of kind `sale`. Bills can come from Telegram `/sale`, the Google Sheet, or the admin Counter sales page. All three use the same rules, and bills can be voided or edited.
+- **Bot and sheet access**: anon-callable RPCs (`bot_*`, `sheet_*`) check a random key stored in `public.bot_secret`, which no client can read. No service key is stored in Vercel.
+- **EDS shop fields**: GPS, area, type and cooler on `shop`. Drivers get a Navigate button and there is no credit block. Route plans follow route edits.
+- **Admin delete**: `admin_delete(kind, id)` checks dependencies first, reverses stock where needed, and refuses with a clear code. Delivered bills and khata payments still use Void.
