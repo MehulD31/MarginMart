@@ -123,11 +123,15 @@ If a spoken item fits several items, use the one with stock > 0. If several item
 "crate", "case", "peti", "dabba", "carton" all mean one case. A number after @ or "ka"/"rate"/"ke"/"me"/"rupay", or the second number for an item (e.g. "sting 50 crate 495" = 50 cases at 495), is the price per case in rupees.
 Numbers may be Hindi words: das 10, bees 20, tees 30, chaalis 40, pachaas 50, saath 60, sattar 70, assi 80, nabbe 90, sau 100, paanch sau 500, chaar sau pachaanve 495, dedh sau 150, dhai sau 250, saade = +half.
 "upi", "online", "gpay", "phonepe", "paytm" = upi; "cash", "nakad" = cash. Notes may come from speech, so shop names can be slightly misspelt: match the closest known shop.
-Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number}], "mode": "cash"|"upi"|null, "unclear": [short Hinglish notes]}
+Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number, "sure": boolean}], "mode": "cash"|"upi"|null, "unclear": [short Hinglish notes]}
+"sure" is false when you had to guess the size or flavour between several items in stock.
 Every line needs BOTH a number of cases and a rate. If either is missing or unclear, do NOT guess it and do NOT add that line: put a short Hinglish note in unclear instead.
 Pick the closest item by name (sting = Sting, nimbooz/nimbu = Nimbooz, aq/aquafina 1l = Aquafina 1L, kesar = Creambell Kesar Badam, 400 = 400ml PET flavour). Never invent a line.`)
   const byId = new Map(cat.map((c) => [c.variant_id, c]))
-  const lines = (out.lines ?? []).filter((l) => byId.has(l.variant_id) && l.qty > 0 && l.price > 0).map((l) => {
+  // A guessed size/flavour is never put on a bill: it becomes a question instead.
+  const unsure = (out.lines ?? []).filter((l) => l.sure === false && byId.has(l.variant_id))
+  if (unsure.length) out.unclear = [...(out.unclear ?? []), ...unsure.map((l) => `${byId.get(l.variant_id).label}? Size/flavour clear nahi, item khud chuno.`)]
+  const lines = (out.lines ?? []).filter((l) => l.sure !== false && byId.has(l.variant_id) && l.qty > 0 && l.price > 0).map((l) => {
     const c = byId.get(l.variant_id)
     return { variant_id: c.variant_id, label: c.label, qty: Math.round(l.qty), price: Math.round(l.price * 100), floor: Number(c.floor_paise), buy: Number(c.buy_paise), stock: Number(c.on_hand) }
   })
