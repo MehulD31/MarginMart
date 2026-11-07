@@ -50,6 +50,12 @@ test.beforeAll(async ({}, info) => {
   run.bareId = (await rest(admin, 'shop', { method: 'POST', body: JSON.stringify({ name: `QA EDS ${run.tag} Bare`, route_id: run.routeId, stop_seq: 3 }) })).body[0].id
 })
 
+// Leave nothing loaded on the real driver: close this run's plan so the next project / run sees a clean route list.
+test.afterAll(async () => {
+  const admin = await token(ADMIN.phone, ADMIN.pin)
+  await rest(admin, `route_day_plan?route_id=eq.${run.routeId}`, { method: 'PATCH', body: JSON.stringify({ driver_id: null, status: 'closed' }) })
+  await rest(admin, `route?id=eq.${run.routeId}`, { method: 'PATCH', body: JSON.stringify({ active: false }) })
+})
 test('Admin: imported shops show area, type, map link; no credit fields', async ({ page }) => {
   const errors = watchErrors(page)
   await login(page, ADMIN.phone, ADMIN.pin)

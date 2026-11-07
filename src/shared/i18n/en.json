@@ -30,7 +30,8 @@
     "purchases": "Purchases",
     "pricing": "Pricing & margin",
     "live": "Live deliveries",
-    "schemes": "Schemes"
+    "schemes": "Schemes",
+    "sales": "Counter sales"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -169,7 +170,7 @@
     "ALREADY_DELIVERED": "This shop is already delivered.",
     "PLAN_NOT_OUT": "This route is not out for delivery.",
     "APPEND_ONLY": "Entries cannot be changed. Use Void instead.",
-    "ALREADY_VOIDED": "Already voided.",
+    "ALREADY_VOIDED": "This bill is already cancelled.",
     "ORDER_EXISTS": "This shop already has an open order on that trip. Edit that order instead.",
     "TRIP_EXISTS": "That truck already has a trip on this route and day. Move the orders to it instead."
   },
@@ -918,5 +919,25 @@
     "save": "Save scheme",
     "endNow": "End now",
     "endBody": "End the {{name}} scheme now? Prices go back to normal straight away."
+  },
+  "sales": {
+    "title": "Counter sales",
+    "sub": "Bills entered from Telegram (/sale). Cash or UPI, paid in full. Stock goes down when a bill is saved.",
+    "from": "From",
+    "to": "To",
+    "badRange": "The start date must not be after the end date.",
+    "summary": "Totals",
+    "bills": "Bills",
+    "cases": "Cases",
+    "total": "Sales",
+    "margin": "Margin",
+    "empty": "No counter sales in these dates",
+    "emptyHint": "Type /sale in the K.D. Foods Telegram group to add one.",
+    "voided": "Cancelled",
+    "void": "Cancel bill",
+    "voidTitle": "Cancel {{n}}",
+    "voidBody": "Cancel the bill for {{shop}} ({{total}})? The cases go back into stock. This cannot be undone.",
+    "reason": "Reason",
+    "voidReason": "Cancelled: {{reason}}"
   }
 }
