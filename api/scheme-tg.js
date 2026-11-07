@@ -6,6 +6,8 @@
 //                  TG_SECRET (random string, also given to Telegram as the webhook secret),
 //                  GH_DISPATCH_TOKEN (fine-grained token: this repo only, Actions read+write), GH_REPO (owner/name)
 
+import { handleSaleMessage, handleSaleTap } from './_sale.js'
+
 // Values are trimmed so a stray newline in a Vercel variable can never break a token or a comparison.
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
 
@@ -36,6 +38,7 @@ export default async function handler(req, res) {
     if (u.callback_query) {
       const q = u.callback_query
       if (!allowed(q.from, q.message?.chat?.id)) { await tg('answerCallbackQuery', { callback_query_id: q.id, text: 'Sirf owners' }); return res.status(200).end() }
+      if (String(q.data ?? '').startsWith('s:')) { await handleSaleTap(q); return res.status(200).end() }
       const m = /^(ok|no):([0-9a-f-]{36})$/i.exec(q.data ?? '')
       if (!m) return res.status(200).end()
       await tg('answerCallbackQuery', { callback_query_id: q.id, text: m[1] === 'ok' ? 'App me save kar raha hun…' : 'Theek hai' })
@@ -48,8 +51,10 @@ export default async function handler(req, res) {
     if (!msg || !allowed(msg.from, msg.chat?.id)) return res.status(200).end()
     const text = (msg.text ?? msg.caption ?? '').trim()
     if (!text) return res.status(200).end()
+    // Counter sales: "/sale" and anything typed while a sale is open.
+    if (await handleSaleMessage(msg)) return res.status(200).end()
     if (text.startsWith('/')) {
-      if (/^\/(start|help)/i.test(text)) await tg('sendMessage', { chat_id: msg.chat.id, text: 'Pepsi wale ka scheme message yahan paste ya forward karo. Main matlab samjhaunga, poster banaunga, aur ✅ Approve par app me scheme chalu kar dunga.' })
+      if (/^\/(start|help)/i.test(text)) await tg('sendMessage', { chat_id: msg.chat.id, text: 'Main 2 kaam karta hun:\n\n🧾 Sale likhna: /sale likho aur buttons se karo, ya ek line me: /sale Sharma Kirana: sting 50 @495, nimbooz 30 @515, cash\n\n📢 Pepsi scheme: Pepsi wale ka message yahan paste karo. Matlab, poster aur ✅ Approve milega.' })
       return res.status(200).end()
     }
     // A reply to the bot's own message is a correction: send the original and the correction together.

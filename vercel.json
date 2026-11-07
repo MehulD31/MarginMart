@@ -1,4 +1,4 @@
-{
+﻿{
   "rewrites": [
     {
       "source": "/((?!assets/|api/).*)",
@@ -14,5 +14,8 @@
       "source": "/((?!assets/|api/).*)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
-  ]
+  ],
+  "functions": {
+    "api/scheme-tg.js": { "maxDuration": 60 }
+  }
 }
