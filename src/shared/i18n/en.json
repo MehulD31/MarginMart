@@ -957,6 +957,20 @@
     "savedEdit": "Saved changes to {{n}}. Stock is updated.",
     "byDay": "By day",
     "day": "Day",
+    "voice": {
+      "speak": "Speak the sale",
+      "stop": "Stop and fill",
+      "listening": "Listening… say shop, item, cases and rate. Tap again when done.",
+      "working": "Understanding…",
+      "heard": "Heard: “{{text}}”. Check the bill below, then save.",
+      "nothing": "Heard: “{{text}}”, but no item with cases and rate was clear. Try again, e.g. “Maruti Kirana sting 50 crate 495”.",
+      "noMic": "Microphone is blocked. Allow the mic for this site in the browser, or type the sale below.",
+      "unsupported": "This browser can't record. Type the sale below instead.",
+      "typeLabel": "Or type the sale",
+      "typePh": "maruti kirana sting 50 crate 495, upi",
+      "fill": "Fill",
+      "failed": "Couldn't understand it: {{msg}}"
+    },
     "form": {
       "shop": "Shop",
       "searchShop": "Search shop by name, phone or area",

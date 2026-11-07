@@ -6,7 +6,7 @@
 //                  TG_SECRET (random string, also given to Telegram as the webhook secret),
 //                  GH_DISPATCH_TOKEN (fine-grained token: this repo only, Actions read+write), GH_REPO (owner/name)
 
-import { handleSaleMessage, handleSaleTap } from './_sale.js'
+import { handleSaleMessage, handleSaleTap, handleSaleVoice } from './_sale.js'
 
 // Values are trimmed so a stray newline in a Vercel variable can never break a token or a comparison.
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
@@ -49,6 +49,8 @@ export default async function handler(req, res) {
 
     const msg = u.message
     if (!msg || !allowed(msg.from, msg.chat?.id)) return res.status(200).end()
+    // Voice note: "maruti kirana sting 50 crate 495" -> heard, parsed, same confirm screen as a typed /sale.
+    if (await handleSaleVoice(msg)) return res.status(200).end()
     const text = (msg.text ?? msg.caption ?? '').trim()
     if (!text) return res.status(200).end()
     // Counter sales: "/sale" and anything typed while a sale is open.
@@ -64,7 +66,7 @@ export default async function handler(req, res) {
       return res.status(200).end()
     }
     if (text.startsWith('/')) {
-      if (/^\/(start|help)/i.test(text)) await tg('sendMessage', { chat_id: msg.chat.id, text: 'Main ye kaam karta hun:\n\n🧾 /sale likho aur buttons se sale likho, ya ek line me: /sale Sharma Kirana: sting 50 @495, nimbooz 30 @515, cash\n\n📢 Pepsi scheme: Pepsi wale ka message yahan paste karo. Matlab, poster aur ✅ Approve milega. Approve hote hi poster Facebook/Instagram pe bhi jayega.\n\n📊 /report = aaj ka hisaab · /week = hafte ka report · /ask <sawal> = kuch bhi poochho (jaise /ask kis dukan ka sabse zyada udhaar hai?) · /check = system check\n\nRoz apne aap: 8:00 subah ka plan, 21:30 din ka hisaab, Monday hafte ka report.' })
+      if (/^\/(start|help)/i.test(text)) await tg('sendMessage', { chat_id: msg.chat.id, text: 'Main ye kaam karta hun:\n\n🧾 /sale likho aur buttons se sale likho, ya ek line me: /sale Sharma Kirana: sting 50 @495, nimbooz 30 @515, cash\n🎤 Ya bas voice note bhejo: "Maruti Kirana sting 50 crate 495, UPI"\n\n📢 Pepsi scheme: Pepsi wale ka message yahan paste karo. Matlab, poster aur ✅ Approve milega. Approve hote hi poster Facebook/Instagram pe bhi jayega.\n\n📊 /report = aaj ka hisaab · /week = hafte ka report · /ask <sawal> = kuch bhi poochho (jaise /ask kis dukan ka sabse zyada udhaar hai?) · /check = system check\n\nRoz apne aap: 8:00 subah ka plan, 21:30 din ka hisaab, Monday hafte ka report.' })
       return res.status(200).end()
     }
     // A reply to the bot's own message is a correction: send the original and the correction together.

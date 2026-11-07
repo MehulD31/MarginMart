@@ -10,6 +10,7 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Skeleton, type Msg } from '../../shared/ui/kit'
 import { Stepper } from '../../shared/ui/Stepper'
 import { useConfirm } from '../../shared/ui/confirm'
+import { VoiceSale, type VoiceResult } from './VoiceSale'
 
 export interface CounterLine { variant_id: string; item: string; qty: number; price_paise: number }
 export interface CounterBill {
@@ -84,9 +85,27 @@ export function CounterSaleForm({ bill, onDone }: { bill?: CounterBill; onDone: 
     onDone((data as { number: string }).number)
   }
 
+  // Voice / typed note -> prefill. Same item replaces its line; nothing is saved until the user taps Save.
+  const applyVoice = (r: VoiceResult) => {
+    if (r.shop) setShop(r.shop)
+    else if (r.shopHint) { setShop(null); setShopQ(r.shopHint) }
+    if (r.lines.length) setLines((ls) => {
+      const out = [...ls]
+      for (const v of r.lines) {
+        if (!byId.has(v.variant_id)) continue
+        const line = { variant_id: v.variant_id, qty: v.qty, rate: String(v.price_paise / 100) }
+        const i = out.findIndex((l) => l.variant_id === v.variant_id)
+        if (i >= 0) out[i] = line; else out.push(line)
+      }
+      return out
+    })
+    if (r.mode) setMode(r.mode)
+  }
+
   if (catalog.isLoading || shops.isLoading) return <Skeleton rows={4} />
   return (
     <div className="stack-lg">
+      {!bill && <VoiceSale onResult={applyVoice} />}
       {/* Shop */}
       <div className="stack">
         <span className="cell-title">{t('sales.form.shop')}</span>

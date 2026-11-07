@@ -77,15 +77,46 @@ async function askJson(prompt) {
   }
   throw new Error('AI busy, button wala /sale use karo')
 }
-async function parseLine(text) {
+// ---------- voice: Gemini hears the clip (free key), then the same text parser runs ----------
+/** Audio bytes -> Hinglish text in Roman letters with numbers as digits. Throws a friendly Hinglish error. */
+export async function transcribe(buf, mime) {
+  if (!buf?.length) throw new Error('Awaaz khali hai, dobara bolo.')
+  if (buf.length > 4_000_000) throw new Error('Recording bahut lambi hai. 30 second se chhota bolo.')
+  const data = Buffer.from(buf).toString('base64')
+  const prompt = `This is a short voice note from an Indian beverage (Pepsi) distributor recording a counter sale, in Hindi, Hinglish or English.
+Write exactly what is said, in Roman (English) letters, Hinglish style. Write every number as digits (pachaas = 50, chaar sau pachaanve = 495, dedh sau = 150, dhai sau = 250, saade paanch sau = 550).
+Keep shop names and brand names as spoken (Sting, Nimbooz, Kurkure, Lays, Aquafina, Pepsi, 7up, Mirinda, Mountain Dew, Slice, Creambell).
+If there is no clear speech, return an empty text. Return {"text": string}`
+  for (const model of ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST', signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+        body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: String(mime || 'audio/ogg').split(';')[0], data } }, { text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0 } }) })
+      const j = await r.json()
+      const t = j?.candidates?.[0]?.content?.parts?.[0]?.text
+      if (t) { const text = String(JSON.parse(t).text ?? '').trim().slice(0, 500); if (!text) throw Object.assign(new Error('Awaaz samajh nahi aayi, saaf bolo ya likh do.'), { final: true }); return text }
+      console.log('voice', model, r.status, JSON.stringify(j).slice(0, 200))
+    } catch (e) { if (e.final) throw e; console.log('voice error', model, e.message) }
+  }
+  throw new Error('Awaaz abhi sun nahi paaya (AI busy). Thodi der me dobara bhejo, ya likh kar /sale karo.')
+}
+
+export async function parseLine(text) {
   const [cat, shops] = await Promise.all([rpc('bot_catalog', {}), rpc('bot_shops', { p_q: null })])
-  const all = await rpc('bot_shops', { p_q: text.split(/[:,]/)[0].trim().slice(0, 40) }).catch(() => [])
-  const shopList = [...new Map([...all, ...shops].map((s) => [s.id, s])).values()]
+  // Fuzzy shop candidates from the whole note (spoken notes have no ":" and names can be misheard), plus the old prefix search.
+  const [guess, all] = await Promise.all([
+    rpc('bot_shop_guess', { p_text: text.slice(0, 300) }).catch(() => []),
+    rpc('bot_shops', { p_q: text.split(/[:,]/)[0].trim().slice(0, 40) }).catch(() => [])])
+  const shopList = [...new Map([...guess, ...all, ...shops].map((s) => [s.id, { id: s.id, name: s.name, phone: s.phone, locality: s.locality }])).values()]
   const out = await askJson(`Parse this Hindi/Hinglish sale note from a beverage distributor into JSON.
 Note: """${text}"""
-Known shops: ${JSON.stringify(shopList.map((s) => ({ id: s.id, name: s.name })))}
-Items: ${JSON.stringify(cat.map((c) => ({ id: c.variant_id, name: c.label })))}
-"crate", "case", "peti" all mean one case. A number after @ or "ka"/"rate" is the price per case in rupees.
+Known shops: ${JSON.stringify(shopList.map((s) => ({ id: s.id, name: s.name, area: s.locality })))}
+Pick shop_id only if the note clearly names that shop (a "Shri"/"Shree" prefix may be left out). If no known shop fits, set shop_id null and put the spoken shop name in new_shop_name.
+Items: ${JSON.stringify(cat.map((c) => ({ id: c.variant_id, name: c.label, stock: Number(c.on_hand) })))}
+If a spoken item fits several items, use the one with stock > 0. If several items with stock > 0 still fit (e.g. "pepsi" with no size), do NOT add that line: put a short Hinglish note in unclear asking which size.
+"crate", "case", "peti", "dabba", "carton" all mean one case. A number after @ or "ka"/"rate"/"ke"/"me"/"rupay", or the second number for an item (e.g. "sting 50 crate 495" = 50 cases at 495), is the price per case in rupees.
+"upi", "online", "gpay", "phonepe", "paytm" = upi; "cash", "nakad" = cash. Notes may come from speech, so shop names can be slightly misspelt: match the closest known shop.
 Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number}], "mode": "cash"|"upi"|null, "unclear": [short Hinglish notes]}
 Every line needs BOTH a number of cases and a rate. If either is missing or unclear, do NOT guess it and do NOT add that line: put a short Hinglish note in unclear instead.
 Pick the closest item by name (sting = Sting, nimbooz/nimbu = Nimbooz, aq/aquafina 1l = Aquafina 1L, kesar = Creambell Kesar Badam, 400 = 400ml PET flavour). Never invent a line.`)
@@ -115,6 +146,33 @@ export async function handleSaleMessage(msg) {
       const rest = text.replace(/^\/sale(@\w+)?/i, '').trim()
       if (!rest) { await setState(user, { flow: 'sale', step: 'shop', lines: [], who }); await showShops(chat); return true }
       await send(chat, '⏳ Padh raha hun…')
+      return await saleFromText(chat, user, who, rest)
+    }
+    return await saleStep(chat, user, state, text)
+  } catch (e) { await send(chat, `⚠️ ${String(e.message).slice(0, 200)}`); return true }
+}
+
+/** A voice note (or audio file) from an owner: hear it, show what was heard, then the same flow as "/sale <text>". */
+export async function handleSaleVoice(msg) {
+  const chat = msg.chat.id, user = msg.from.id, who = msg.from.first_name ?? ''
+  const a = msg.voice ?? msg.audio ?? (String(msg.document?.mime_type ?? '').startsWith('audio/') ? msg.document : null)
+  if (!a) return false
+  try {
+    if (Number(a.duration) > 90 || Number(a.file_size) > 4_000_000) { await send(chat, '🎤 Recording bahut lambi hai. 30 second se chhota bolo.'); return true }
+    await send(chat, '🎤 Sun raha hun…')
+    const f = await tg('getFile', { file_id: a.file_id })
+    if (!f?.ok) throw new Error('Telegram se awaaz download nahi hui, dobara bhejo.')
+    const r = await fetch(`https://api.telegram.org/file/bot${env.KD_BOT_TOKEN}/${f.result.file_path}`, { signal: AbortSignal.timeout(15000) })
+    if (!r.ok) throw new Error('Telegram se awaaz download nahi hui, dobara bhejo.')
+    const heard = await transcribe(new Uint8Array(await r.arrayBuffer()), a.mime_type || 'audio/ogg')
+    await send(chat, `🎤 Suna: "${heard}"`)
+    return await saleFromText(chat, user, who, heard)
+  } catch (e) { await send(chat, `⚠️ ${String(e.message).slice(0, 200)}`); return true }
+}
+
+async function saleFromText(chat, user, who, rest) {
+  {
+    {
       const p = await parseLine(rest)
       if (!p.lines.length) { await send(chat, `Item samajh nahi aaye. Aise likho: /sale Sharma Kirana: sting 50 @495, cash\nYa sirf /sale likho aur buttons se karo.${p.unclear.length ? '\n• ' + p.unclear.join('\n• ') : ''}`); return true }
       const next = { flow: 'sale', lines: p.lines, mode: p.mode, who, shop: p.shop ?? null }
@@ -131,7 +189,11 @@ export async function handleSaleMessage(msg) {
       if (next.mode) { next.step = 'confirm'; next.action = randomUUID(); await setState(user, next); await showConfirm(chat, next) } else { next.step = 'cart'; await setState(user, next); await showCart(chat, next) }
       return true
     }
+  }
+}
 
+async function saleStep(chat, user, state, text) {
+  {
     // Other slash commands (/help ...) are not part of a sale: leave the sale open and let the main bot answer.
     if (text.startsWith('/')) return false
     // A long message is not a shop name (e.g. a Pepsi scheme pasted while a sale was open): drop the sale, let the scheme bot read it.
@@ -154,7 +216,7 @@ export async function handleSaleMessage(msg) {
     }
     await send(chat, 'Upar ke buttons use karo, ya ❌ Cancel.')
     return true
-  } catch (e) { await send(chat, `⚠️ ${String(e.message).slice(0, 200)}`); return true }
+  }
 }
 
 async function addShopAndContinue(chat, user, state, phone) {
