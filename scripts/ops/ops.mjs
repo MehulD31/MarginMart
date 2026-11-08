@@ -253,8 +253,10 @@ async function watchdog() {
   // 7. the event poller itself is alive (a run in the last 3 h)
   try {
     const runs = (await gh('actions/workflows/ops.yml/runs?per_page=30')).workflow_runs ?? []
-    const recent = runs.some((r) => r.event === 'schedule' && Date.now() - Date.parse(r.created_at) < 3 * 3600e3)
-    if (!recent && !(await done('poller-dead', today))) { alerts.push('10-min check 3 ghante se nahi chala (GitHub schedule ruk gaya?)'); await mark('poller-dead', today) }
+    const sched = runs.filter((r) => r.event === 'schedule')
+    const recent = sched.some((r) => Date.now() - Date.parse(r.created_at) < 3 * 3600e3)
+    // no scheduled run at all yet = the schedule is new (GitHub can take a while to start it), not dead
+    if (sched.length && !recent && !(await done('poller-dead', today))) { alerts.push('10-min check 3 ghante se nahi chala (GitHub schedule ruk gaya?)'); await mark('poller-dead', today) }
   } catch (e) { console.log('poller check', e.message) }
   console.log('watchdog', alerts)
   if (alerts.length) await say('🛠 Watchdog:\n' + alerts.map((a) => '• ' + a).join('\n'))
