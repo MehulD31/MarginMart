@@ -115,7 +115,9 @@
     "create": "Create and get PIN",
     "pinFor": "Login PIN for {{name}}",
     "shopsHint": "Shop logins are created from the Shops page, so they are linked to the right shop.",
-    "showPin": "Show PIN"
+    "showPin": "Show PIN",
+    "search": "Search name or phone",
+    "showMore": "Show more ({{n}} left)"
   },
   "roles": {
     "admin": "Admin",
@@ -469,7 +471,9 @@
     "noOrdersYet": "No orders yet",
     "ofShopsSales": "of {{n}} route shops · {{s}} bought today",
     "ordersBills": "{{o}} orders · {{b}} bills today",
-    "topItems7": "Most ordered (orders + sales, 7 days)"
+    "topItems7": "Most ordered (orders + sales, 7 days)",
+    "heroSales": "Sales today {{v}} · {{c}} cases · {{b}} bills",
+    "ringToday": "{{n}} of {{total}} shops buying this week bought today"
   },
   "orders": {
     "title": "Orders",
@@ -900,13 +904,14 @@
     "dashCost": "cost per case {{v}}",
     "dashProfit": "Profit so far",
     "dashNeed": "{{n}} more cases to cover expenses",
-    "dashCovered": "Expenses covered"
+    "dashCovered": "Expenses covered",
+    "dashProfitDays": "Profit so far ({{d}} days of expenses)"
   },
   "live": {
     "title": "Live deliveries",
     "updated": "Live · updated {{time}}",
     "none": "No trucks out on {{date}}",
-    "noneHint": "Trips appear here once their load is locked.",
+    "noneHint": "Trucks appear here once they are loaded on the Loading page.",
     "delivered": "Shops delivered",
     "cases": "{{n}} cases delivered",
     "billed": "Billed",

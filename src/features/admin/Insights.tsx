@@ -1,19 +1,15 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Copy, MapPin, MessageCircle, Phone, Search, Send, Sparkles, Store, TrendingUp, Users, Package } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
-import { analyze, factsForAI, type Alert, type Analysis, type ShopStat, type Segment } from '../../shared/insights.js'
+import { useInsights } from './useInsights'
+import { factsForAI, type Alert, type Analysis, type ShopStat, type Segment } from '../../shared/insights.js'
 import { Alert as Note, Empty, Sheet, Skeleton } from '../../shared/ui/kit'
 
-export const useInsights = () => useQuery({
-  queryKey: ['insights'],
-  queryFn: async () => analyze(await must<unknown>(supabase.rpc('insights_data', { p_days: 90 }))),
-  refetchInterval: 120_000,
-})
 const rs = (p: number) => formatPaise(Math.round(p / 100) * 100)          // whole rupees: easier to read
 const short = (p: number) => (Math.abs(p) >= 1e7 ? `₹${(p / 1e7).toFixed(1)}L` : Math.abs(p) >= 1e5 ? `₹${(p / 1e5).toFixed(1)}k` : rs(p))
 const waLink = (phone: string, text: string) => `https://wa.me/91${phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`

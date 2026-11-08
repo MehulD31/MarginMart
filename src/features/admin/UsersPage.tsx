@@ -24,7 +24,10 @@ export default function UsersPage() {
   const [adding, setAdding] = useState(false)
   const [issued, setIssued] = useState<Issued[]>([])
   const [msg, setMsg] = useState<Msg>(null)
+  // 700+ shop logins: staff first, a search box, and 40 rows at a time so the page stays fast.
   const [roleFilter, setRoleFilter] = useState<Role | ''>('')
+  const [uq, setUq] = useState('')
+  const [shown, setShown] = useState(40)
 
   const users = useQuery({
     queryKey: ['profiles'],
@@ -55,7 +58,10 @@ export default function UsersPage() {
     if (res?.pin) setIssued([{ name: u.name, phone: u.phone, pin: res.pin }])
   }
   const canManage = (u: Profile) => isAdmin || (me?.role === 'manager' && u.role === 'shop')
-  const list = (users.data ?? []).filter((u) => !roleFilter || u.role === roleFilter)
+  const uql = uq.trim().toLowerCase()
+  const all = (users.data ?? []).filter((u) => (!roleFilter || u.role === roleFilter) && (!uql || ` `.toLowerCase().includes(uql)))
+    .sort((a, b) => Number(a.role === 'shop') - Number(b.role === 'shop'))
+  const list = all.slice(0, shown)
 
   return (
     <section className="stack-lg">
@@ -71,6 +77,8 @@ export default function UsersPage() {
         ))}
       </div>
 
+      <label className="field" style={{ maxWidth: 420 }}><span className="sr-only">{t('users.search')}</span>
+        <input type="search" value={uq} onChange={(e) => { setUq(e.target.value); setShown(40) }} placeholder={t('users.search')} aria-label={t('users.search')} /></label>
       {users.isLoading ? <Skeleton /> : list.length === 0 ? (
         <div className="card"><Empty icon={<Users size={26} />} title={t('users.empty')} /></div>
       ) : (
@@ -115,6 +123,8 @@ export default function UsersPage() {
           </table>
         </div>
       )}
+      {all.length > list.length && (
+        <button type="button" style={{ alignSelf: 'flex-start' }} onClick={() => setShown((n) => n + 100)}>{t('users.showMore', { n: all.length - list.length })}</button>)}
 
       <Sheet open={adding} title={t('users.add')} onClose={() => setAdding(false)}>
         <AddUserForm allowedRoles={isAdmin ? ROLES.filter((r) => r !== 'shop') : []}

@@ -14,7 +14,8 @@ import { isLowStock } from '../../shared/api/db'
 import { useStockRows } from './stockRows'
 import { useMargin } from './marginData'
 import { fixedTotal } from '../../shared/margin'
-import { Insights, useInsights } from './Insights'
+import { Insights } from './Insights'
+import { useInsights } from './useInsights'
 import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
 
 const useSetup = () => useQuery({
@@ -41,12 +42,15 @@ const useMoney = () => useQuery({
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
     const since = new Date(`${today}T00:00:00+05:30`).toISOString()
     const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
-    const [pays, bal, hand] = await Promise.all([
+    const [pays, bills, bal, hand] = await Promise.all([
       must<{ amount_paise: number; payment_mode: string }[]>(supabase.from('ledger_entry').select('amount_paise, payment_mode').eq('type', 'payment').gte('created_at', since)),
+      // counter + truck bills are paid in full on the spot, so they are money collected today too
+      must<{ total_paise: number; payment_mode: string }[]>(supabase.from('cash_sale').select('total_paise, payment_mode').is('voided_at', null).gte('created_at', since)),
       must<{ balance_paise: number; overdue_paise: number }[]>(supabase.from('v_shop_balance').select('balance_paise, overdue_paise').gt('balance_paise', 0)),
       must<Handover[]>(supabase.from('cash_handover').select('expected_cash_paise, handed_cash_paise, stock_diff, received_at').gte('closed_at', weekAgo)),
     ])
     const paid = (m?: string) => pays.filter((p) => !m || p.payment_mode === m).reduce((a, p) => a - p.amount_paise, 0)
+      + bills.filter((b) => !m || b.payment_mode === m).reduce((a, b) => a + b.total_paise, 0)
     const flagged = hand.filter((h) => h.handed_cash_paise !== h.expected_cash_paise || (h.stock_diff?.length ?? 0) > 0)
     const overdue = bal.filter((b) => b.overdue_paise > 0)
     return {
@@ -121,7 +125,6 @@ export default function DashboardPage() {
   const total = shops.data?.length ?? 0
   const orderedShops = new Set([...live.map((o) => o.shop_id), ...boughtToday])
   const missing = (shops.data ?? []).filter((x) => !orderedShops.has(x.id))
-  const pct = total ? Math.round((orderedShops.size / total) * 100) : 0
   const cases = live.reduce((a, o) => a + linesCases(o), 0) + (ins?.kpi.today.cases ?? 0)
   const value = live.reduce((a, o) => a + linesTotal(o), 0) + (ins?.kpi.today.value ?? 0)
   // Shops order until midnight before the delivery day (IST).
@@ -136,11 +139,12 @@ export default function DashboardPage() {
         <div className="grow">
           <p className="hero-kicker">{greet}</p>
           <h1>{day ? fmt(day, true) : t('loading.noPlans')}</h1>
-          {day && <p className="hero-sub">{t('dash.heroLine', { routes: dayPlans.map((p) => p.route.name).join(', ') })} · <strong>{leftLabel}</strong></p>}
+          {ins && <p className="hero-sub">{t('dash.heroSales', { v: formatPaise(Math.round(ins.kpi.today.value / 100) * 100), c: ins.kpi.today.cases, b: ins.kpi.today.bills })}</p>}
+          {day && live.length > 0 && <p className="hero-sub">{t('dash.heroLine', { routes: dayPlans.map((p) => p.route.name).join(', ') })} · <strong>{leftLabel}</strong></p>}
         </div>
-        {day && (
-          <div className="ring" style={{ ['--p' as string]: pct }} role="img" aria-label={t('dash.ringLabel', { n: orderedShops.size, total })}>
-            <span><b>{orderedShops.size}</b><small>/ {total}</small></span>
+        {ins && ins.kpi.last7.shops > 0 && (
+          <div className="ring" style={{ ['--p' as string]: Math.round((boughtToday.size / ins.kpi.last7.shops) * 100) }} role="img" aria-label={t('dash.ringToday', { n: boughtToday.size, total: ins.kpi.last7.shops })}>
+            <span><b>{boughtToday.size}</b><small>/ {ins.kpi.last7.shops}</small></span>
           </div>
         )}
       </section>
@@ -172,16 +176,20 @@ export default function DashboardPage() {
       {mg && (() => {
         const { cases, sales_paise, cost_paise } = mg.stats
         const perCase = cases ? (sales_paise - cost_paise) / cases : mg.s.default_margin_paise
-        const fixed = fixedTotal(mg.s)
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+        const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+        const fixedMonth = fixedTotal(mg.s)
+        const fixed = Math.round(fixedMonth * now.getDate() / dim)          // rent, salaries… of the days gone, not the whole month
         const profit = sales_paise - cost_paise - mg.cost.variable * cases - fixed
         const breakEven = perCase > mg.cost.variable ? Math.ceil(fixed / (perCase - mg.cost.variable)) : 0
+        const breakEvenMonth = perCase > mg.cost.variable ? Math.ceil(fixedMonth / (perCase - mg.cost.variable)) : 0
         return (
           <div className="stack">
             <div className="row-between"><h2>{t('pricing.dashTitle')}</h2><Link to="/admin/pricing" className="button btn-sm">{t('nav.pricing')}</Link></div>
             <div className="stats">
-              <Kpi icon={<Package size={18} />} tone="blue" label={t('pricing.dashCases')} value={cases.toLocaleString('en-IN')} sub={breakEven ? t('pricing.dashBreakEven', { n: breakEven.toLocaleString('en-IN') }) : '—'} />
+              <Kpi icon={<Package size={18} />} tone="blue" label={t('pricing.dashCases')} value={cases.toLocaleString('en-IN')} sub={breakEvenMonth ? t('pricing.dashBreakEven', { n: breakEvenMonth.toLocaleString('en-IN') }) : '—'} />
               <Kpi icon={<TrendingUp size={18} />} tone="violet" label={t('pricing.dashMargin')} value={formatPaise(Math.round(perCase))} sub={t('pricing.dashCost', { v: formatPaise(mg.cost.total) })} />
-              <Kpi icon={<IndianRupee size={18} />} tone={profit >= 0 ? 'green' : 'amber'} label={t('pricing.dashProfit')} value={formatPaise(profit)} sub={breakEven > cases ? t('pricing.dashNeed', { n: (breakEven - cases).toLocaleString('en-IN') }) : t('pricing.dashCovered')} />
+              <Kpi icon={<IndianRupee size={18} />} tone={profit >= 0 ? 'green' : 'amber'} label={t('pricing.dashProfitDays', { d: now.getDate() })} value={formatPaise(Math.round(profit / 100) * 100)} sub={breakEven > cases ? t('pricing.dashNeed', { n: (breakEven - cases).toLocaleString('en-IN') }) : t('pricing.dashCovered')} />
             </div>
           </div>)
       })()}
@@ -197,7 +205,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {day && <>
+      {day && live.length > 0 && <>
         <div className="stats">
           <Kpi icon={<Store size={18} />} tone="green" label={t('dash.orders')} value={`${orderedShops.size}`} sub={t('dash.ofShopsSales', { n: total, s: boughtToday.size })} />
           <Kpi icon={<Package size={18} />} tone="blue" label={t('orders.cases')} value={`${cases}`} sub={t('dash.ordersBills', { o: live.length, b: ins?.kpi.today.bills ?? 0 })} />
@@ -265,7 +273,6 @@ function Kpi({ icon, tone, label, value, sub }: { icon: React.ReactNode; tone: s
 }
 
 function Meter({ label, value, max, warn }: { label: string; value: number; max: number; warn?: boolean }) {
-  const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0
   const over = warn && value > max
   return (
     <div className="meter">
