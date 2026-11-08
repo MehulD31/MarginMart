@@ -17,8 +17,10 @@ Rule: `.kiro/steering/automation-thumb-rule.md`. People only feed data (Telegram
 | every push | `ci.yml` | Lint, build, tests. A failure on main → KD group |
 | 00:05 (pg_cron) | Supabase | `ensure_route_day_plans(14)` |
 
-## Telegram commands (KD group)
-`/sale` · paste a Pepsi scheme message · `/report` · `/week` · `/check` · `/ask <question>` · `/due [shop]` · `/stock [item]` · `/sleeping`
+## Telegram bot (KD group)
+- **Plain Hinglish works**, no slash needed: "aaj ka hisaab", "kal ka hisaab", "is hafte ka report", "sharma ka udhaar", "sting ka stock", "kya mangana hai", "kaunsi dukan order nahi kar rahi", or any business question (answered by AI from live numbers). Owners' chit-chat is ignored; to talk to the bot about anything else, start with "bot ..." or reply to a bot message. Routing rules: `api/_intent.js` (tested in `scripts/ops/intent.test.mjs`).
+- **Pepsi scheme**: paste or forward the message. Only messages that look like a scheme go to the (1-minute) scheme reader; if unsure, the bot asks with buttons.
+- **Commands** (all instant except `/check`): `/menu` (buttons) · `/sale` · `/aaj` (= `/report`) · `/kal` · `/week` · `/due [shop]` (tap a shop for its khata + WhatsApp reminder) · `/stock [item]` · `/order` (Pepsi order text) · `/sleeping` · `/ask <question>` · `/check` (full system check via GitHub).
 
 ## Exact times: cron-job.org (when the account is given)
 GitHub's own schedule can run late, and the watchdog covers that. For exact times, create these cron-job.org jobs (timezone Asia/Kolkata):
