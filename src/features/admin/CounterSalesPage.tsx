@@ -56,7 +56,7 @@ export default function CounterSalesPage() {
     setBusy(true); setError(null)
     try {
       await must(supabase.rpc('void_cash_sale', { p_id: voiding.id, p_reason: reason.trim() }))
-      for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats']) void qc.invalidateQueries({ queryKey: [k] })
+      for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats', 'trip-detail', 'trip-board']) void qc.invalidateQueries({ queryKey: [k] })
       setVoiding(null); setReason('')
     } catch (err) { setError(errorMessage(t, err)) } finally { setBusy(false) }
   }
@@ -119,6 +119,7 @@ export default function CounterSalesPage() {
                     <strong className="num">{formatPaise(b.total_paise)}</strong>{' '}
                     <span className={`badge ${b.mode === 'upi' ? 'badge-blue' : 'badge-green'}`}>{b.mode === 'upi' ? 'UPI' : t('driver.cash')}</span>
                     {paidBy.get(b.id)?.account_kind === 'personal' && <> <span className="badge badge-amber" data-testid="paid-into">→ {paidBy.get(b.id)!.account}</span></>}
+                    {b.vehicle && <> <span className="badge badge-blue" data-testid="truck-badge">🚚 {b.vehicle}</span></>}
                     {b.voided && <> <span className="badge badge-red">{t('sales.voided')}</span></>}
                   </div>
                 </div>
@@ -131,7 +132,7 @@ export default function CounterSalesPage() {
                   {!b.voided && <button type="button" className="btn-sm" onClick={() => { setMsg(null); setEditing(b) }}><Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>}
                   {!b.voided && isAdmin && <button type="button" className="btn-sm danger" onClick={() => { setVoiding(b); setReason(''); setError(null) }}>
                     <Ban size={16} aria-hidden="true" />{t('sales.void')}</button>}
-                  <DeleteButton kind="counter_sale" id={b.id} name={b.number} invalidate={['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats']}
+                  <DeleteButton kind="counter_sale" id={b.id} name={b.number} invalidate={['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats', 'trip-detail', 'trip-board']}
                     onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} />
                 </div>
               </li>))}

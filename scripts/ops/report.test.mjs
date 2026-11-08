@@ -31,7 +31,13 @@ describe('dayText', () => {
     expect(text).toContain('V2: cash ₹500 kam')
     expect(text).toContain('1 line buy price se kam')
   })
-})
+  it('shows a truck closed with cases short in red, with the vehicle and reason', () => {
+    const d = { ...empty, trucks: [{ route: 'Direct sales', vehicle: 'Vehicle 1', status: 'closed', closed: true, cash_received: true, expected_cash_paise: 0, handed_cash_paise: 0, short_cases: 3, close_note: '2 broken, 1 missing' },
+      { route: 'R2', vehicle: 'Vehicle 2', status: 'closed', closed: true, cash_received: true, short_cases: 0 }] }
+    const { text } = dayText(d)
+    expect(text).toContain('🔴 Vehicle 1: 3 peti kam (2 broken, 1 missing)')
+    expect(text).not.toContain('Vehicle 2')
+  })})
 
 describe('weekText', () => {
   it('compares with last week and links sleeping shops', () => {

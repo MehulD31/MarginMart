@@ -18,7 +18,7 @@ import PriceListsPage from './PriceListsPage'
 import NetworkPage from './NetworkPage'
 import DashboardPage from './DashboardPage'
 import OrdersPage from './OrdersPage'
-import LoadingPage from './LoadingPage'
+import TripsPage from './TripsPage'
 import KhataPage from './KhataPage'
 import ClosingPage, { needsAttention, useClosings } from './ClosingPage'
 import AuditPage from './AuditPage'
@@ -122,7 +122,7 @@ export default function AdminApp() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="orders" element={<OrdersPage />} />
-          <Route path="loading" element={<LoadingPage />} />
+          <Route path="loading" element={<TripsPage />} />
           <Route path="live" element={<LivePage />} />
           <Route path="sales" element={<CounterSalesPage />} />
           <Route path="khata" element={<KhataPage />} />

@@ -22,9 +22,12 @@ export function dayText(d, title = `🌙 Aaj ka hisaab, ${hi(d.day)}`) {
   if (d.top_items?.length) L.push('', '🏆 Sabse zyada: ' + d.top_items.map((t) => `${item(t.item)} ${t.cases}`).join(', '))
   const probs = []
   for (const t of d.trucks ?? []) {
-    if (['loaded', 'out'].includes(t.status) && !t.closed) probs.push(`${t.route}: truck abhi tak close nahi hua`)
-    else if (t.closed && !t.cash_received) probs.push(`${t.route}: cash ${rs(t.handed_cash_paise)} abhi receive nahi kiya`)
-    if (t.closed && n(t.handed_cash_paise) < n(t.expected_cash_paise)) probs.push(`${t.route}: cash ${rs(n(t.expected_cash_paise) - n(t.handed_cash_paise))} kam`)
+    const who = t.vehicle || t.route
+    if (['loaded', 'out'].includes(t.status) && !t.closed) probs.push(`${who}: truck abhi tak close nahi hua`)
+    else if (t.closed && !t.cash_received) probs.push(`${who}: cash ${rs(t.handed_cash_paise)} abhi receive nahi kiya`)
+    if (t.closed && n(t.handed_cash_paise) < n(t.expected_cash_paise)) probs.push(`${who}: cash ${rs(n(t.expected_cash_paise) - n(t.handed_cash_paise))} kam`)
+    // Trip closed with cases missing (loaded - sold - came back): red, with the manager's reason.
+    if (n(t.short_cases) > 0) probs.push(`🔴 ${who}: ${t.short_cases} peti kam${t.close_note ? ` (${t.close_note})` : ''}`)
   }
   if (probs.length) L.push('', '🚨 Closing:', ...probs.map((p) => '• ' + p))
   if (d.open_orders_tomorrow) L.push('', `📝 Kal ke ${d.open_orders_tomorrow} order taiyaar.`)

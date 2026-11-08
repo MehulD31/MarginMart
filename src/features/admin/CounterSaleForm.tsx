@@ -14,12 +14,13 @@ import { VoiceSale, type VoiceResult } from './VoiceSale'
 import { refreshMoney } from './money'
 import { PaidIntoSelect } from './PaidIntoSelect'
 import { NewShopForm } from './NewShopForm'
+import { useTripDetail } from './trips'
 
 export interface CounterLine { variant_id: string; item: string; qty: number; price_paise: number }
 export interface CounterBill {
   id: string; number: string; at: string; shop: string; shop_id: string; locality: string | null; phone: string | null; owner: string | null
   mode: 'cash' | 'upi'; total_paise: number; discount_paise?: number; by: string | null; voided: boolean; void_reason: string | null
-  margin_paise: number | null; lines: CounterLine[]
+  margin_paise: number | null; lines: CounterLine[]; plan_id?: string | null; vehicle?: string | null
 }
 interface CatalogRow { variant_id: string; label: string; trade_paise: number; buy_paise: number | null; floor_paise: number | null; on_hand: number }
 interface ShopRow { id: string; name: string; phone: string | null; locality: string | null; owner_name: string | null }
@@ -36,12 +37,17 @@ const useShopPicker = () => useQuery({
 const MIN_RATE = 20
 
 /** New counter sale or edit of an existing one. Saves through counter_sale_save, so stock and checks match Telegram and the sheet. */
-export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill; paidInto?: string; onDone: (number?: string) => void }) {
+export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehicle: vehicleProp }: { bill?: CounterBill; paidInto?: string; onDone: (number?: string) => void; planId?: string; vehicle?: string }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const confirm = useConfirm()
   const isAdmin = useAuth().profile?.role === 'admin'
   const catalog = useCounterCatalog()
+  // Truck bill: only what is still on that vehicle can be sold; the godown is not touched.
+  const planId = planProp ?? bill?.plan_id ?? undefined
+  const vehicle = vehicleProp ?? bill?.vehicle ?? undefined
+  const trip = useTripDetail(planId)
+  const truckLeft = useMemo(() => new Map((trip.data?.items ?? []).map((i) => [i.variant_id, Math.max(0, i.left)])), [trip.data])
   const shops = useShopPicker()
   const [action] = useState(() => crypto.randomUUID())
   const [shop, setShop] = useState<ShopRow | null>(bill ? { id: bill.shop_id, name: bill.shop, phone: bill.phone, locality: bill.locality, owner_name: bill.owner ?? null } : null)
@@ -59,13 +65,13 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
   const byId = useMemo(() => new Map((catalog.data ?? []).map((c) => [c.variant_id, c])), [catalog.data])
   // Stock free for this bill: warehouse stock plus what this bill already holds.
   const held = useMemo(() => new Map((bill?.lines ?? []).map((l) => [l.variant_id, l.qty])), [bill])
-  const free = (id: string) => (byId.get(id)?.on_hand ?? 0) + (held.get(id) ?? 0)
+  const free = (id: string) => (planId ? truckLeft.get(id) ?? 0 : byId.get(id)?.on_hand ?? 0) + (held.get(id) ?? 0)
 
   const sq = shopQ.trim().toLowerCase()
   const shopHits = sq.length < 2 ? [] : (shops.data ?? []).filter((s) => `${s.name} ${s.owner_name ?? ''} ${s.phone ?? ''} ${s.locality ?? ''}`.toLowerCase().includes(sq)).slice(0, 8)
   const iq = itemQ.trim().toLowerCase()
-  const itemHits = !iq ? [] : (catalog.data ?? []).filter((c) => c.label.toLowerCase().includes(iq) && !lines.some((l) => l.variant_id === c.variant_id))
-    .sort((a, b) => Number(b.on_hand > 0) - Number(a.on_hand > 0) || a.label.localeCompare(b.label)).slice(0, 8)
+  const itemHits = (!iq && !planId) ? [] : (catalog.data ?? []).filter((c) => c.label.toLowerCase().includes(iq) && !lines.some((l) => l.variant_id === c.variant_id) && (!planId || free(c.variant_id) > 0))
+    .sort((a, b) => Number(b.on_hand > 0) - Number(a.on_hand > 0) || a.label.localeCompare(b.label)).slice(0, planId ? 40 : 8)
 
   const paise = (r: string) => Math.round(Number(r) * 100)
   const lineBad = (l: Line) => !Number.isInteger(l.qty) || l.qty < 1 || l.qty > 9999 || !(Number(l.rate) >= MIN_RATE) || Number(l.rate) > 100000
@@ -76,7 +82,7 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
   const total = subtotal - (discBad ? 0 : disc)
   const margin = lines.reduce((a, l) => a + l.qty * ((paise(l.rate) || 0) - (byId.get(l.variant_id)?.buy_paise ?? 0)), 0) - (discBad ? 0 : disc)
   const belowFloor = lines.filter((l) => { const f = byId.get(l.variant_id)?.floor_paise; return f != null && paise(l.rate) < f })
-  const problem = !shop ? t('sales.form.needShop') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : discBad ? t('sales.form.badDiscount') : null
+  const problem = !shop ? t('sales.form.needShop') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : planId && lines.some((l) => l.qty > free(l.variant_id)) ? t('trip.form.overTruck') : discBad ? t('sales.form.badDiscount') : null
 
   const setLine = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const addItem = (c: CatalogRow) => { setLines((ls) => [...ls, { variant_id: c.variant_id, qty: 1, rate: String(c.trade_paise / 100) }]); setItemQ('') }
@@ -86,12 +92,12 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
     if (belowFloor.length && !(await confirm({ title: t('pricing.belowFloorTitle'), body: t('pricing.belowFloorBody', { n: belowFloor.length }), confirm: t('common.save'), danger: true }))) return
     setBusy(true); setMsg(null)
     const { data, error } = await supabase.rpc('counter_sale_save_into', {
-      p_id: bill?.id ?? null, p_action: action, p_shop: shop.id, p_mode: mode, p_account: account || null, p_discount: disc,
+      p_id: bill?.id ?? null, p_action: action, p_shop: shop.id, p_mode: mode, p_account: account || null, p_discount: disc, p_plan: bill ? null : planId ?? null,
       p_lines: lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: paise(l.rate) })),
     })
     setBusy(false)
     if (error) { setMsg({ kind: 'error', text: errorMessage(t, error) }); return }
-    for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats']) void qc.invalidateQueries({ queryKey: [k] })
+    for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats', 'trip-detail', 'trip-board']) void qc.invalidateQueries({ queryKey: [k] })
     refreshMoney(qc)
     onDone((data as { number: string }).number)
   }
@@ -115,9 +121,10 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
     if (r.discount_paise) setDiscount(String(r.discount_paise / 100))
   }
 
-  if (catalog.isLoading || shops.isLoading) return <Skeleton rows={4} />
+  if (catalog.isLoading || shops.isLoading || (planId && trip.isLoading)) return <Skeleton rows={4} />
   return (
     <div className="stack-lg">
+      {planId && <span className="badge badge-blue" style={{ alignSelf: 'flex-start', fontSize: '0.85rem' }} data-testid="truck-tag">🚚 {t('trip.form.from', { v: vehicle ?? '' })}</span>}
       {!bill && <VoiceSale onResult={applyVoice} />}
       {/* Shop */}
       <div className="stack">
@@ -163,11 +170,11 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
                       <input type="number" inputMode="decimal" min={MIN_RATE} step="0.5" style={{ width: 96 }} value={l.rate}
                         aria-label={`${t('sales.form.rate')}: ${label}`} aria-invalid={!(Number(l.rate) >= MIN_RATE)} onChange={(e) => setLine(i, { rate: e.target.value })} /></label>
                     <span className="cell-sub num">= {formatPaise(l.qty * (paise(l.rate) || 0))}</span>
-                    {over && <span className="badge badge-amber">{t('sales.form.overStock', { n: Math.max(0, free(l.variant_id)) })}</span>}
+                    {over && <span className="badge badge-amber">{t(planId ? 'trip.form.onlyLeft' : 'sales.form.overStock', { n: Math.max(0, free(l.variant_id)) })}</span>}
                     {low && <span className="badge badge-red">{t('sales.form.belowFloor', { floor: formatPaise(c!.floor_paise!) })}</span>}
                   </div>
                 </div>
-                <Stepper value={l.qty} max={9999} onChange={(n) => (n === 0 ? setLines((ls) => ls.filter((_, j) => j !== i)) : setLine(i, { qty: n }))} label={label} />
+                <Stepper value={l.qty} max={planId ? Math.max(l.qty, free(l.variant_id)) : 9999} onChange={(n) => (n === 0 ? setLines((ls) => ls.filter((_, j) => j !== i)) : setLine(i, { qty: n }))} label={label} />
                 <button type="button" className="btn-sm ghost icon-btn" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} aria-label={`${t('sales.form.remove')}: ${label}`}><Trash2 size={16} aria-hidden="true" /></button>
               </li>)
           })}</ul>
@@ -178,10 +185,11 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
           <ul className="plain-list stack" style={{ gap: 4 }}>{itemHits.map((c) => (
             <li key={c.variant_id}><button type="button" className="btn-block" style={{ justifyContent: 'flex-start', textAlign: 'left' }} onClick={() => addItem(c)}>
               <Plus size={16} aria-hidden="true" /><span className="grow">{c.label}</span>
-              <span className="cell-sub num">{formatPaise(c.trade_paise)} · {t('sales.form.inStock', { n: c.on_hand })}</span></button></li>))}
+              <span className="cell-sub num">{formatPaise(c.trade_paise)} · {planId ? t('trip.form.leftOn', { n: free(c.variant_id) }) : t('sales.form.inStock', { n: c.on_hand })}</span></button></li>))}
           </ul>
         )}
         {iq && !itemHits.length && <p className="muted">{t('common.noMatches')}</p>}
+        {planId && !iq && !itemHits.length && <p className="muted">{t('trip.form.truckEmpty')}</p>}
       </div>
 
       {/* Payment */}

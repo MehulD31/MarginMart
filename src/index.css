@@ -581,3 +581,39 @@ details[open].card summary::before { content: '− '; }
 
 /* Pushes a footer button (e.g. Delete) to the far left of a sheet footer. */
 .mr-auto { margin-right: auto; }
+
+/* ======================= Vehicle trips (Loading) ======================= */
+.text-danger { color: var(--danger); }
+.trip-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 720px) { .trip-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
+.trip-card { gap: 12px; }
+.trip-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+.trip-nums > div { background: var(--line-2); border-radius: 10px; padding: 8px 4px; display: flex; flex-direction: column; gap: 2px; }
+.trip-nums span { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+.trip-nums strong { font-size: 1.15rem; }
+.trip-nums small { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+.trip-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.trip-steps button { flex-direction: column; gap: 4px; min-height: 60px; padding: 6px 4px; font-size: 0.8rem; font-weight: 600; border-radius: 12px; background: var(--surface); color: var(--ink-2); }
+.trip-steps .dot { width: 24px; height: 24px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--line-2); font-size: 0.75rem; font-weight: 800; }
+.trip-steps button.done .dot { background: var(--brand-600); color: #fff; }
+.trip-steps button[aria-current='step'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.trip-steps button[aria-current='step'] .dot { background: #fff; color: var(--ink); }
+.trip-list li { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 16px; border-bottom: 1px solid var(--line-2); }
+.trip-list li:last-child { border-bottom: 0; }
+.trip-list label { cursor: pointer; }
+.trip-check { width: 24px; height: 24px; flex-shrink: 0; accent-color: var(--brand-700); }
+.trip-bar { position: sticky; z-index: 5; bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 8px); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 10px 10px 16px; border-radius: 14px; background: var(--ink); color: #fff; box-shadow: var(--shadow-lg); }
+.trip-bar .grow { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+.trip-bar .cell-sub, .trip-bar small { color: #cbd5e1; }
+.trip-bar .bar { background: rgb(255 255 255 / 0.18); }
+@media (min-width: 960px) { .trip-bar { bottom: 16px; } }
+.trip-short { border-color: #fecaca; background: #fef2f2; }
+@media print { .trip-view > *:not(.trip-printable), .trip-printable > *:not(.print-sheet) { display: none !important; } }
+@media (max-width: 719px) { .trip-bar > button { flex: 1 0 auto; } }
+/* Sheets never scroll sideways on phones (long titles, date inputs pushed the Save button off screen). */
+.sheet-head h2 { min-width: 0; overflow-wrap: anywhere; }
+.sheet-body { overflow-x: hidden; }
+.sheet-body input, .sheet-body select, .sheet-body textarea { min-width: 0; max-width: 100%; }
+/* Phones: nothing may push the page sideways (it moved sheets' buttons off screen on Money). clip keeps sticky bars working. */
+html, body { overflow-x: clip; }

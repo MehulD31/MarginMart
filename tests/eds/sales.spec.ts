@@ -1,5 +1,6 @@
 // Admin "Counter sales" page against the live database: New sale, Edit, Cancel, checks, totals.
-// Each run makes its own bills (all cancelled at the end; the cleanup SQL removes them).
+// It makes ONE bill (on a real shop found by searching 'Kumhari'), only ever edits/cancels that bill, and deletes it by id at the end.
+// Never act on 'the first bill in the list': real parchis share this page (rule: protect-real-data).
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
@@ -16,7 +17,7 @@ async function token() {
 }
 async function rpc(fn: string, args: unknown, tok?: string) {
   const r = await fetch(`${U}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { apikey: A, Authorization: `Bearer ${tok ?? A}`, 'Content-Type': 'application/json' }, body: JSON.stringify(args) })
-  return r.json()
+  return r.json().catch(() => null)
 }
 const bills = async () => rpc('counter_sales', { p_from: TODAY, p_to: TODAY }, await token())
 const stockOf = async (label: string) => ((await rpc('counter_catalog', {}, await token())) as { label: string; on_hand: number }[]).find((c) => c.label === label)!.on_hand
@@ -38,6 +39,8 @@ async function login(page: Page) {
 const dialog = (page: Page) => page.getByRole('dialog')
 
 test.describe.configure({ mode: 'serial' })
+let ours: { id: string; number: string } | null = null
+test.afterAll(async () => { if (ours) await rpc('admin_delete', { p_kind: 'counter_sale', p_id: ours.id }, await token()) })
 
 test('New sale: shop search, items, rate, cases, UPI, checks, one bill only', async ({ page }) => {
   const errors = watchErrors(page)
@@ -95,6 +98,7 @@ test('New sale: shop search, items, rate, cases, UPI, checks, one bill only', as
   const b = all.find((x: { shop: string; total_paise: number }) => x.shop === shopName && x.total_paise === 254000)
   expect(b.mode).toBe('upi')
   expect(b.by).toBe('Mehul')
+  ours = { id: b.id, number: b.number }
   expect(await stockOf(STING)).toBe(s0 - 3)
   const feed = (await rpc('sheet_rows', { p_key: SK, p_after: 0 })) as { bill_no: string }[]
   expect(feed.filter((x) => x.bill_no === b.number).length).toBe(2)
@@ -106,7 +110,8 @@ test('Edit: change cases + rate, remove an item, add one, switch to cash; stock 
   const errors = watchErrors(page)
   await login(page)
   await page.goto('/admin/sales')
-  const b = (await bills()).find((x: { voided: boolean; total_paise: number }) => !x.voided && x.total_paise === 254000)
+  expect(ours, 'bill from the first test').toBeTruthy()
+  const b = (await bills()).find((x: { id: string }) => x.id === ours!.id)
   const s0 = await stockOf(STING)
   const card = page.getByTestId('sale-card').filter({ hasText: b.number })
   await card.getByRole('button', { name: 'Edit' }).click()
@@ -148,7 +153,8 @@ test('Cancel bill, totals, empty range, menu, Hindi', async ({ page }) => {
   const live = cards.filter({ hasNot: page.getByText('Cancelled', { exact: true }) })
   const n = await live.count()
   await expect(page.locator('.stat', { hasText: 'Bills' }).locator('.value')).toHaveText(String(n))
-  const target = live.first()
+  expect(ours, 'bill from the first test').toBeTruthy()
+  const target = live.filter({ hasText: ours!.number })
   const number = (await target.textContent())!.match(/KD-\d{5}/)![0]
   await target.getByRole('button', { name: 'Cancel bill' }).click()
   const submit = dialog(page).getByRole('button', { name: 'Cancel bill' })

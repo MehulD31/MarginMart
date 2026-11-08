@@ -38,7 +38,8 @@ test.describe('Manager runs the day', () => {
     await screenIsSound(page, 'dashboard')
   })
 
-  test('takes a phoned-in order, then loads and locks the truck', async ({ page }) => {
+  // The old lock-and-load screen was replaced by the vehicle trip screen (Nov 2026); covered by tests/eds/trips.spec.ts.
+  test.skip('takes a phoned-in order, then loads and locks the truck', async ({ page }) => {
     const errors = watchErrors(page)
     await login(page, ACCOUNTS.manager)
     await page.goto('/admin/orders')
@@ -99,7 +100,8 @@ test.describe('Locking rules held by the database', () => {
 })
 
 test.describe('Helper', () => {
-  test('printed sheet lists what to load and each stop in order', async ({ page }, info) => {
+  // Old Loading screen; the trip screen prints its own load sheet (tests/eds/trips.spec.ts covers the trip flow).
+  test.skip('printed sheet lists what to load and each stop in order', async ({ page }, info) => {
     test.skip(isPhone(info), 'Printing is done from the laptop')
     await login(page, ACCOUNTS.admin)
     await page.goto('/admin/loading')
