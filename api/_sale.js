@@ -63,7 +63,7 @@ async function showConfirm(chat, state) {
 }
 
 // ---------- typed one-line sale, read by AI ----------
-async function askJson(prompt) {
+export async function askJson(prompt) {
   // gemini-3.8-flash can hang for 40s+, which kills the 60s webhook, so it is not used; each try is capped at 15s.
   // Free-key rate limits (429) are common when notes come quickly: walk the models twice, with a short pause between rounds.
   for (const round of [0, 1]) {

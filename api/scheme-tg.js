@@ -7,7 +7,7 @@
 //                  GH_DISPATCH_TOKEN (fine-grained token: this repo only, Actions read+write), GH_REPO (owner/name)
 
 import { handleSaleMessage, handleSaleTap, handleSaleVoice } from './_sale.js'
-import { handleOpsCommand, handleOpsTap } from './_ops.js'
+import { getState, handleOpsCommand, handleOpsTap, handleText, setState } from './_ops.js'
 
 // Values are trimmed so a stray newline in a Vercel variable can never break a token or a comparison.
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
@@ -26,6 +26,12 @@ async function dispatch(inputs, workflow = 'scheme.yml') {
   if (!r.ok) await tg('sendMessage', { chat_id: env.KD_CHAT_ID, text: `⚠️ GitHub start nahi hua (${r.status}). Token ya workflow check karo.` })
 }
 
+// Send a pasted Pepsi message (or a correction of one) to the scheme reader (GitHub, ~1 min).
+async function sendScheme(chat, text, who) {
+  await tg('sendMessage', { chat_id: chat, text: '⏳ Pepsi message samajh raha hun, 1 minute…' })
+  await dispatch({ mode: 'explain', task: text.slice(0, 1900), who })
+}
+
 const allowed = (from, chatId) =>
   String(chatId) === String(env.KD_CHAT_ID) && !!from &&
   String(env.KD_ALLOWED ?? '').split(',').map((s) => s.trim()).includes(String(from.id))
@@ -40,7 +46,8 @@ export default async function handler(req, res) {
       const q = u.callback_query
       if (!allowed(q.from, q.message?.chat?.id)) { await tg('answerCallbackQuery', { callback_query_id: q.id, text: 'Sirf owners' }); return res.status(200).end() }
       if (String(q.data ?? '').startsWith('s:')) { await handleSaleTap(q); return res.status(200).end() }
-      if (await handleOpsTap(q)) return res.status(200).end()
+      const ctx = { dispatch, getState, setState, sendScheme: (text, who) => sendScheme(q.message.chat.id, text, who) }
+      if (await handleOpsTap(q, ctx)) return res.status(200).end()
       const m = /^(ok|no):([0-9a-f-]{36})$/i.exec(q.data ?? '')
       if (!m) return res.status(200).end()
       await tg('answerCallbackQuery', { callback_query_id: q.id, text: m[1] === 'ok' ? 'App me save kar raha hun…' : 'Theek hai' })
@@ -57,28 +64,26 @@ export default async function handler(req, res) {
     if (!text) return res.status(200).end()
     // Counter sales: "/sale" and anything typed while a sale is open.
     if (await handleSaleMessage(msg)) return res.status(200).end()
-    // Quick read-only answers: /due /stock /sleeping.
-    if (await handleOpsCommand(msg, text)) return res.status(200).end()
-    // Autopilot: "/ask <question>" answers from live numbers; "/report" = today's hisaab now; "/week" = weekly report now.
-    const cmd = /^\/(ask|report|week|check)(?:@\w+)?\s*([\s\S]*)$/i.exec(text)
-    if (cmd) {
-      const c = cmd[1].toLowerCase(), q = cmd[2].trim()
-      if (c === 'ask' && !q) { await tg('sendMessage', { chat_id: msg.chat.id, text: 'Aise likho: /ask aaj kitni peti biki?' }); return res.status(200).end() }
-      await tg('sendMessage', { chat_id: msg.chat.id, text: '⏳ Dekh raha hun…' })
-      const mode = { ask: 'ask', report: 'night', week: 'weekly', check: 'watchdog' }[c]
-      await dispatch({ mode, question: q.slice(0, 800), force: c === 'ask' ? '' : '1' }, 'ops.yml')
+    const ctx = { dispatch, getState, setState }
+    // Menu, instant answers and /ask (no GitHub run): /menu /aaj /kal /week /due /stock /order /sleeping /ask.
+    if (await handleOpsCommand(msg, text, ctx)) return res.status(200).end()
+    // /check = full system check (needs GitHub, so it runs the watchdog job).
+    if (/^\/check(?:@\w+)?\b/i.test(text)) {
+      await tg('sendMessage', { chat_id: msg.chat.id, text: '⏳ System check chala raha hun, 1 minute…' })
+      await dispatch({ mode: 'watchdog', force: '1' }, 'ops.yml')
       return res.status(200).end()
     }
     if (text.startsWith('/')) {
-      if (/^\/(start|help)/i.test(text)) await tg('sendMessage', { chat_id: msg.chat.id, text: 'Main ye kaam karta hun:\n\n🧾 /sale likho aur buttons se sale likho, ya ek line me: /sale Sharma Kirana: sting 50 @495, nimbooz 30 @515, cash\n🎤 Ya bas voice note bhejo: "Maruti Kirana sting 50 crate 495, UPI"\n\n📢 Pepsi scheme: Pepsi wale ka message yahan paste karo. Matlab, poster aur ✅ Approve milega. Approve hote hi poster Facebook/Instagram pe bhi jayega.\n\n📊 /report = aaj ka hisaab · /week = hafte ka report · /due [dukan] = udhaar · /stock [item] = stock · /sleeping = jo dukane order nahi kar rahi · /ask <sawal> = kuch bhi poochho · /check = system check\n\nRoz apne aap: 8:00 subah ka plan, 21:30 din ka hisaab, Monday hafte ka report.' })
+      await tg('sendMessage', { chat_id: msg.chat.id, text: 'Ye command nahi pehchana. /menu dabao, ya seedha likho jaise "aaj ka hisaab".' })
       return res.status(200).end()
     }
-    // A reply to the bot's own message is a correction: send the original and the correction together.
+    // Plain words: answer if it is for the bot, ignore owners' chit-chat, and send only real Pepsi messages to the scheme reader.
+    if ((await handleText(msg, text, ctx)) !== 'scheme') return res.status(200).end()
+    // A reply to the bot's scheme card is a correction: send the original and the correction together.
     const reply = msg.reply_to_message
     const orig = reply?.from?.is_bot ? (reply.caption ?? reply.text ?? '') : ''
     const task = orig ? `Pehle bot ne ye samjha tha:\n${orig.slice(0, 900)}\n\nSahi baat (isko maano):\n${text}` : text
-    await tg('sendMessage', { chat_id: msg.chat.id, text: '⏳ Samajh raha hun, 1 minute…' })
-    await dispatch({ mode: 'explain', task: task.slice(0, 1900), who: msg.from.first_name ?? '' })
+    await sendScheme(msg.chat.id, task, msg.from.first_name ?? '')
     return res.status(200).end()
   } catch (e) {
     console.error('scheme-tg', e)

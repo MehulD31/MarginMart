@@ -10,6 +10,7 @@
 // Every job writes public.ops_log (job, key). A re-run of the same thing sees the row and does nothing (FORCE=1 overrides).
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
+import { dayText, weekText } from './report.mjs'
 
 const MODE = env('MODE'); const FORCE = process.env.FORCE === '1' || process.env.FORCE === 'true'
 const today = todayIST()
@@ -36,91 +37,52 @@ async function morning() {
     rpc('ops_daily', { p_day: today }), rpc('ops_overdue', { p_limit: 6 }), rpc('ops_reorder', { p_cover_days: 7 }), rpc('ops_schemes')])
   let plans = []
   try { plans = await db(`route_day_plan?date=eq.${today}&select=status,route(name),orders(status)`) } catch (e) { console.log('plans', e.message) }
-  const L = [`☀️ Good morning, ${hi(today)}`]
+  const L = [`â˜€ï¸ Good morning, ${hi(today)}`]
   const live = plans.map((p) => ({ name: p.route?.name ?? '?', status: p.status, orders: (p.orders ?? []).filter((o) => o.status !== 'cancelled').length }))
-  if (live.length) { L.push('', '🚚 Aaj ke truck:'); for (const p of live) L.push(`• ${p.name}: ${p.orders} order · ${p.status}`) }
-  else L.push('', '🚚 Aaj koi route plan nahi.')
+  if (live.length) { L.push('', 'ðŸšš Aaj ke truck:'); for (const p of live) L.push(`â€¢ ${p.name}: ${p.orders} order Â· ${p.status}`) }
+  else L.push('', 'ðŸšš Aaj koi route plan nahi.')
   for (const s of schemes) {
-    const tag = s.starts_today ? '🆕 Aaj se scheme' : s.days_left === 0 ? '⏰ Scheme aaj khatam' : '⏰ Scheme kal khatam'
+    const tag = s.starts_today ? 'ðŸ†• Aaj se scheme' : s.days_left === 0 ? 'â° Scheme aaj khatam' : 'â° Scheme kal khatam'
     L.push(`${tag}: ${item(s.pack)} ${rs(n(s.amount_paise))}/peti`)
   }
   if (reorder.length) {
-    L.push('', `📦 Stock kam / jaldi khatam (${reorder.length}):`)
-    for (const s of reorder.slice(0, 8)) L.push(`• ${item(s.item)}: ${s.on_hand} peti${s.days_left != null ? ` (~${s.days_left} din)` : ''}`)
+    L.push('', `ðŸ“¦ Stock kam / jaldi khatam (${reorder.length}):`)
+    for (const s of reorder.slice(0, 8)) L.push(`â€¢ ${item(s.item)}: ${s.on_hand} peti${s.days_left != null ? ` (~${s.days_left} din)` : ''}`)
   }
   if (n(d.dues.overdue_paise) > 0) {
-    L.push('', `💰 Overdue khata ${rs(n(d.dues.overdue_paise))} (kul udhaar ${rs(n(d.dues.total_paise))}, ${d.dues.shops} dukan). Link dabao, WhatsApp khulega:`)
+    L.push('', `ðŸ’° Overdue khata ${rs(n(d.dues.overdue_paise))} (kul udhaar ${rs(n(d.dues.total_paise))}, ${d.dues.shops} dukan). Link dabao, WhatsApp khulega:`)
     for (const s of over) {
       const link = waLink(s.phone, remindText(s.name, rs(n(s.overdue))))
-      L.push(`• ${s.name}${s.locality ? ' · ' + s.locality : ''}: ${rs(n(s.overdue))}${link ? '\n  ' + link : ''}`)
+      L.push(`â€¢ ${s.name}${s.locality ? ' Â· ' + s.locality : ''}: ${rs(n(s.overdue))}${link ? '\n  ' + link : ''}`)
     }
-    L.push('→ Driver aaj inse vasooli kare.')
-  } else if (n(d.dues.total_paise) > 0) L.push('', `💰 Udhaar ${rs(n(d.dues.total_paise))} (${d.dues.shops} dukan), koi overdue nahi.`)
+    L.push('â†’ Driver aaj inse vasooli kare.')
+  } else if (n(d.dues.total_paise) > 0) L.push('', `ðŸ’° Udhaar ${rs(n(d.dues.total_paise))} (${d.dues.shops} dukan), koi overdue nahi.`)
   await say(L.join('\n'))
-  if (reorder.length) await say(`📝 Pepsi ko ye order bhej do (7 din ka stock, pichhle 30 din ki bikri se):\n\n${reorderText(reorder, hi(today))}`)
+  if (reorder.length) await say(`ðŸ“ Pepsi ko ye order bhej do (7 din ka stock, pichhle 30 din ki bikri se):\n\n${reorderText(reorder, hi(today))}`)
   await mark('morning', today)
 }
 
 async function night() {
   if (await done('night', today)) return console.log('night already sent')
   const d = await rpc('ops_daily', { p_day: today })
-  const c = d.counter, r = d.route
-  const cases = n(c.cases) + n(r.cases)
-  const L = [`🌙 Aaj ka hisaab, ${hi(today)}`, '',
-    `📦 Kul ${cases} peti · ${rs(n(c.total_paise) + n(r.total_paise))}`,
-    `• Counter: ${c.bills} bill, ${c.cases} peti, ${rs(n(c.total_paise))} (cash ${rs(n(c.cash_paise))}, UPI ${rs(n(c.upi_paise))})`,
-    `• Route: ${r.bills} bill, ${r.cases} peti, ${rs(n(r.total_paise))}`,
-    `• Vasooli: cash ${rs(n(d.collected.cash_paise))}, UPI ${rs(n(d.collected.upi_paise))}`,
-    `• Counter margin: ${rs(n(c.margin_paise))}`]
-  if (n(c.below_cost_lines) > 0) L.push(`⚠️ ${c.below_cost_lines} line buy price se kam pe biki. Counter sales page me dekho.`)
-  if (d.top_items.length) L.push('', '🏆 Sabse zyada: ' + d.top_items.map((t) => `${item(t.item)} ${t.cases}`).join(', '))
-  const probs = []
-  for (const t of d.trucks) {
-    if (['loaded', 'out'].includes(t.status) && !t.closed) probs.push(`${t.route}: truck abhi tak close nahi hua`)
-    else if (t.closed && !t.cash_received) probs.push(`${t.route}: cash ${rs(n(t.handed_cash_paise))} abhi receive nahi kiya`)
-    if (t.closed && n(t.handed_cash_paise) < n(t.expected_cash_paise)) probs.push(`${t.route}: cash ${rs(n(t.expected_cash_paise) - n(t.handed_cash_paise))} kam`)
-  }
-  if (probs.length) L.push('', '🚨 Closing:', ...probs.map((p) => '• ' + p))
-  if (d.open_orders_tomorrow) L.push('', `📝 Kal ke ${d.open_orders_tomorrow} order taiyaar. Loading sheet subah check karo.`)
+  const { text, cases } = dayText(d)
+  let tip = ''
   try {
     const a = await askJson(`You advise the owner of K.D. Foods, a PepsiCo distributor (Durg-Bhilai, India). Today's numbers (paise = rupees x100):\n${JSON.stringify(d)}\n` +
       'Give ONE short practical action for tomorrow in Hinglish (max 25 words), based only on these numbers. If the day is empty, suggest following up dues or stock. JSON: {"tip": "..."}')
-    if (a?.tip) L.push('', `💡 ${String(a.tip).slice(0, 200)}`)
+    if (a?.tip) tip = `\n\nðŸ’¡ ${String(a.tip).slice(0, 200)}`
   } catch (e) { console.log('tip skipped', e.message) }
-  await say(L.join('\n'))
+  await say(text + tip)
   await mark('night', today, { cases })
 }
 
 async function weekly() {
   if (await done('weekly', today)) return console.log('weekly already sent')
   const [w, sleeping] = await Promise.all([rpc('ops_weekly', { p_end: addDays(today, -1) }), rpc('ops_sleeping', { p_days: 10 })])
-  const days = w.days ?? []
-  const sum = (f) => days.reduce((a, d) => a + f(d), 0)
-  const cases = sum((d) => n(d.counter.cases) + n(d.route.cases))
-  const prev = n(w.prev_week_counter_cases) + n(w.prev_week_route_cases)
-  const best = days.reduce((b, d) => (n(d.counter.cases) + n(d.route.cases) > (b ? n(b.counter.cases) + n(b.route.cases) : -1) ? d : b), null)
-  const items = new Map(); for (const d of days) for (const t of d.top_items) items.set(item(t.item), (items.get(item(t.item)) ?? 0) + n(t.cases))
-  const L = [`📊 Hafte ka report (${hi(days[0]?.day ?? today)}–${hi(days.at(-1)?.day ?? today)})`, '',
-    `📦 ${cases} peti${prev ? ` (pichhla hafta ${prev}, ${cases >= prev ? '+' : ''}${Math.round(((cases - prev) / prev) * 100)}%)` : ''}`,
-    `💵 Bikri ${rs(sum((d) => n(d.counter.total_paise) + n(d.route.total_paise)))} · vasooli ${rs(sum((d) => n(d.collected.cash_paise) + n(d.collected.upi_paise)))}`,
-    `📈 Counter margin ${rs(sum((d) => n(d.counter.margin_paise)))}`,
-    `🏪 Nayi dukan: ${w.new_shops}`]
-  if (best && cases) L.push(`⭐ Best din: ${hi(best.day)} (${n(best.counter.cases) + n(best.route.cases)} peti)`)
-  if (items.size) L.push('', '🏆 Top: ' + [...items].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${v}`).join(', '))
-  const t = w.today
-  L.push('', `💰 Udhaar ${rs(n(t.dues.total_paise))} · overdue ${rs(n(t.dues.overdue_paise))}`)
-  for (const s of t.dues.top.slice(0, 5)) L.push(`• ${s.name}: ${rs(n(s.balance))}`)
-  if (sleeping.length) {
-    L.push('', `😴 Ye dukane 10+ din se order nahi kar rahi (${sleeping.length}). Ek call/WhatsApp karo:`)
-    for (const s of sleeping.slice(0, 8)) {
-      const link = waLink(s.phone, `Namaste ${s.name}, K.D. Foods se. Kai din se order nahi aaya, koi dikkat hai? Is hafte ke offer ke liye batayein.`)
-      L.push(`• ${s.name}${s.locality ? ' · ' + s.locality : ''}: ${s.days} din${link ? '\n  ' + link : ''}`)
-    }
-  }
-  await say(L.join('\n'))
+  const { text, cases } = weekText(w, sleeping, waLink)
+  await say(text)
   await mark('weekly', today, { cases })
 }
-
 // New events, checked every ~10 minutes. Each one is alerted exactly once (ops_log) so a re-run never repeats it.
 async function events() {
   // 1. join requests waiting for approval
@@ -128,7 +90,7 @@ async function events() {
   for (const j of jr) {
     if (await done('join', j.id)) continue
     const link = waLink(j.phone, `Namaste ${j.owner_name ?? ''}, K.D. Foods se. Aapki join request mili. Hum jaldi approve karte hain.`)
-    await say(`🆕 Nayi dukan join request\n${j.shop_name} · ${j.owner_name ?? ''}\n📞 ${j.phone}${j.address ? '\n📍 ' + j.address : ''}\n→ App → Join requests me approve karo.${link ? '\n' + link : ''}`)
+    await say(`ðŸ†• Nayi dukan join request\n${j.shop_name} Â· ${j.owner_name ?? ''}\nðŸ“ž ${j.phone}${j.address ? '\nðŸ“ ' + j.address : ''}\nâ†’ App â†’ Join requests me approve karo.${link ? '\n' + link : ''}`)
     await mark('join', j.id)
   }
   // 2. orders placed by shops in the last 24 h
@@ -137,9 +99,9 @@ async function events() {
     const orders = await db(`orders?source=eq.shop&status=neq.cancelled&created_at=gte.${encodeURIComponent(since)}&select=id,created_at,shop(name,locality),route_day_plan(date),order_line(qty_ordered,pack(name_en))&order=created_at&limit=30`)
     for (const o of orders) {
       if (await done('order', o.id)) continue
-      const lines = (o.order_line ?? []).map((l) => `• ${item(l.pack?.name_en)}: ${l.qty_ordered}`)
+      const lines = (o.order_line ?? []).map((l) => `â€¢ ${item(l.pack?.name_en)}: ${l.qty_ordered}`)
       const tot = (o.order_line ?? []).reduce((a, l) => a + n(l.qty_ordered), 0)
-      await say(`🛒 Naya order: ${o.shop?.name ?? '?'}${o.shop?.locality ? ' · ' + o.shop.locality : ''}\n${lines.slice(0, 10).join('\n')}\nKul ${tot} peti · delivery ${o.route_day_plan?.date ? hi(o.route_day_plan.date) : '?'}`)
+      await say(`ðŸ›’ Naya order: ${o.shop?.name ?? '?'}${o.shop?.locality ? ' Â· ' + o.shop.locality : ''}\n${lines.slice(0, 10).join('\n')}\nKul ${tot} peti Â· delivery ${o.route_day_plan?.date ? hi(o.route_day_plan.date) : '?'}`)
       await mark('order', o.id)
     }
   } catch (e) { console.log('orders skipped', e.message) }
@@ -148,7 +110,7 @@ async function events() {
     const out = await db('stock?low_threshold=gt.0&on_hand=lte.0&select=variant_id,variant(flavour_en,active,pack(name_en,active))')
     for (const s of out) {
       if (!s.variant?.active || !s.variant?.pack?.active || (await done('oos', s.variant_id))) continue
-      await say(`🔴 Stock khatam: ${item(`${s.variant.pack.name_en} ${s.variant.flavour_en ?? ''}`)}. Pepsi ko order bhejo.`)
+      await say(`ðŸ”´ Stock khatam: ${item(`${s.variant.pack.name_en} ${s.variant.flavour_en ?? ''}`)}. Pepsi ko order bhejo.`)
       await mark('oos', s.variant_id)
     }
     const armed = await db('ops_log?job=eq.oos&select=key')
@@ -163,7 +125,7 @@ async function events() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
   } catch (e) {
     const bucket = `${today}-${Math.floor(istMinutes() / 180)}`
-    if (!(await done('site-down', bucket))) { await say(`🔴 Website khul nahi rahi (${String(e.message).slice(0, 80)}). Vercel check karo.`); await mark('site-down', bucket) }
+    if (!(await done('site-down', bucket))) { await say(`ðŸ”´ Website khul nahi rahi (${String(e.message).slice(0, 80)}). Vercel check karo.`); await mark('site-down', bucket) }
   }
 }
 
@@ -186,7 +148,7 @@ async function month() {
   ].sort((a, b) => a.date.localeCompare(b.date))
   const sales = rows.filter((x) => x.kind !== 'Payment received' && x.status !== 'void' && x.status !== 'voided')
   await tgDoc(`kd-foods-${r.label}.csv`, '\uFEFF' + toCsv(['date', 'kind', 'number', 'shop', 'gstin', 'amount_rs', 'mode', 'status'], rows),
-    `📒 ${r.label} ka register: ${sales.length} bill, bikri ${rs(sales.reduce((a, x) => a + x.amount_rs * 100, 0))}, vasooli ${rs(-rows.filter((x) => x.kind === 'Payment received').reduce((a, x) => a + x.amount_rs * 100, 0))}. Accountant ko bhej do.`)
+    `ðŸ“’ ${r.label} ka register: ${sales.length} bill, bikri ${rs(sales.reduce((a, x) => a + x.amount_rs * 100, 0))}, vasooli ${rs(-rows.filter((x) => x.kind === 'Payment received').reduce((a, x) => a + x.amount_rs * 100, 0))}. Accountant ko bhej do.`)
   await mark('month', r.label, { rows: rows.length })
 }
 
@@ -232,7 +194,7 @@ async function watchdog() {
     const runs = (await gh(`actions/runs?status=failure&per_page=20&created=>${since}`)).workflow_runs ?? []
     for (const r of runs) {
       if (await done('failalert', String(r.id))) continue
-      alerts.push(`❌ ${r.name} fail hua (${istTime(r.created_at)})`)
+      alerts.push(`âŒ ${r.name} fail hua (${istTime(r.created_at)})`)
       await mark('failalert', String(r.id))
     }
   } catch (e) { alerts.push(`run check fail: ${e.message.slice(0, 100)}`) }
@@ -259,7 +221,7 @@ async function watchdog() {
     if (sched.length && !recent && !(await done('poller-dead', today))) { alerts.push('10-min check 3 ghante se nahi chala (GitHub schedule ruk gaya?)'); await mark('poller-dead', today) }
   } catch (e) { console.log('poller check', e.message) }
   console.log('watchdog', alerts)
-  if (alerts.length) await say('🛠 Watchdog:\n' + alerts.map((a) => '• ' + a).join('\n'))
+  if (alerts.length) await say('ðŸ›  Watchdog:\n' + alerts.map((a) => 'â€¢ ' + a).join('\n'))
   await mark('watchdog', `${today}-${m < 15 * 60 ? 'am' : 'pm'}`, { alerts })
 }
 
@@ -273,7 +235,7 @@ async function social() {
   const [p] = await db('social_post?status=eq.queued&order=created_at&limit=1&select=*')
   if (!p) return console.log('nothing queued')
   const patch = (b) => db(`social_post?id=eq.${p.id}`, { method: 'PATCH', body: JSON.stringify(b) })
-  // auto-made posts go out only after the group has seen them (preview with ❌, see content.mjs)
+  // auto-made posts go out only after the group has seen them (preview with âŒ, see content.mjs)
   if (p.kind !== 'scheme' && !(await db(`ops_log?job=eq.preview&key=eq.${p.id}&select=job`)).length) return console.log('waiting for preview', p.id)
   // an offer that already ended must never go out
   if (p.kind === 'scheme' && p.source_id) {
@@ -289,7 +251,7 @@ async function social() {
   if (!process.env.META_PAGE_TOKEN || (!page && !ig)) {
     if (channel) { await patch({ status: 'posted', posted_at: new Date().toISOString() }); return console.log('posted to channel only') }
     if (!(await done('social-noconnect', today))) {
-      await say('📣 Approved scheme poster post hone ke liye taiyaar hai, par Facebook/Instagram page abhi connect nahi hai. Page banne ke baad GitHub secrets META_PAGE_TOKEN, FB_PAGE_ID, IG_USER_ID daalo; phir ye apne aap post hoga.')
+      await say('ðŸ“£ Approved scheme poster post hone ke liye taiyaar hai, par Facebook/Instagram page abhi connect nahi hai. Page banne ke baad GitHub secrets META_PAGE_TOKEN, FB_PAGE_ID, IG_USER_ID daalo; phir ye apne aap post hoga.')
       await mark('social-noconnect', today)
     }
     return
@@ -308,7 +270,7 @@ async function social() {
       out.ig_media_id = (await graph(`${ig}/media_publish`, { creation_id: c.id })).id
     }
     await patch({ ...out, status: 'posted', posted_at: new Date().toISOString(), error: null })
-    await say(`📣 Scheme poster post ho gaya${channel ? ' · Telegram channel' : ''}${out.fb_post_id ? ' · Facebook' : ''}${out.ig_media_id ? ' · Instagram' : ''}.`)
+    await say(`ðŸ“£ Scheme poster post ho gaya${channel ? ' Â· Telegram channel' : ''}${out.fb_post_id ? ' Â· Facebook' : ''}${out.ig_media_id ? ' Â· Instagram' : ''}.`)
   } catch (e) {
     await patch({ ...out, error: e.message.slice(0, 300), status: out.attempts >= 3 ? 'failed' : 'queued' })
     throw e
@@ -318,15 +280,15 @@ async function social() {
 async function ask() {
   const q = env('QUESTION').slice(0, 800)
   const [d, y, w] = await Promise.all([rpc('ops_daily', { p_day: today }), rpc('ops_daily', { p_day: addDays(today, -1) }), rpc('ops_weekly', { p_end: today })])
-  const a = await askJson(`You are the operations assistant of K.D. Foods (PepsiCo distributor, Durg-Bhilai). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as ₹). If the data can't answer it, say so and say which app page has it.\n` +
+  const a = await askJson(`You are the operations assistant of K.D. Foods (PepsiCo distributor, Durg-Bhilai). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as â‚¹). If the data can't answer it, say so and say which app page has it.\n` +
     `TODAY ${JSON.stringify(d)}\nYESTERDAY ${JSON.stringify(y)}\nLAST 7 DAYS ${JSON.stringify(w.days)}\n\nQuestion: ${q}\n\nReply in short Hinglish (max 120 words). JSON: {"reply": "..."}`)
-  await say(`🤖 ${String(a?.reply ?? 'Jawab nahi bana, dobara poochho.').slice(0, 3500)}`)
+  await say(`ðŸ¤– ${String(a?.reply ?? 'Jawab nahi bana, dobara poochho.').slice(0, 3500)}`)
 }
 
 const jobs = { morning, night, weekly, events, month, watchdog, social, ask }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)
-  await say(`⚠️ Autopilot "${MODE}" me error: ${String(e.message).slice(0, 300)}`).catch(() => {})
+  await say(`âš ï¸ Autopilot "${MODE}" me error: ${String(e.message).slice(0, 300)}`).catch(() => {})
   process.exit(1)
 }
