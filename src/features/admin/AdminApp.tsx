@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Boxes, Calculator, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, type LucideIcon } from 'lucide-react'
+import { BookOpen, Boxes, Calculator, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { isLowStock, useStock } from '../../shared/api/db'
+import { useMoneyHoldings } from './money'
 import { supabase } from '../../shared/api/supabase'
 import { LanguageToggle } from '../../shared/ui/LanguageToggle'
 import { Brand, Sheet } from '../../shared/ui/kit'
@@ -27,6 +28,7 @@ import PricingPage from './PricingPage'
 import SchemesPage from './SchemesPage'
 import LivePage from './LivePage'
 import CounterSalesPage from './CounterSalesPage'
+import MoneyPage from './MoneyPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -49,6 +51,8 @@ export default function AdminApp() {
   const attention = (useClosings().data ?? []).filter((p) => p.status === 'closed' && needsAttention(p)).length
 
   const lowStock = (useStock().data ?? []).filter(isLowStock).length
+  // Personal accounts holding company money for more than 7 days.
+  const moneyLate = (useMoneyHoldings().data ?? []).filter((h) => h.kind === 'personal' && h.holding_paise > 0 && (h.oldest_days ?? 0) > 7).length
   const ops: Item[] = [
     { to: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
     { to: 'orders', label: t('nav.orders'), icon: ClipboardList },
@@ -56,6 +60,7 @@ export default function AdminApp() {
     { to: 'live', label: t('nav.live'), icon: Radio },
     { to: 'sales', label: t('nav.sales'), icon: Receipt },
     { to: 'khata', label: t('nav.khata'), icon: BookOpen },
+    ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'money', label: t('nav.money'), icon: Wallet, badge: moneyLate }] : []),
     { to: 'closing', label: t('nav.closing'), icon: ClipboardCheck, badge: attention },
   ]
   const setup: Item[] = [
@@ -121,6 +126,7 @@ export default function AdminApp() {
           <Route path="live" element={<LivePage />} />
           <Route path="sales" element={<CounterSalesPage />} />
           <Route path="khata" element={<KhataPage />} />
+          <Route path="money" element={<MoneyPage />} />
           <Route path="closing" element={<ClosingPage />} />
           <Route path="audit" element={<AuditPage />} />
           <Route path="inventory" element={<InventoryPage />} />

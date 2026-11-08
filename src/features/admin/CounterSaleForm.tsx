@@ -11,6 +11,8 @@ import { Alert, Skeleton, type Msg } from '../../shared/ui/kit'
 import { Stepper } from '../../shared/ui/Stepper'
 import { useConfirm } from '../../shared/ui/confirm'
 import { VoiceSale, type VoiceResult } from './VoiceSale'
+import { refreshMoney } from './money'
+import { PaidIntoSelect } from './PaidIntoSelect'
 
 export interface CounterLine { variant_id: string; item: string; qty: number; price_paise: number }
 export interface CounterBill {
@@ -33,7 +35,7 @@ const useShopPicker = () => useQuery({
 const MIN_RATE = 20
 
 /** New counter sale or edit of an existing one. Saves through counter_sale_save, so stock and checks match Telegram and the sheet. */
-export function CounterSaleForm({ bill, onDone }: { bill?: CounterBill; onDone: (number?: string) => void }) {
+export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill; paidInto?: string; onDone: (number?: string) => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const confirm = useConfirm()
@@ -46,6 +48,8 @@ export function CounterSaleForm({ bill, onDone }: { bill?: CounterBill; onDone: 
   const [lines, setLines] = useState<Line[]>(() => (bill?.lines ?? []).map((l) => ({ variant_id: l.variant_id, qty: l.qty, rate: String(l.price_paise / 100) })))
   const [itemQ, setItemQ] = useState('')
   const [mode, setMode] = useState<'cash' | 'upi'>(bill?.mode ?? 'cash')
+  // '' = the default for the mode (cash box / company bank); a picked account is saved with the bill.
+  const [account, setAccount] = useState(paidInto ?? '')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
 
@@ -75,13 +79,14 @@ export function CounterSaleForm({ bill, onDone }: { bill?: CounterBill; onDone: 
     if (problem || !shop) return
     if (belowFloor.length && !(await confirm({ title: t('pricing.belowFloorTitle'), body: t('pricing.belowFloorBody', { n: belowFloor.length }), confirm: t('common.save'), danger: true }))) return
     setBusy(true); setMsg(null)
-    const { data, error } = await supabase.rpc('counter_sale_save', {
-      p_id: bill?.id ?? null, p_action: action, p_shop: shop.id, p_mode: mode,
+    const { data, error } = await supabase.rpc('counter_sale_save_into', {
+      p_id: bill?.id ?? null, p_action: action, p_shop: shop.id, p_mode: mode, p_account: account || null,
       p_lines: lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: paise(l.rate) })),
     })
     setBusy(false)
     if (error) { setMsg({ kind: 'error', text: errorMessage(t, error) }); return }
     for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats']) void qc.invalidateQueries({ queryKey: [k] })
+    refreshMoney(qc)
     onDone((data as { number: string }).number)
   }
 
@@ -100,6 +105,7 @@ export function CounterSaleForm({ bill, onDone }: { bill?: CounterBill; onDone: 
       return out
     })
     if (r.mode) setMode(r.mode)
+    if (r.account_id) setAccount(r.account_id)
   }
 
   if (catalog.isLoading || shops.isLoading) return <Skeleton rows={4} />
@@ -172,6 +178,7 @@ export function CounterSaleForm({ bill, onDone }: { bill?: CounterBill; onDone: 
       <fieldset className="days"><legend className="cell-title" style={{ marginBottom: 6 }}>{t('sales.form.pay')}</legend>
         {(['cash', 'upi'] as const).map((m) => <label key={m} className="day-toggle"><input type="radio" name="cs-mode" checked={mode === m} onChange={() => setMode(m)} /><span>{m === 'cash' ? t('driver.cash') : 'UPI'}</span></label>)}
       </fieldset>
+      <PaidIntoSelect value={account} mode={mode} onChange={setAccount} id="cs-paid-into" />
 
       <div className="row-between total-row"><span>{t('shop.casesCount', { count: cases })}</span><strong className="num">{formatPaise(total)}</strong></div>
       {isAdmin && lines.length > 0 && <p className={`cell-sub num ${margin < 0 ? 'text-warn' : ''}`}>{t('sales.margin')}: {formatPaise(margin)}</p>}

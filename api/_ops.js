@@ -1,6 +1,6 @@
 // The friendly side of the KD bot (imported by api/scheme-tg.js; "_" files are not routes). Everything here answers in
 // a second or two straight from Supabase (key-checked bot_* RPCs) and, for questions, the free Gemini key, with no GitHub run.
-//   Slash:   /menu /start /help  /aaj (/report) /kal /week  /due [shop]  /stock [item]  /sleeping  /order  /ask <q>
+//   Slash:   /menu /start /help  /aaj (/report) /kal /week  /due [shop]  /stock [item]  /sleeping  /order  /paisa  /ask <q>
 //   Plain:   "aaj ka hisaab", "sharma ka udhaar", "sting stock", "kya mangana hai", any business question (see _intent.js)
 //   Buttons: m:<menu item>, d:<shop id> (shop card), u:scheme|ask (unsure text), sp:no:<id> (skip a social post)
 import { detectIntent } from './_intent.js'
@@ -35,12 +35,12 @@ const MENU = [
   [{ text: '📈 Hafta', callback_data: 'm:week' }, { text: '💰 Udhaar', callback_data: 'm:due' }],
   [{ text: '📦 Kam stock', callback_data: 'm:stock' }, { text: '📝 Pepsi order', callback_data: 'm:order' }],
   [{ text: '😴 Chup dukane', callback_data: 'm:sleeping' }, { text: '🧾 Sale likho', callback_data: 'm:sale' }],
-  [{ text: '❓ Kaise use karein', callback_data: 'm:help' }],
+  [{ text: '👤 Kiske paas paisa', callback_data: 'm:paisa' }, { text: '❓ Kaise use karein', callback_data: 'm:help' }],
 ]
 const COMMANDS = [
   ['menu', 'Sab buttons'], ['sale', 'Sale likho'], ['aaj', 'Aaj ka hisaab'], ['kal', 'Kal ka hisaab'], ['week', 'Hafte ka report'],
   ['due', 'Udhaar (naam bhi likh sakte ho)'], ['stock', 'Stock (item ka naam bhi)'], ['order', 'Pepsi ko kya mangana hai'],
-  ['sleeping', 'Jo dukane order nahi kar rahi'], ['ask', 'Kuch bhi poochho'], ['check', 'System check'],
+  ['sleeping', 'Jo dukane order nahi kar rahi'], ['paisa', 'Kiske account me company ka paisa'], ['ask', 'Kuch bhi poochho'], ['check', 'System check'],
 ]
 const HELP = [
   'Main KD Foods ka assistant hun. Seedha Hindi/Hinglish me likho, slash zaroori nahi:',
@@ -49,6 +49,7 @@ const HELP = [
   '• "sharma ka udhaar" · "sabka udhaar"',
   '• "sting ka stock" · "kya mangana hai"',
   '• "kaunsi dukan order nahi kar rahi"',
+  '• "shobhit ke paas kitna paisa" (/paisa): company ka paisa jo kisi ke personal account me aaya',
   '• Koi bhi sawal: "is hafte sabse zyada kya bika?"',
   '',
   '🧾 Sale: /sale likho (buttons), ya ek line: /sale Sharma Kirana: sting 50 @495, cash. Ya voice note bhejo.',
@@ -64,6 +65,21 @@ async function showMenu(chat) {
 }
 
 // ---------- answers ----------
+/** Company money sitting in a partner's personal account or the cash box (from "Paid into" on bills and payments). */
+export function paisaText(holdings) {
+  const L = ['👤 Company ka paisa kiske paas hai:', '']
+  for (const h of holdings) {
+    const late = h.kind === 'personal' && Number(h.holding_paise) > 0 && Number(h.oldest_days ?? 0) > 7
+    L.push(`• ${h.name}: ${rs(h.holding_paise)}${Number(h.holding_paise) > 0 ? ` (${h.payments} payment, sabse purana ${h.oldest_days ? h.oldest_days + ' din' : 'aaj'})` : ' ✅'}${late ? ' ⚠️ 7 din se zyada' : ''}`)
+  }
+  if (!holdings.some((h) => Number(h.holding_paise) > 0)) L.push('', 'Sab company bank me hai. 👍')
+  else L.push('', 'Company bank me daalne ke baad website → "Money with partners" → "Moved to company" dabao.')
+  return L.join('\n')
+}
+async function paisa(chat) {
+  await typing(chat)
+  await send(chat, paisaText(await rpc('bot_money_holdings', {})), [back])
+}
 async function today(chat, offset = 0) {
   await typing(chat)
   const d = await rpc('bot_day', { p_day: todayIST(offset) })
@@ -147,7 +163,7 @@ export const getState = (user) => rpc('bot_session_get', { p_user: user })
 export const setState = (user, state) => rpc('bot_session_set', { p_user: user, p_state: state })
 
 // ---------- entry points ----------
-const SLASH = /^\/(menu|start|help|aaj|today|report|kal|yesterday|week|due|stock|sleeping|order|ask)(?:@\w+)?\s*([\s\S]*)$/i
+const SLASH = /^\/(menu|start|help|aaj|today|report|kal|yesterday|week|due|stock|sleeping|order|paisa|ask)(?:@\w+)?\s*([\s\S]*)$/i
 
 /** Slash commands handled here. Returns true when handled. ctx.dispatch(inputs, workflow) starts a GitHub job. */
 export async function handleOpsCommand(msg, text, ctx = {}) {
@@ -164,6 +180,7 @@ export async function handleOpsCommand(msg, text, ctx = {}) {
     else if (cmd === 'stock') await stock(chat, q)
     else if (cmd === 'sleeping') await sleeping(chat)
     else if (cmd === 'order') await order(chat)
+    else if (cmd === 'paisa') await paisa(chat)
     else if (cmd === 'ask') {
       if (!q) await send(chat, 'Aise likho: /ask is hafte sabse zyada kya bika? (ya bina /ask ke seedha sawal likho)')
       else await ask(chat, q, ctx.dispatch && (() => ctx.dispatch({ mode: 'ask', question: q.slice(0, 800) }, 'ops.yml')))
@@ -197,6 +214,7 @@ export async function handleText(msg, text, ctx = {}) {
       case 'stock': await stock(chat, it.q); break
       case 'sleeping': await sleeping(chat); break
       case 'reorder': await order(chat); break
+      case 'money': await paisa(chat); break
       case 'sale_help': await saleHelp(chat); break
       case 'ask': await ask(chat, text, ctx.dispatch && (() => ctx.dispatch({ mode: 'ask', question: text.slice(0, 800) }, 'ops.yml'))); break
       case 'unsure':
@@ -227,6 +245,7 @@ export async function handleOpsTap(q, ctx = {}) {
       else if (k === 'stock') await stock(chat, null)
       else if (k === 'order') await order(chat)
       else if (k === 'sleeping') await sleeping(chat)
+      else if (k === 'paisa') await paisa(chat)
       else if (k === 'sale') await saleHelp(chat)
       else if (k === 'help') await send(chat, HELP, [back])
     } catch (e) { await send(chat, `⚠️ ${String(e.message).slice(0, 200)}`) }

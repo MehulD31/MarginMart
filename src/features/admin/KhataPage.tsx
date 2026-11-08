@@ -12,6 +12,8 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../share
 import { BalanceCards, LedgerList } from '../../shared/ui/Khata'
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
+import { MONEY_KEYS } from './money'
+import { PaidIntoSelect } from './PaidIntoSelect'
 
 interface Row { shop: Shop; balance: number; overdue: number; lastPay: string | null }
 
@@ -89,6 +91,7 @@ function ShopKhata({ shop }: { shop: Shop }) {
   const status = useCreditStatus(shop.id)
   const ledger = useLedger(shop.id)
   const [mode, setMode] = useState<'cash' | 'upi'>('cash')
+  const [account, setAccount] = useState('')
   const [amount, setAmount] = useState('')
   const [ref, setRef] = useState('')
   const [note, setNote] = useState('')
@@ -97,7 +100,7 @@ function ShopKhata({ shop }: { shop: Shop }) {
   const [opening, setOpening] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
-  const refresh = () => ['ledger', 'credit-status', 'khata-list'].forEach((k) => void qc.invalidateQueries({ queryKey: [k] }))
+  const refresh = () => ['ledger', 'credit-status', 'khata-list', ...MONEY_KEYS].forEach((k) => void qc.invalidateQueries({ queryKey: [k] }))
 
   const run = async (fn: () => PromiseLike<{ error: unknown }>, ok: string) => {
     setBusy(true); setMsg(null)
@@ -108,8 +111,8 @@ function ShopKhata({ shop }: { shop: Shop }) {
   }
   const paise = rupeesToPaise(Number(amount) || 0)
   const pay = async () => {
-    if (await run(() => supabase.rpc('record_payment', { p_action_id: crypto.randomUUID(), p_shop_id: shop.id, p_mode: mode, p_amount_paise: paise, p_upi_ref: ref || null, p_note: note || null }), t('khata.paymentSaved'))) {
-      setAmount(''); setRef(''); setNote('')
+    if (await run(() => supabase.rpc('record_payment_into', { p_action_id: crypto.randomUUID(), p_shop_id: shop.id, p_mode: mode, p_amount_paise: paise, p_upi_ref: ref || null, p_note: note || null, p_account: account || null }), t('khata.paymentSaved'))) {
+      setAmount(''); setRef(''); setNote(''); setAccount('')
     }
   }
 
@@ -126,6 +129,7 @@ function ShopKhata({ shop }: { shop: Shop }) {
           <label className="field"><span>{t('driver.amountReceived')}</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} /></label>
           {mode === 'upi' ? <label className="field"><span>{t('driver.upiRef')}</span><input maxLength={40} value={ref} onChange={(e) => setRef(e.target.value)} /></label>
             : <label className="field"><span>{t('khata.note')} <span className="hint">({t('common.optional')})</span></span><input maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} /></label>}
+          <PaidIntoSelect value={account} mode={mode} onChange={setAccount} id="khata-paid-into" />
         </div>
         <div className="row"><button type="button" className="primary" disabled={busy || paise <= 0} onClick={() => void pay()}>{t('driver.saveCollection', { amount: formatPaise(paise) })}</button></div>
       </div>

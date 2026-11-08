@@ -51,13 +51,17 @@ function cartText(state) {
   return `🏪 ${state.shop?.name ?? state.newShop?.name}${state.shop ? '' : ' (nayi dukan)'}\n${lines.join('\n')}\n\nTotal: ${rs(total)} · ${state.lines.reduce((a, l) => a + l.qty, 0)} peti · margin ${rs(margin)}`
 }
 async function showCart(chat, state) {
+  // UPI into a partner's personal account gets its own button, so the money is tracked as held by that person.
+  const personal = (await rpc('bot_money_accounts', {}).catch(() => [])).filter((a) => a.kind === 'personal')
   await send(chat, `${cartText(state)}\n\nAur item ya payment?`, [
     [{ text: '➕ Aur item', callback_data: 's:more' }],
-    [{ text: '💵 Cash', callback_data: 's:pay:cash' }, { text: '📱 UPI', callback_data: 's:pay:upi' }],
+    [{ text: '💵 Cash', callback_data: 's:pay:cash' }, { text: '📱 UPI (company)', callback_data: 's:pay:upi' }],
+    ...pairs(personal.map((a) => ({ text: `📱 UPI → ${a.name.replace(/\s*\(personal\)/i, '').slice(0, 20)}`, callback_data: `s:pay:upi:${a.id}` }))),
     [cancelBtn]])
 }
+const payText = (state) => `${state.mode === 'upi' ? '📱 UPI' : '💵 Cash'} (poora)${state.account ? `\nPaisa aaya: ${state.account.name} 👤` : ''}`
 async function showConfirm(chat, state) {
-  await send(chat, `${cartText(state)}\nPayment: ${state.mode === 'upi' ? '📱 UPI' : '💵 Cash'} (poora)\n\nSahi hai?`, [
+  await send(chat, `${cartText(state)}\nPayment: ${payText(state)}\n\nSahi hai?`, [
     [{ text: '✅ Confirm', callback_data: 's:ok' }],
     [{ text: '➕ Aur item', callback_data: 's:more' }, cancelBtn]])
 }
@@ -108,7 +112,7 @@ If there is no clear speech, return an empty text. Return {"text": string}`
 }
 
 export async function parseLine(text) {
-  const [cat, shops] = await Promise.all([rpc('bot_catalog', {}), rpc('bot_shops', { p_q: null })])
+  const [cat, shops, accounts] = await Promise.all([rpc('bot_catalog', {}), rpc('bot_shops', { p_q: null }), rpc('bot_money_accounts', {}).catch(() => [])])
   // Fuzzy shop candidates from the whole note (spoken notes have no ":" and names can be misheard), plus the old prefix search.
   const [guess, all] = await Promise.all([
     rpc('bot_shop_guess', { p_text: text.slice(0, 300) }).catch(() => []),
@@ -123,7 +127,9 @@ If a spoken item fits several items, use the one with stock > 0. If several item
 "crate", "case", "peti", "dabba", "carton" all mean one case. A number after @ or "ka"/"rate"/"ke"/"me"/"rupay", or the second number for an item (e.g. "sting 50 crate 495" = 50 cases at 495), is the price per case in rupees.
 Numbers may be Hindi words: das 10, bees 20, tees 30, chaalis 40, pachaas 50, saath 60, sattar 70, assi 80, nabbe 90, sau 100, paanch sau 500, chaar sau pachaanve 495, dedh sau 150, dhai sau 250, saade = +half.
 "upi", "online", "gpay", "phonepe", "paytm" = upi; "cash", "nakad" = cash. Notes may come from speech, so shop names can be slightly misspelt: match the closest known shop.
-Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number, "sure": boolean}], "mode": "cash"|"upi"|null, "unclear": [short Hinglish notes]}
+Money accounts (where the money went): ${JSON.stringify(accounts.map((a) => ({ id: a.id, name: a.name, kind: a.kind })))}
+Set account_id only if the note clearly says the payment went to that account (e.g. "upi shobhit", "shobhit ke account me", "shobhit ko bheja", "company account"). A shop name is never an account. Otherwise account_id = null.
+Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number, "sure": boolean}], "mode": "cash"|"upi"|null, "account_id": id or null, "unclear": [short Hinglish notes]}
 "sure" is false when you had to guess the size or flavour between several items in stock.
 Every line needs BOTH a number of cases and a rate. If either is missing or unclear, do NOT guess it and do NOT add that line: put a short Hinglish note in unclear instead.
 Pick the closest item by name (sting = Sting, nimbooz/nimbu = Nimbooz, aq/aquafina 1l = Aquafina 1L, kesar = Creambell Kesar Badam, 400 = 400ml PET flavour). Never invent a line.`)
@@ -139,7 +145,10 @@ Pick the closest item by name (sting = Sting, nimbooz/nimbu = Nimbooz, aq/aquafi
   // Many shops share a name ("Dewangan Kirana" x7): never let the AI guess between them, make the owner pick.
   const sameName = shop ? await rpc('bot_shops', { p_q: shop.name }).catch(() => []) : []
   const ambiguous = shop && sameName.filter((s) => s.name.toLowerCase() === shop.name.toLowerCase()).length > 1 ? shop.name : null
-  return { shop: ambiguous ? null : shop, ambiguous, newName: ambiguous ? null : !shop && out.new_shop_name ? String(out.new_shop_name).slice(0, 100) : null, lines, mode: ['cash', 'upi'].includes(out.mode) ? out.mode : null, unclear: out.unclear ?? [] }
+  // The account must also be named in the note itself (first word of its name, e.g. "shobhit"), so the AI can never invent one.
+  const acc = accounts.find((a) => a.id === out.account_id)
+  const account = acc && (acc.kind === 'company' || new RegExp(`\\b${acc.name.split(/\s+/)[0].toLowerCase()}`).test(text.toLowerCase())) ? { id: acc.id, name: acc.name, kind: acc.kind } : null
+  return { shop: ambiguous ? null : shop, ambiguous, newName: ambiguous ? null : !shop && out.new_shop_name ? String(out.new_shop_name).slice(0, 100) : null, lines, mode: ['cash', 'upi'].includes(out.mode) ? out.mode : account && account.kind !== 'cash' ? 'upi' : null, account, unclear: out.unclear ?? [] }
 }
 
 // ---------- entry points ----------
@@ -185,7 +194,7 @@ async function saleFromText(chat, user, who, rest) {
     {
       const p = await parseLine(rest)
       if (!p.lines.length) { await send(chat, `Item samajh nahi aaye. Aise likho: /sale Sharma Kirana: sting 50 @495, cash\nYa sirf /sale likho aur buttons se karo.${p.unclear.length ? '\n• ' + p.unclear.join('\n• ') : ''}`); return true }
-      const next = { flow: 'sale', lines: p.lines, mode: p.mode, who, shop: p.shop ?? null }
+      const next = { flow: 'sale', lines: p.lines, mode: p.mode, account: p.account ?? null, who, shop: p.shop ?? null }
       if (p.ambiguous) {
         next.step = 'shop'; next.pendingName = p.ambiguous; await setState(user, next)
         await send(chat, `"${p.ambiguous}" naam ki kai dukane hain. Kaunsi?`); await showShops(chat, p.ambiguous); return true
@@ -248,7 +257,7 @@ async function addShopAndContinue(chat, user, state, phone) {
 export async function handleSaleTap(q) {
   const chat = q.message.chat.id, user = q.from.id
   await tg('answerCallbackQuery', { callback_query_id: q.id })
-  const [, action, arg] = q.data.split(':')
+  const [, action, arg, arg2] = q.data.split(':')
   const state = await getState(user)
   if (action === 'cancel') { await setState(user, {}); await send(chat, '❌ Sale cancel. Kuch save nahi hua.'); return }
   if (state.flow !== 'sale') { await send(chat, 'Ye sale purani ho gayi. Naya /sale shuru karo.'); return }
@@ -283,14 +292,16 @@ export async function handleSaleTap(q) {
     if (action === 'more') { await setState(user, { ...state, step: 'item' }); await showItems(chat, state); return }
     if (action === 'pay') {
       if (!state.lines.length) { await send(chat, 'Pehle koi item jodo.'); return }
-      const next = { ...state, mode: arg === 'upi' ? 'upi' : 'cash', step: 'confirm', action: randomUUID() }
+      const acc = arg2 ? (await rpc('bot_money_accounts', {})).find((a) => a.id === arg2) : null
+      if (arg2 && !acc) { await send(chat, 'Ye account ab band hai. Dobara payment chuno.'); await showCart(chat, state); return }
+      const next = { ...state, mode: arg === 'upi' ? 'upi' : 'cash', account: acc ? { id: acc.id, name: acc.name, kind: acc.kind } : null, step: 'confirm', action: randomUUID() }
       await setState(user, next); await showConfirm(chat, next); return
     }
     if (action === 'ok') {
       if (!state.shop?.id || !state.lines.length || !state.mode) { await send(chat, 'Sale adhoori hai, dobara /sale karo.'); return }
       if (!state.action) { await send(chat, 'Sale adhoori hai, dobara /sale karo.'); return }
       // The bill id was fixed when the confirm screen was shown, so a double tap can only ever save one bill.
-      const r = await rpc('bot_record_sale', { p_action: state.action, p_shop: state.shop.id, p_mode: state.mode, p_by: state.who ?? '',
+      const r = await rpc('bot_record_sale_into', { p_action: state.action, p_shop: state.shop.id, p_mode: state.mode, p_by: state.who ?? '', p_account: state.account?.id ?? null,
         p_lines: state.lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: l.price })) })
       await setState(user, {})
       if (r.repeat) { await send(chat, `Ye bill pehle hi save ho chuka hai: ${r.number} (${rs(r.total_paise)}).`); return }
@@ -298,7 +309,13 @@ export async function handleSaleTap(q) {
         ...state.lines.map((l) => `${l.label} × ${l.qty} @ ${rs(l.price)} = ${rs(l.qty * l.price)}`), '',
         `Total: ${rs(r.total_paise)} (${state.mode === 'upi' ? 'UPI' : 'Cash'}, paid)`, 'Dhanyavaad 🙏 · 96300 12636'].join('\n')
       const wa = state.shop.phone ? `https://wa.me/91${state.shop.phone}?text=${encodeURIComponent(bill)}` : null
-      await send(chat, `✅ Sale save: ${r.number} · ${rs(r.total_paise)}${r.margin_paise != null ? ` · margin ${rs(r.margin_paise)}` : ''}\nStock kam ho gaya, sheet me 1 minute me aa jayega.`,
+      // Money that went into a partner's own account: say how much company money they now hold.
+      let held = ''
+      if (state.account?.kind === 'personal') {
+        const h = (await rpc('bot_money_holdings', {}).catch(() => [])).find((x) => x.account_id === state.account.id)
+        if (h) held = `\n👤 Paisa ${state.account.name} ke account me aaya. Unke paas ab company ka ${rs(h.holding_paise)} hai, company bank me daal dena.`
+      }
+      await send(chat, `✅ Sale save: ${r.number} · ${rs(r.total_paise)}${r.margin_paise != null ? ` · margin ${rs(r.margin_paise)}` : ''}\nStock kam ho gaya, sheet me 1 minute me aa jayega.${held}`,
         wa ? [[{ text: '📩 WhatsApp bill bhejo', url: wa }]] : undefined)
       return
     }

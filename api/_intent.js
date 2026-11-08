@@ -1,7 +1,7 @@
 // What does a plain (non-slash) group message want? Pure and unit-tested (scripts/ops/intent.test.mjs).
 // Owners chat in the same group, so most messages are for each other: we answer only when the text clearly asks the bot
 // something, and send only real Pepsi scheme messages to the (slow) scheme reader.
-//   { kind: 'today' | 'yesterday' | 'week' | 'due' | 'stock' | 'sleeping' | 'reorder' | 'menu' | 'sale_help', q? }
+//   { kind: 'today' | 'yesterday' | 'week' | 'due' | 'stock' | 'sleeping' | 'reorder' | 'money' | 'menu' | 'sale_help', q? }
 //   { kind: 'scheme' }   looks like a Pepsi scheme/offer message (or was forwarded)
 //   { kind: 'ask' }      a question for the bot -> AI answer from live numbers
 //   { kind: 'unsure' }   long text, can't tell -> ask with two buttons
@@ -33,6 +33,8 @@ export function detectIntent(text, { forwarded = false, replyToBot = false } = {
     const q = clean(body.replace(/\b(udhaa?r|udhar|baa?ki|bakaya|dues?|outstanding|lena hai|paisa lena|sabse zyada|sabka|kis dukan|dukan|shop|list|total)\b/g, ' '))
     return { kind: 'due', q: q.length >= 2 ? q : null }
   }
+  // Company money held by a partner: "shobhit ke paas kitna paisa", "kiske paas paisa hai"
+  if (/\b(paisa|paise|rupay|rupaye|money)\b/.test(body) && /\b(ke paas|kiske paas|kis ke paas|ke account|personal account|account me)\b/.test(body)) return { kind: 'money' }
   if (/\b(kya mangana|kya mangaye|kya mangwana|reorder|pepsi ko order|order bhej|order bana|order list|mangana hai)\b/.test(body)) return { kind: 'reorder' }
   if (/\b(sleeping|so rahi|so gayi|order nahi (kar|de|aa)|band (ho )?gayi|chup)\b/.test(body)) return { kind: 'sleeping' }
   if (/\b(stock|maal kitna|kitna maal|bacha|bachi|khatam)\b/.test(body)) {

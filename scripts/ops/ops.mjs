@@ -1,9 +1,9 @@
 // KD Foods autopilot (thumb rule: the business runs itself). Runs in GitHub Actions (.github/workflows/ops.yml).
 //   MODE=morning   08:00 IST  plan: trucks, schemes, low stock + a Pepsi order text, overdue khata with tap-to-remind links
-//   MODE=night     21:30 IST  day's sales/cases/cash/margin + closing check (truck not closed, cash short/not received) + a tip
+//   MODE=night     21:30 IST  day's sales/cases/cash/margin + closing check (truck not closed, cash short/not received) + company money held by partners + a tip
 //   MODE=weekly    Mon 09:00  last 7 days vs the week before, best items, biggest dues, sleeping shops
-//   MODE=events    every ~10 min  new join request, new shop order, item out of stock, website down (each alerted once)
-//   MODE=month     1st 09:30  last month's sales register + payments as a CSV file for the accountant
+//   MODE=events    every ~10 min  new join request, new shop order, item out of stock, partner holding company money 7+ days, website down (each alerted once)
+//   MODE=month     1st 09:30  last month's sales register + payments (with 'paid into') as a CSV file for the accountant
 //   MODE=watchdog  10:00 + 23:00  re-sends a missing report, backup, bot webhook, failed runs, website, free-tier size
 //   MODE=social    19:30 IST  next approved scheme poster -> Telegram channel (if set) and Facebook + Instagram (if connected)
 //   MODE=ask       QUESTION="..."  answers an owner's /ask from the live numbers (free Gemini key)
@@ -37,28 +37,28 @@ async function morning() {
     rpc('ops_daily', { p_day: today }), rpc('ops_overdue', { p_limit: 6 }), rpc('ops_reorder', { p_cover_days: 7 }), rpc('ops_schemes')])
   let plans = []
   try { plans = await db(`route_day_plan?date=eq.${today}&select=status,route(name),orders(status)`) } catch (e) { console.log('plans', e.message) }
-  const L = [`â˜€ï¸ Good morning, ${hi(today)}`]
+  const L = [`☀️ Good morning, ${hi(today)}`]
   const live = plans.map((p) => ({ name: p.route?.name ?? '?', status: p.status, orders: (p.orders ?? []).filter((o) => o.status !== 'cancelled').length }))
-  if (live.length) { L.push('', 'ðŸšš Aaj ke truck:'); for (const p of live) L.push(`â€¢ ${p.name}: ${p.orders} order Â· ${p.status}`) }
-  else L.push('', 'ðŸšš Aaj koi route plan nahi.')
+  if (live.length) { L.push('', '🚚 Aaj ke truck:'); for (const p of live) L.push(`• ${p.name}: ${p.orders} order · ${p.status}`) }
+  else L.push('', '🚚 Aaj koi route plan nahi.')
   for (const s of schemes) {
-    const tag = s.starts_today ? 'ðŸ†• Aaj se scheme' : s.days_left === 0 ? 'â° Scheme aaj khatam' : 'â° Scheme kal khatam'
+    const tag = s.starts_today ? '🆕 Aaj se scheme' : s.days_left === 0 ? '⏰ Scheme aaj khatam' : '⏰ Scheme kal khatam'
     L.push(`${tag}: ${item(s.pack)} ${rs(n(s.amount_paise))}/peti`)
   }
   if (reorder.length) {
-    L.push('', `ðŸ“¦ Stock kam / jaldi khatam (${reorder.length}):`)
-    for (const s of reorder.slice(0, 8)) L.push(`â€¢ ${item(s.item)}: ${s.on_hand} peti${s.days_left != null ? ` (~${s.days_left} din)` : ''}`)
+    L.push('', `📦 Stock kam / jaldi khatam (${reorder.length}):`)
+    for (const s of reorder.slice(0, 8)) L.push(`• ${item(s.item)}: ${s.on_hand} peti${s.days_left != null ? ` (~${s.days_left} din)` : ''}`)
   }
   if (n(d.dues.overdue_paise) > 0) {
-    L.push('', `ðŸ’° Overdue khata ${rs(n(d.dues.overdue_paise))} (kul udhaar ${rs(n(d.dues.total_paise))}, ${d.dues.shops} dukan). Link dabao, WhatsApp khulega:`)
+    L.push('', `💰 Overdue khata ${rs(n(d.dues.overdue_paise))} (kul udhaar ${rs(n(d.dues.total_paise))}, ${d.dues.shops} dukan). Link dabao, WhatsApp khulega:`)
     for (const s of over) {
       const link = waLink(s.phone, remindText(s.name, rs(n(s.overdue))))
-      L.push(`â€¢ ${s.name}${s.locality ? ' Â· ' + s.locality : ''}: ${rs(n(s.overdue))}${link ? '\n  ' + link : ''}`)
+      L.push(`• ${s.name}${s.locality ? ' · ' + s.locality : ''}: ${rs(n(s.overdue))}${link ? '\n  ' + link : ''}`)
     }
-    L.push('â†’ Driver aaj inse vasooli kare.')
-  } else if (n(d.dues.total_paise) > 0) L.push('', `ðŸ’° Udhaar ${rs(n(d.dues.total_paise))} (${d.dues.shops} dukan), koi overdue nahi.`)
+    L.push('→ Driver aaj inse vasooli kare.')
+  } else if (n(d.dues.total_paise) > 0) L.push('', `💰 Udhaar ${rs(n(d.dues.total_paise))} (${d.dues.shops} dukan), koi overdue nahi.`)
   await say(L.join('\n'))
-  if (reorder.length) await say(`ðŸ“ Pepsi ko ye order bhej do (7 din ka stock, pichhle 30 din ki bikri se):\n\n${reorderText(reorder, hi(today))}`)
+  if (reorder.length) await say(`📝 Pepsi ko ye order bhej do (7 din ka stock, pichhle 30 din ki bikri se):\n\n${reorderText(reorder, hi(today))}`)
   await mark('morning', today)
 }
 
@@ -70,9 +70,15 @@ async function night() {
   try {
     const a = await askJson(`You advise the owner of K.D. Foods, a PepsiCo distributor (Durg-Bhilai, India). Today's numbers (paise = rupees x100):\n${JSON.stringify(d)}\n` +
       'Give ONE short practical action for tomorrow in Hinglish (max 25 words), based only on these numbers. If the day is empty, suggest following up dues or stock. JSON: {"tip": "..."}')
-    if (a?.tip) tip = `\n\nðŸ’¡ ${String(a.tip).slice(0, 200)}`
+    if (a?.tip) tip = `\n\n💡 ${String(a.tip).slice(0, 200)}`
   } catch (e) { console.log('tip skipped', e.message) }
-  await say(text + tip)
+  // Company money still in a partner's personal account / the cash box ("Paid into" on bills and payments).
+  let money = ''
+  try {
+    const held = (await rpc('_money_holdings')).filter((h) => n(h.holding_paise) > 0)
+    if (held.length) money = '\n\n👤 Company ka paisa abhi: ' + held.map((h) => `${h.name} ${rs(n(h.holding_paise))}`).join(', ') + '. Bank me daal ke website pe "Moved to company" dabao.'
+  } catch (e) { console.log('money skipped', e.message) }
+  await say(text + money + tip)
   await mark('night', today, { cases })
 }
 
@@ -90,7 +96,7 @@ async function events() {
   for (const j of jr) {
     if (await done('join', j.id)) continue
     const link = waLink(j.phone, `Namaste ${j.owner_name ?? ''}, K.D. Foods se. Aapki join request mili. Hum jaldi approve karte hain.`)
-    await say(`ðŸ†• Nayi dukan join request\n${j.shop_name} Â· ${j.owner_name ?? ''}\nðŸ“ž ${j.phone}${j.address ? '\nðŸ“ ' + j.address : ''}\nâ†’ App â†’ Join requests me approve karo.${link ? '\n' + link : ''}`)
+    await say(`🆕 Nayi dukan join request\n${j.shop_name} · ${j.owner_name ?? ''}\n📞 ${j.phone}${j.address ? '\n📍 ' + j.address : ''}\n→ App → Join requests me approve karo.${link ? '\n' + link : ''}`)
     await mark('join', j.id)
   }
   // 2. orders placed by shops in the last 24 h
@@ -99,9 +105,9 @@ async function events() {
     const orders = await db(`orders?source=eq.shop&status=neq.cancelled&created_at=gte.${encodeURIComponent(since)}&select=id,created_at,shop(name,locality),route_day_plan(date),order_line(qty_ordered,pack(name_en))&order=created_at&limit=30`)
     for (const o of orders) {
       if (await done('order', o.id)) continue
-      const lines = (o.order_line ?? []).map((l) => `â€¢ ${item(l.pack?.name_en)}: ${l.qty_ordered}`)
+      const lines = (o.order_line ?? []).map((l) => `• ${item(l.pack?.name_en)}: ${l.qty_ordered}`)
       const tot = (o.order_line ?? []).reduce((a, l) => a + n(l.qty_ordered), 0)
-      await say(`ðŸ›’ Naya order: ${o.shop?.name ?? '?'}${o.shop?.locality ? ' Â· ' + o.shop.locality : ''}\n${lines.slice(0, 10).join('\n')}\nKul ${tot} peti Â· delivery ${o.route_day_plan?.date ? hi(o.route_day_plan.date) : '?'}`)
+      await say(`🛒 Naya order: ${o.shop?.name ?? '?'}${o.shop?.locality ? ' · ' + o.shop.locality : ''}\n${lines.slice(0, 10).join('\n')}\nKul ${tot} peti · delivery ${o.route_day_plan?.date ? hi(o.route_day_plan.date) : '?'}`)
       await mark('order', o.id)
     }
   } catch (e) { console.log('orders skipped', e.message) }
@@ -110,7 +116,7 @@ async function events() {
     const out = await db('stock?low_threshold=gt.0&on_hand=lte.0&select=variant_id,variant(flavour_en,active,pack(name_en,active))')
     for (const s of out) {
       if (!s.variant?.active || !s.variant?.pack?.active || (await done('oos', s.variant_id))) continue
-      await say(`ðŸ”´ Stock khatam: ${item(`${s.variant.pack.name_en} ${s.variant.flavour_en ?? ''}`)}. Pepsi ko order bhejo.`)
+      await say(`🔴 Stock khatam: ${item(`${s.variant.pack.name_en} ${s.variant.flavour_en ?? ''}`)}. Pepsi ko order bhejo.`)
       await mark('oos', s.variant_id)
     }
     const armed = await db('ops_log?job=eq.oos&select=key')
@@ -119,13 +125,23 @@ async function events() {
       if (back.length) await db(`ops_log?job=eq.oos&key=in.(${back.map((b) => b.variant_id).join(',')})`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
     }
   } catch (e) { console.log('stock skipped', e.message) }
-  // 4. website down (alerted at most once per 3 hours)
+  // 4. company money in a personal account for more than 7 days (once a day per account, after 10:00 IST)
+  try {
+    if (istMinutes() >= 10 * 60) {
+      for (const h of await rpc('_money_holdings')) {
+        if (h.kind !== 'personal' || n(h.holding_paise) <= 0 || n(h.oldest_days) <= 7 || (await done('money-late', `${today}-${h.account_id}`))) continue
+        await say(`⏰ ${h.name} ke account me company ka ${rs(n(h.holding_paise))} hai (${h.payments} payment, sabse purana ${h.oldest_days} din pehle). Company bank me daal do, phir website → "Money with partners" → "Moved to company".`)
+        await mark('money-late', `${today}-${h.account_id}`)
+      }
+    }
+  } catch (e) { console.log('money check skipped', e.message) }
+  // 5. website down (alerted at most once per 3 hours)
   try {
     const r = await fetch(process.env.SITE_URL || 'https://kdfoods.vercel.app', { signal: AbortSignal.timeout(20000) })
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
   } catch (e) {
     const bucket = `${today}-${Math.floor(istMinutes() / 180)}`
-    if (!(await done('site-down', bucket))) { await say(`ðŸ”´ Website khul nahi rahi (${String(e.message).slice(0, 80)}). Vercel check karo.`); await mark('site-down', bucket) }
+    if (!(await done('site-down', bucket))) { await say(`🔴 Website khul nahi rahi (${String(e.message).slice(0, 80)}). Vercel check karo.`); await mark('site-down', bucket) }
   }
 }
 
@@ -136,19 +152,22 @@ async function month() {
   const r = monthRange(py, pm)
   if (await done('month', r.label)) return console.log('month already sent')
   const q = `created_at=gte.${encodeURIComponent(r.from)}&created_at=lt.${encodeURIComponent(r.to)}`
-  const [inv, cs, pay] = await Promise.all([
+  const [inv, cs, pay, paid] = await Promise.all([
     db(`invoice?${q}&select=number,created_at,total_paise,status,shop(name,gstin)&order=created_at&limit=5000`),
-    db(`cash_sale?${q}&select=number,created_at,total_paise,payment_mode,voided_at,shop(name)&order=created_at&limit=5000`),
-    db(`ledger_entry?${q}&type=eq.payment&select=created_at,amount_paise,payment_mode,upi_ref,shop(name)&order=created_at&limit=5000`)])
+    db(`cash_sale?${q}&select=id,number,created_at,total_paise,payment_mode,voided_at,shop(name)&order=created_at&limit=5000`),
+    db(`ledger_entry?${q}&type=eq.payment&select=id,created_at,amount_paise,payment_mode,upi_ref,shop(name)&order=created_at&limit=5000`),
+    rpc('_money_payments', { p_from: null, p_to: null }).catch(() => [])])
+  // Which account each payment went into (so the accountant sees money that landed in a partner's personal account).
+  const into = new Map(paid.map((p) => [`${p.kind}:${p.ref_id}`, p.account ?? '']))
   const day = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
   const rows = [
-    ...inv.map((x) => ({ date: day(x.created_at), kind: 'Route bill', number: x.number, shop: x.shop?.name, gstin: x.shop?.gstin, amount_rs: n(x.total_paise) / 100, mode: '', status: x.status })),
-    ...cs.map((x) => ({ date: day(x.created_at), kind: 'Counter sale', number: x.number, shop: x.shop?.name, gstin: '', amount_rs: n(x.total_paise) / 100, mode: x.payment_mode, status: x.voided_at ? 'void' : 'ok' })),
-    ...pay.map((x) => ({ date: day(x.created_at), kind: 'Payment received', number: x.upi_ref ?? '', shop: x.shop?.name, gstin: '', amount_rs: -n(x.amount_paise) / 100, mode: x.payment_mode, status: 'ok' })),
+    ...inv.map((x) => ({ date: day(x.created_at), kind: 'Route bill', number: x.number, shop: x.shop?.name, gstin: x.shop?.gstin, amount_rs: n(x.total_paise) / 100, mode: '', paid_into: '', status: x.status })),
+    ...cs.map((x) => ({ date: day(x.created_at), kind: 'Counter sale', number: x.number, shop: x.shop?.name, gstin: '', amount_rs: n(x.total_paise) / 100, mode: x.payment_mode, paid_into: into.get(`counter_sale:${x.id}`) ?? '', status: x.voided_at ? 'void' : 'ok' })),
+    ...pay.map((x) => ({ date: day(x.created_at), kind: 'Payment received', number: x.upi_ref ?? '', shop: x.shop?.name, gstin: '', amount_rs: -n(x.amount_paise) / 100, mode: x.payment_mode, paid_into: into.get(`payment:${x.id}`) ?? '', status: 'ok' })),
   ].sort((a, b) => a.date.localeCompare(b.date))
   const sales = rows.filter((x) => x.kind !== 'Payment received' && x.status !== 'void' && x.status !== 'voided')
-  await tgDoc(`kd-foods-${r.label}.csv`, '\uFEFF' + toCsv(['date', 'kind', 'number', 'shop', 'gstin', 'amount_rs', 'mode', 'status'], rows),
-    `ðŸ“’ ${r.label} ka register: ${sales.length} bill, bikri ${rs(sales.reduce((a, x) => a + x.amount_rs * 100, 0))}, vasooli ${rs(-rows.filter((x) => x.kind === 'Payment received').reduce((a, x) => a + x.amount_rs * 100, 0))}. Accountant ko bhej do.`)
+  await tgDoc(`kd-foods-${r.label}.csv`, '\uFEFF' + toCsv(['date', 'kind', 'number', 'shop', 'gstin', 'amount_rs', 'mode', 'paid_into', 'status'], rows),
+    `📒 ${r.label} ka register: ${sales.length} bill, bikri ${rs(sales.reduce((a, x) => a + x.amount_rs * 100, 0))}, vasooli ${rs(-rows.filter((x) => x.kind === 'Payment received').reduce((a, x) => a + x.amount_rs * 100, 0))}. Accountant ko bhej do.`)
   await mark('month', r.label, { rows: rows.length })
 }
 
@@ -194,7 +213,7 @@ async function watchdog() {
     const runs = (await gh(`actions/runs?status=failure&per_page=20&created=>${since}`)).workflow_runs ?? []
     for (const r of runs) {
       if (await done('failalert', String(r.id))) continue
-      alerts.push(`âŒ ${r.name} fail hua (${istTime(r.created_at)})`)
+      alerts.push(`❌ ${r.name} fail hua (${istTime(r.created_at)})`)
       await mark('failalert', String(r.id))
     }
   } catch (e) { alerts.push(`run check fail: ${e.message.slice(0, 100)}`) }
@@ -221,7 +240,7 @@ async function watchdog() {
     if (sched.length && !recent && !(await done('poller-dead', today))) { alerts.push('10-min check 3 ghante se nahi chala (GitHub schedule ruk gaya?)'); await mark('poller-dead', today) }
   } catch (e) { console.log('poller check', e.message) }
   console.log('watchdog', alerts)
-  if (alerts.length) await say('ðŸ›  Watchdog:\n' + alerts.map((a) => 'â€¢ ' + a).join('\n'))
+  if (alerts.length) await say('🛠 Watchdog:\n' + alerts.map((a) => '• ' + a).join('\n'))
   await mark('watchdog', `${today}-${m < 15 * 60 ? 'am' : 'pm'}`, { alerts })
 }
 
@@ -235,7 +254,7 @@ async function social() {
   const [p] = await db('social_post?status=eq.queued&order=created_at&limit=1&select=*')
   if (!p) return console.log('nothing queued')
   const patch = (b) => db(`social_post?id=eq.${p.id}`, { method: 'PATCH', body: JSON.stringify(b) })
-  // auto-made posts go out only after the group has seen them (preview with âŒ, see content.mjs)
+  // auto-made posts go out only after the group has seen them (preview with ❌, see content.mjs)
   if (p.kind !== 'scheme' && !(await db(`ops_log?job=eq.preview&key=eq.${p.id}&select=job`)).length) return console.log('waiting for preview', p.id)
   // an offer that already ended must never go out
   if (p.kind === 'scheme' && p.source_id) {
@@ -251,7 +270,7 @@ async function social() {
   if (!process.env.META_PAGE_TOKEN || (!page && !ig)) {
     if (channel) { await patch({ status: 'posted', posted_at: new Date().toISOString() }); return console.log('posted to channel only') }
     if (!(await done('social-noconnect', today))) {
-      await say('ðŸ“£ Approved scheme poster post hone ke liye taiyaar hai, par Facebook/Instagram page abhi connect nahi hai. Page banne ke baad GitHub secrets META_PAGE_TOKEN, FB_PAGE_ID, IG_USER_ID daalo; phir ye apne aap post hoga.')
+      await say('📣 Approved scheme poster post hone ke liye taiyaar hai, par Facebook/Instagram page abhi connect nahi hai. Page banne ke baad GitHub secrets META_PAGE_TOKEN, FB_PAGE_ID, IG_USER_ID daalo; phir ye apne aap post hoga.')
       await mark('social-noconnect', today)
     }
     return
@@ -270,7 +289,7 @@ async function social() {
       out.ig_media_id = (await graph(`${ig}/media_publish`, { creation_id: c.id })).id
     }
     await patch({ ...out, status: 'posted', posted_at: new Date().toISOString(), error: null })
-    await say(`ðŸ“£ Scheme poster post ho gaya${channel ? ' Â· Telegram channel' : ''}${out.fb_post_id ? ' Â· Facebook' : ''}${out.ig_media_id ? ' Â· Instagram' : ''}.`)
+    await say(`📣 Scheme poster post ho gaya${channel ? ' · Telegram channel' : ''}${out.fb_post_id ? ' · Facebook' : ''}${out.ig_media_id ? ' · Instagram' : ''}.`)
   } catch (e) {
     await patch({ ...out, error: e.message.slice(0, 300), status: out.attempts >= 3 ? 'failed' : 'queued' })
     throw e
@@ -280,9 +299,9 @@ async function social() {
 async function ask() {
   const q = env('QUESTION').slice(0, 800)
   const [d, y, w] = await Promise.all([rpc('ops_daily', { p_day: today }), rpc('ops_daily', { p_day: addDays(today, -1) }), rpc('ops_weekly', { p_end: today })])
-  const a = await askJson(`You are the operations assistant of K.D. Foods (PepsiCo distributor, Durg-Bhilai). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as â‚¹). If the data can't answer it, say so and say which app page has it.\n` +
+  const a = await askJson(`You are the operations assistant of K.D. Foods (PepsiCo distributor, Durg-Bhilai). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as ₹). If the data can't answer it, say so and say which app page has it.\n` +
     `TODAY ${JSON.stringify(d)}\nYESTERDAY ${JSON.stringify(y)}\nLAST 7 DAYS ${JSON.stringify(w.days)}\n\nQuestion: ${q}\n\nReply in short Hinglish (max 120 words). JSON: {"reply": "..."}`)
-  await say(`ðŸ¤– ${String(a?.reply ?? 'Jawab nahi bana, dobara poochho.').slice(0, 3500)}`)
+  await say(`🤖 ${String(a?.reply ?? 'Jawab nahi bana, dobara poochho.').slice(0, 3500)}`)
 }
 
 // Which chat is the bot actually wired to? Prints names only (no tokens), so the owner can match it with the group they use.
@@ -318,6 +337,6 @@ const jobs = { morning, night, weekly, events, month, watchdog, social, ask, dia
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)
-  await say(`âš ï¸ Autopilot "${MODE}" me error: ${String(e.message).slice(0, 300)}`).catch(() => {})
+  await say(`⚠️ Autopilot "${MODE}" me error: ${String(e.message).slice(0, 300)}`).catch(() => {})
   process.exit(1)
 }

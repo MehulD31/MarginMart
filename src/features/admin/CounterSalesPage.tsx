@@ -10,6 +10,7 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
+import { useMoneyPayments } from './money'
 
 const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 const dayIST = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
@@ -36,6 +37,9 @@ export default function CounterSalesPage() {
     queryFn: () => must<CounterBill[] | null>(supabase.rpc('counter_sales', { p_from: from, p_to: to })).then((r) => r ?? []),
     refetchInterval: 30_000,
   })
+  // Where each bill's money went (personal accounts get a badge; the form keeps a picked account on edit).
+  const money = useMoneyPayments(from, to, valid)
+  const paidBy = useMemo(() => new Map((money.data ?? []).filter((p) => p.kind === 'counter_sale').map((p) => [p.ref_id, p])), [money.data])
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
   const live = useMemo(() => (sales.data ?? []).filter((b) => !b.voided), [sales.data])
   const sum = (bs: CounterBill[], f: (b: CounterBill) => number) => bs.reduce((a, b) => a + f(b), 0)
@@ -114,6 +118,7 @@ export default function CounterSalesPage() {
                   <div style={{ textAlign: 'right' }}>
                     <strong className="num">{formatPaise(b.total_paise)}</strong>{' '}
                     <span className={`badge ${b.mode === 'upi' ? 'badge-blue' : 'badge-green'}`}>{b.mode === 'upi' ? 'UPI' : t('driver.cash')}</span>
+                    {paidBy.get(b.id)?.account_kind === 'personal' && <> <span className="badge badge-amber" data-testid="paid-into">→ {paidBy.get(b.id)!.account}</span></>}
                     {b.voided && <> <span className="badge badge-red">{t('sales.voided')}</span></>}
                   </div>
                 </div>
@@ -134,6 +139,7 @@ export default function CounterSalesPage() {
 
       <Sheet open={!!editing} wide title={editing === 'new' ? t('sales.new') : editing ? t('sales.editTitle', { n: editing.number }) : ''} onClose={() => setEditing(null)}>
         {editing && <CounterSaleForm key={editing === 'new' ? 'new' : editing.id} bill={editing === 'new' ? undefined : editing}
+          paidInto={editing === 'new' ? undefined : (paidBy.get(editing.id)?.explicit ? paidBy.get(editing.id)!.account_id ?? undefined : undefined)}
           onDone={(number) => {
             const wasNew = editing === 'new'
             setEditing(null)

@@ -31,7 +31,8 @@
     "pricing": "Pricing & margin",
     "live": "Live deliveries",
     "schemes": "Schemes",
-    "sales": "Counter sales"
+    "sales": "Counter sales",
+    "money": "Money with partners"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -184,7 +185,10 @@
     "VEHICLE_HAS_LOGIN": "A driver login uses this vehicle. Delete or change that login first.",
     "VEHICLE_IN_USE": "This vehicle has trips, so it cannot be deleted. Untick Active instead.",
     "ITEM_IN_USE": "This item was already ordered, bought, sold or stocked, so it cannot be deleted. Untick Active instead.",
-    "SUPPLIER_HAS_PURCHASES": "There are purchases from this supplier, so it cannot be deleted. Untick Active instead."
+    "SUPPLIER_HAS_PURCHASES": "There are purchases from this supplier, so it cannot be deleted. Untick Active instead.",
+    "ACCOUNT_NOT_FOUND": "That money account was not found or is switched off. Pick another one.",
+    "MORE_THAN_HELD": "That is more than this account holds. Check the amount.",
+    "ACCOUNT_EXISTS": "An account with this name already exists."
   },
   "days": {
     "1": "Mon",
@@ -1007,5 +1011,53 @@
       "supplier": "The supplier is removed. Only possible if there are no purchases from them.",
       "join_request": "The request is removed. No shop or login is created."
     }
+  },
+  "money": {
+    "title": "Money with partners",
+    "sub": "Shop payments that went into a personal account or the cash box are still company money. Move them to the company bank and record it here.",
+    "paidInto": "Paid into",
+    "kind": {
+      "company": "Company bank",
+      "personal": "Personal",
+      "cash": "Cash box"
+    },
+    "holds": "holds",
+    "fromPayments_one": "from {{count}} payment",
+    "fromPayments_other": "from {{count}} payments",
+    "oldest": "oldest not moved: {{days}} days ago",
+    "oldestToday": "oldest not moved: today",
+    "allMoved": "All moved to the company bank.",
+    "overdue": "Move this to the company bank. Money has been in a personal account for more than 7 days.",
+    "move": "Moved to company",
+    "moveTitle": "Moved to company: {{name}}",
+    "moveBody": "{{name}} holds {{amount}}. Record how much was transferred to the company bank.",
+    "amount": "Amount (₹)",
+    "date": "Date moved",
+    "note": "Note (UPI ref, bank, …)",
+    "saveMove": "Save",
+    "moved": "Recorded: {{amount}} moved to the company bank.",
+    "payments": "Payments",
+    "paymentsSub": "Change \"Paid into\" for any payment, for example older orders paid into Shobhit's account.",
+    "account": "Account",
+    "all": "All accounts",
+    "when": "When",
+    "what": "Bill / payment",
+    "changed": "Saved: {{what}} paid into {{account}}.",
+    "empty": "No payments in these dates.",
+    "csv": "Download CSV for the CA",
+    "transfers": "Moves to the company bank",
+    "noTransfers": "Nothing moved yet.",
+    "undo": "Undo",
+    "undoTitle": "Undo this move?",
+    "undoBody": "Undo {{amount}} moved on {{date}}? The amount goes back to what {{name}} holds.",
+    "undone": "Move undone.",
+    "undoReason": "Reason",
+    "accounts": "Accounts",
+    "addAccount": "Add account",
+    "accountName": "Account name",
+    "active": "Active",
+    "saved": "Saved.",
+    "default": "(default)",
+    "amountCol": "Amount"
   }
 }
