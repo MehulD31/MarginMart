@@ -75,7 +75,7 @@ test('New sale: shop search, items, rate, cases, UPI, checks, one bill only', as
   const nim = (await d.getByTestId('sale-line').nth(1).locator('.cell-title').textContent())!.trim()
   await d.getByLabel(`Cases of ${nim}`).fill('2')
   await d.getByLabel(`Rate: ${nim}`).fill('520')
-  await expect(d.getByText('₹2,540')).toBeVisible()
+  await expect(d.getByTestId('sale-total')).toHaveText('₹2,540')
   await expect(d.getByText(/Margin: ₹/)).toBeVisible()
   // bad rate blocks saving
   await d.getByLabel(`Rate: ${nim}`).fill('5')

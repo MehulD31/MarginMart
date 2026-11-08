@@ -13,11 +13,12 @@ import { useConfirm } from '../../shared/ui/confirm'
 import { VoiceSale, type VoiceResult } from './VoiceSale'
 import { refreshMoney } from './money'
 import { PaidIntoSelect } from './PaidIntoSelect'
+import { NewShopForm } from './NewShopForm'
 
 export interface CounterLine { variant_id: string; item: string; qty: number; price_paise: number }
 export interface CounterBill {
   id: string; number: string; at: string; shop: string; shop_id: string; locality: string | null; phone: string | null; owner: string | null
-  mode: 'cash' | 'upi'; total_paise: number; by: string | null; voided: boolean; void_reason: string | null
+  mode: 'cash' | 'upi'; total_paise: number; discount_paise?: number; by: string | null; voided: boolean; void_reason: string | null
   margin_paise: number | null; lines: CounterLine[]
 }
 interface CatalogRow { variant_id: string; label: string; trade_paise: number; buy_paise: number | null; floor_paise: number | null; on_hand: number }
@@ -50,6 +51,8 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
   const [mode, setMode] = useState<'cash' | 'upi'>(bill?.mode ?? 'cash')
   // '' = the default for the mode (cash box / company bank); a picked account is saved with the bill.
   const [account, setAccount] = useState(paidInto ?? '')
+  const [discount, setDiscount] = useState(bill?.discount_paise ? String(bill.discount_paise / 100) : '')
+  const [addingShop, setAddingShop] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
 
@@ -67,10 +70,13 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
   const paise = (r: string) => Math.round(Number(r) * 100)
   const lineBad = (l: Line) => !Number.isInteger(l.qty) || l.qty < 1 || l.qty > 9999 || !(Number(l.rate) >= MIN_RATE) || Number(l.rate) > 100000
   const cases = lines.reduce((a, l) => a + l.qty, 0)
-  const total = lines.reduce((a, l) => a + l.qty * (paise(l.rate) || 0), 0)
-  const margin = lines.reduce((a, l) => a + l.qty * ((paise(l.rate) || 0) - (byId.get(l.variant_id)?.buy_paise ?? 0)), 0)
+  const subtotal = lines.reduce((a, l) => a + l.qty * (paise(l.rate) || 0), 0)
+  const disc = Math.max(0, paise(discount) || 0)
+  const discBad = discount.trim() !== '' && (!(Number(discount) >= 0) || disc > subtotal)
+  const total = subtotal - (discBad ? 0 : disc)
+  const margin = lines.reduce((a, l) => a + l.qty * ((paise(l.rate) || 0) - (byId.get(l.variant_id)?.buy_paise ?? 0)), 0) - (discBad ? 0 : disc)
   const belowFloor = lines.filter((l) => { const f = byId.get(l.variant_id)?.floor_paise; return f != null && paise(l.rate) < f })
-  const problem = !shop ? t('sales.form.needShop') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : null
+  const problem = !shop ? t('sales.form.needShop') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : discBad ? t('sales.form.badDiscount') : null
 
   const setLine = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const addItem = (c: CatalogRow) => { setLines((ls) => [...ls, { variant_id: c.variant_id, qty: 1, rate: String(c.trade_paise / 100) }]); setItemQ('') }
@@ -80,7 +86,7 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
     if (belowFloor.length && !(await confirm({ title: t('pricing.belowFloorTitle'), body: t('pricing.belowFloorBody', { n: belowFloor.length }), confirm: t('common.save'), danger: true }))) return
     setBusy(true); setMsg(null)
     const { data, error } = await supabase.rpc('counter_sale_save_into', {
-      p_id: bill?.id ?? null, p_action: action, p_shop: shop.id, p_mode: mode, p_account: account || null,
+      p_id: bill?.id ?? null, p_action: action, p_shop: shop.id, p_mode: mode, p_account: account || null, p_discount: disc,
       p_lines: lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: paise(l.rate) })),
     })
     setBusy(false)
@@ -106,6 +112,7 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
     })
     if (r.mode) setMode(r.mode)
     if (r.account_id) setAccount(r.account_id)
+    if (r.discount_paise) setDiscount(String(r.discount_paise / 100))
   }
 
   if (catalog.isLoading || shops.isLoading) return <Skeleton rows={4} />
@@ -131,6 +138,9 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
                   <Store size={16} aria-hidden="true" /><span className="grow"><strong>{s.name}</strong>{s.owner_name && <span className="muted"> · {s.owner_name}</span>}
                     <span className="cell-sub" style={{ display: 'block' }}>{[s.locality, s.phone].filter(Boolean).join(' · ')}</span></span></button></li>))}
               </ul>) : <p className="muted">{t('sales.form.noShop')}</p>)}
+            {addingShop
+              ? <NewShopForm initialName={shopQ.trim()} onCancel={() => setAddingShop(false)} onDone={(s) => { setAddingShop(false); setShop(s); setShopQ('') }} />
+              : <button type="button" className="btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setAddingShop(true)}><Plus size={16} aria-hidden="true" />{t('newShop.button')}</button>}
           </>
         )}
       </div>
@@ -180,7 +190,17 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
       </fieldset>
       <PaidIntoSelect value={account} mode={mode} onChange={setAccount} id="cs-paid-into" />
 
-      <div className="row-between total-row"><span>{t('shop.casesCount', { count: cases })}</span><strong className="num">{formatPaise(total)}</strong></div>
+      {lines.length > 0 && (
+        <div className="stack" style={{ gap: 6 }}>
+          <div className="row-between"><span className="cell-sub">{t('sales.form.itemsTotal')}</span><span className="num">{formatPaise(subtotal)}</span></div>
+          <div className="row-between">
+            <label htmlFor="cs-discount" className="cell-sub">{t('sales.form.discount')}</label>
+            <input id="cs-discount" type="number" inputMode="decimal" min={0} step="1" style={{ width: 120, textAlign: 'right' }} placeholder="0"
+              value={discount} aria-invalid={discBad} onChange={(e) => setDiscount(e.target.value)} />
+          </div>
+        </div>
+      )}
+      <div className="row-between total-row"><span>{t('shop.casesCount', { count: cases })}</span><strong className="num" data-testid="sale-total">{formatPaise(total)}</strong></div>
       {isAdmin && lines.length > 0 && <p className={`cell-sub num ${margin < 0 ? 'text-warn' : ''}`}>{t('sales.margin')}: {formatPaise(margin)}</p>}
       {problem && (shop || lines.length > 0) && <p className="cell-sub">{problem}</p>}
       <Alert msg={msg} />

@@ -99,3 +99,26 @@ describe('Telegram: owner name shown with the shop', () => {
     expect(p.shop.owner).toBe('Ramesh Sahu')
   })
 })
+describe('Telegram: discount', () => {
+  it('"discount 295" -> ₹295 off, shown in the cart and saved with the bill', async () => {
+    AI_OUT = { shop_id: SHOP.id, lines: [{ variant_id: STING.variant_id, qty: 50, price: 495, sure: true }], mode: 'cash', account_id: null, discount: 295, unclear: [] }
+    const p = await parseLine('maruti kirana sting 50 crate 495 cash discount 295')
+    expect(p.discount).toBe(29500)
+    state = { ...state, discount: p.discount }
+    await tap('s:pay:cash')
+    expect(sent.at(-1).text).toContain('Discount: −₹295')
+    expect(sent.at(-1).text).toContain('Total: ₹24,455')
+    await tap('s:ok')
+    expect(rpcCalls.find((c) => c.fn === 'bot_record_sale_into').body.p_discount).toBe(29500)
+  })
+  it('AI invents a discount the note never said -> ignored', async () => {
+    AI_OUT = { shop_id: SHOP.id, lines: [{ variant_id: STING.variant_id, qty: 50, price: 495, sure: true }], mode: 'cash', account_id: null, discount: 100, unclear: [] }
+    expect((await parseLine('maruti kirana sting 50 crate 495 cash')).discount).toBe(0)
+  })
+  it('discount bigger than the bill -> not used, asks', async () => {
+    AI_OUT = { shop_id: SHOP.id, lines: [{ variant_id: STING.variant_id, qty: 1, price: 495, sure: true }], mode: 'cash', account_id: null, discount: 900, unclear: [] }
+    const p = await parseLine('maruti kirana sting 1 crate 495 discount 900')
+    expect(p.discount).toBe(0)
+    expect(p.unclear.join(' ')).toContain('Discount samajh nahi aaya')
+  })
+})

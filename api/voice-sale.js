@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       shop: p.shop ? { id: p.shop.id, name: p.shop.name, phone: p.shop.phone ?? null, locality: p.shop.locality ?? null, owner_name: p.shop.owner ?? null } : null,
       shopHint: p.ambiguous ?? p.newName ?? null,
       lines: p.lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: l.price })),
-      mode: p.mode, account_id: p.account?.id ?? null, unclear: p.unclear,
+      mode: p.mode, discount_paise: p.discount ?? 0, account_id: p.account?.id ?? null, unclear: p.unclear,
     })
   } catch (e) {
     console.error('voice-sale', e?.message)

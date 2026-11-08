@@ -124,6 +124,7 @@ export default function CounterSalesPage() {
                 </div>
                 <ul className="plain-list cell-sub">
                   {b.lines.map((l) => <li key={l.variant_id}>{l.item}: {l.qty} × {formatPaise(l.price_paise)} = {formatPaise(l.qty * l.price_paise)}</li>)}
+                  {!!b.discount_paise && <li data-testid="sale-discount">{t('sales.form.discount')}: −{formatPaise(b.discount_paise)}</li>}
                 </ul>
                 {b.voided && <p className="cell-sub">{t('sales.voidReason', { reason: b.void_reason ?? '' })}</p>}
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

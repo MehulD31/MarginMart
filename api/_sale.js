@@ -49,9 +49,10 @@ async function showItems(chat, state) {
 
 function cartText(state) {
   const lines = state.lines.map((l, i) => `${i + 1}. ${l.label}: ${l.qty} × ${rs(l.price)} = ${rs(l.qty * l.price)}${l.price < l.floor ? `  ⚠️ loss (floor ${rs(l.floor)})` : ''}${l.stock != null && l.qty > l.stock ? `  ⚠️ stock me sirf ${Math.max(0, l.stock)} peti` : ''}`)
-  const total = state.lines.reduce((a, l) => a + l.qty * l.price, 0)
-  const margin = state.lines.reduce((a, l) => a + l.qty * (l.price - l.buy), 0)
-  return `🏪 ${state.shop ? shopLabel(state.shop) : state.newShop?.name}${state.shop ? '' : ' (nayi dukan)'}\n${lines.join('\n')}\n\nTotal: ${rs(total)} · ${state.lines.reduce((a, l) => a + l.qty, 0)} peti · margin ${rs(margin)}`
+  const disc = Number(state.discount ?? 0)
+  const total = state.lines.reduce((a, l) => a + l.qty * l.price, 0) - disc
+  const margin = state.lines.reduce((a, l) => a + l.qty * (l.price - l.buy), 0) - disc
+  return `🏪 ${state.shop ? shopLabel(state.shop) : state.newShop?.name}${state.shop ? '' : ' (nayi dukan)'}\n${lines.join('\n')}${disc ? `\nDiscount: −${rs(disc)}` : ''}\n\nTotal: ${rs(total)} · ${state.lines.reduce((a, l) => a + l.qty, 0)} peti · margin ${rs(margin)}`
 }
 async function showCart(chat, state) {
   // UPI into a partner's personal account gets its own button, so the money is tracked as held by that person.
@@ -132,7 +133,8 @@ Numbers may be Hindi words: das 10, bees 20, tees 30, chaalis 40, pachaas 50, sa
 "upi", "online", "gpay", "phonepe", "paytm" = upi; "cash", "nakad" = cash. Notes may come from speech, so shop names can be slightly misspelt: match the closest known shop.
 Money accounts (where the money went): ${JSON.stringify(accounts.map((a) => ({ id: a.id, name: a.name, kind: a.kind })))}
 Set account_id only if the note clearly says the payment went to that account (e.g. "upi shobhit", "shobhit ke account me", "shobhit ko bheja", "company account"). A shop name is never an account. Otherwise account_id = null.
-Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number, "sure": boolean}], "mode": "cash"|"upi"|null, "account_id": id or null, "unclear": [short Hinglish notes]}
+Return {"shop_id": id or null, "new_shop_name": string or null, "lines": [{"variant_id": id, "qty": int, "price": number, "sure": boolean}], "mode": "cash"|"upi"|null, "account_id": id or null, "discount": rupees or 0, "unclear": [short Hinglish notes]}
+"discount" is a rupee amount off the whole bill only when the note says discount/chhoot/kam karo with an amount (e.g. "discount 295", "300 chhoot"). Otherwise 0.
 "sure" is false when you had to guess the size or flavour between several items in stock.
 Every line needs BOTH a number of cases and a rate. If either is missing or unclear, do NOT guess it and do NOT add that line: put a short Hinglish note in unclear instead.
 Pick the closest item by name (sting = Sting, nimbooz/nimbu = Nimbooz, aq/aquafina 1l = Aquafina 1L, kesar = Creambell Kesar Badam, 400 = 400ml PET flavour). Never invent a line.`)
@@ -151,7 +153,11 @@ Pick the closest item by name (sting = Sting, nimbooz/nimbu = Nimbooz, aq/aquafi
   // The account must also be named in the note itself (first word of its name, e.g. "shobhit"), so the AI can never invent one.
   const acc = accounts.find((a) => a.id === out.account_id)
   const account = acc && (acc.kind === 'company' || new RegExp(`\\b${acc.name.split(/\s+/)[0].toLowerCase()}`).test(text.toLowerCase())) ? { id: acc.id, name: acc.name, kind: acc.kind } : null
-  return { shop: ambiguous ? null : shop, ambiguous, newName: ambiguous ? null : !shop && out.new_shop_name ? String(out.new_shop_name).slice(0, 100) : null, lines, mode: ['cash', 'upi'].includes(out.mode) ? out.mode : account && account.kind !== 'cash' ? 'upi' : null, account, unclear: out.unclear ?? [] }
+  const sum = lines.reduce((a, l) => a + l.qty * l.price, 0)
+  const dRaw = Math.round(Number(out.discount ?? 0) * 100)
+  const discount = /disc|chhoot|chut|kam kar|less/i.test(text) && dRaw > 0 && dRaw <= sum ? dRaw : 0
+  if (dRaw > 0 && !discount) out.unclear = [...(out.unclear ?? []), 'Discount samajh nahi aaya, button se ya dobara likho.']
+  return { discount, shop: ambiguous ? null : shop, ambiguous, newName: ambiguous ? null : !shop && out.new_shop_name ? String(out.new_shop_name).slice(0, 100) : null, lines, mode: ['cash', 'upi'].includes(out.mode) ? out.mode : account && account.kind !== 'cash' ? 'upi' : null, account, unclear: out.unclear ?? [] }
 }
 
 // ---------- entry points ----------
@@ -197,7 +203,7 @@ async function saleFromText(chat, user, who, rest) {
     {
       const p = await parseLine(rest)
       if (!p.lines.length) { await send(chat, `Item samajh nahi aaye. Aise likho: /sale Sharma Kirana: sting 50 @495, cash\nYa sirf /sale likho aur buttons se karo.${p.unclear.length ? '\n• ' + p.unclear.join('\n• ') : ''}`); return true }
-      const next = { flow: 'sale', lines: p.lines, mode: p.mode, account: p.account ?? null, who, shop: p.shop ?? null }
+      const next = { flow: 'sale', lines: p.lines, mode: p.mode, account: p.account ?? null, discount: p.discount ?? 0, who, shop: p.shop ?? null }
       if (p.ambiguous) {
         next.step = 'shop'; next.pendingName = p.ambiguous; await setState(user, next)
         await send(chat, `"${p.ambiguous}" naam ki kai dukane hain. Kaunsi?`); await showShops(chat, p.ambiguous); return true
@@ -304,12 +310,12 @@ export async function handleSaleTap(q) {
       if (!state.shop?.id || !state.lines.length || !state.mode) { await send(chat, 'Sale adhoori hai, dobara /sale karo.'); return }
       if (!state.action) { await send(chat, 'Sale adhoori hai, dobara /sale karo.'); return }
       // The bill id was fixed when the confirm screen was shown, so a double tap can only ever save one bill.
-      const r = await rpc('bot_record_sale_into', { p_action: state.action, p_shop: state.shop.id, p_mode: state.mode, p_by: state.who ?? '', p_account: state.account?.id ?? null,
+      const r = await rpc('bot_record_sale_into', { p_action: state.action, p_shop: state.shop.id, p_mode: state.mode, p_by: state.who ?? '', p_account: state.account?.id ?? null, p_discount: Number(state.discount ?? 0),
         p_lines: state.lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: l.price })) })
       await setState(user, {})
       if (r.repeat) { await send(chat, `Ye bill pehle hi save ho chuka hai: ${r.number} (${rs(r.total_paise)}).`); return }
       const bill = [`*K.D. Foods* — Bill ${r.number}`, new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }), state.shop.name, '',
-        ...state.lines.map((l) => `${l.label} × ${l.qty} @ ${rs(l.price)} = ${rs(l.qty * l.price)}`), '',
+        ...state.lines.map((l) => `${l.label} × ${l.qty} @ ${rs(l.price)} = ${rs(l.qty * l.price)}`), ...(state.discount ? [`Discount: −${rs(state.discount)}`] : []), '',
         `Total: ${rs(r.total_paise)} (${state.mode === 'upi' ? 'UPI' : 'Cash'}, paid)`, 'Dhanyavaad 🙏 · 96300 12636'].join('\n')
       const wa = state.shop.phone ? `https://wa.me/91${state.shop.phone}?text=${encodeURIComponent(bill)}` : null
       // Money that went into a partner's own account: say how much company money they now hold.

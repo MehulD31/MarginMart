@@ -10,6 +10,7 @@ export interface VoiceResult {
   shopHint: string | null
   lines: { variant_id: string; qty: number; price_paise: number }[]
   mode: 'cash' | 'upi' | null
+  discount_paise?: number
   /** Money account the speaker named ("UPI Shobhit ke account me"), else null = default. */
   account_id?: string | null
   unclear: string[]

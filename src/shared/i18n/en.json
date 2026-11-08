@@ -188,7 +188,8 @@
     "SUPPLIER_HAS_PURCHASES": "There are purchases from this supplier, so it cannot be deleted. Untick Active instead.",
     "ACCOUNT_NOT_FOUND": "That money account was not found or is switched off. Pick another one.",
     "MORE_THAN_HELD": "That is more than this account holds. Check the amount.",
-    "ACCOUNT_EXISTS": "An account with this name already exists."
+    "ACCOUNT_EXISTS": "An account with this name already exists.",
+    "DISCOUNT_TOO_BIG": "The discount is bigger than the bill."
   },
   "days": {
     "1": "Mon",
@@ -992,7 +993,10 @@
       "needItem": "Add at least one item.",
       "badLine": "Every item needs whole cases (1 or more) and a rate of ₹{{min}} or more.",
       "saveSale": "Save sale",
-      "saveChanges": "Save changes"
+      "saveChanges": "Save changes",
+      "discount": "Discount (₹)",
+      "itemsTotal": "Items total",
+      "badDiscount": "Discount must be a rupee amount, not more than the items total."
     }
   },
   "del": {
@@ -1059,5 +1063,18 @@
     "saved": "Saved.",
     "default": "(default)",
     "amountCol": "Amount"
+  },
+  "newShop": {
+    "button": "New shop",
+    "title": "Add a new shop",
+    "name": "Shop name",
+    "owner": "Owner name",
+    "phone": "Mobile number",
+    "area": "Area",
+    "badPhone": "Enter a 10-digit mobile number starting with 6, 7, 8 or 9.",
+    "login": "Also create app login (PIN)",
+    "save": "Add shop and use it",
+    "phoneUsed": "This number already belongs to {{name}}. Search for that shop instead.",
+    "loginFailed": "Shop added, but the login was not made: {{msg}}"
   }
 }
