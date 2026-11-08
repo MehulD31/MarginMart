@@ -10,7 +10,7 @@ import { formatPaise } from '../../shared/money'
 import { Empty, Skeleton } from '../../shared/ui/kit'
 import { ProductImage } from '../../shared/ui/ProductImage'
 import { initials } from '../../shared/ui/util'
-import { isLowStock } from '../../shared/api/db'
+import { lowIds, useStockWatch } from '../../shared/api/db'
 import { useStockRows } from './stockRows'
 import { useMargin } from './marginData'
 import { fixedTotal } from '../../shared/margin'
@@ -91,7 +91,10 @@ export default function DashboardPage() {
   const hi = i18n.language === 'hi'
   const stockRows = useStockRows()
   const mg = useMargin()
-  const lowStock = stockRows.rows.filter((r) => r.active && isLowStock(r)).sort((a, b) => a.on_hand - b.on_hand)
+  const watch = useStockWatch().data
+  const low = lowIds(watch)
+  const daysLeft = new Map((watch ?? []).map((w) => [w.variant_id, w.days_left]))
+  const lowStock = stockRows.rows.filter((r) => r.active && low.has(r.variant_id)).sort((a, b) => (daysLeft.get(a.variant_id) ?? 999) - (daysLeft.get(b.variant_id) ?? 999))
 
   const live = useMemo(() => (orders.data ?? []).filter(isLive), [orders.data])
   // Counter + truck bills are orders too: they count in 'Most ordered' and in the shop / case / value boxes.
@@ -200,7 +203,7 @@ export default function DashboardPage() {
             <Link to="/admin/inventory" className="button btn-sm"><Boxes size={16} aria-hidden="true" />{t('inventory.dashOpen', { n: lowStock.length })}</Link></div>
           <ul className="plain-list stack">{lowStock.slice(0, 8).map((r) => (
             <li key={r.variant_id} className="row-between"><span>{r.name}</span>
-              <span className={`badge ${r.on_hand < 0 ? 'badge-red' : 'badge-amber'} num`}>{t('inventory.dashLeft', { n: r.on_hand, min: r.low_threshold })}</span></li>))}
+              <span className={`badge ${r.on_hand < 0 ? 'badge-red' : 'badge-amber'} num`}>{daysLeft.get(r.variant_id) != null ? t('inventory.dashDays', { n: r.on_hand, d: Math.floor(daysLeft.get(r.variant_id)!) }) : t('inventory.dashLeft', { n: r.on_hand, min: r.low_threshold })}</span></li>))}
           </ul>
         </div>
       )}

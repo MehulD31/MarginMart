@@ -10,6 +10,8 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Skeleton, type Msg } from '../../shared/ui/kit'
 import { useConfirm } from '../../shared/ui/confirm'
 import { addDays, todayIST, useLocaleDate } from './opsData'
+import { Link } from 'react-router'
+import { useMoneyHoldings, useMoneyPayments } from './money'
 
 interface Handover {
   route_day_plan_id: string; expected_cash_paise: number; expected_upi_paise: number; handed_cash_paise: number
@@ -43,6 +45,7 @@ export default function ClosingPage() {
   return (
     <section className="stack-lg">
       <PageHeader title={t('eod.adminTitle')} sub={t('eod.adminSub')} />
+      <CounterDay />
       {days.isLoading ? <Skeleton rows={3} /> : !days.data?.length ? (
         <div className="card"><Empty icon={<ClipboardCheck size={26} />} title={t('eod.noDays')} /></div>
       ) : (
@@ -117,5 +120,35 @@ function DayCard({ plan, driver, dateLabel }: { plan: PlanRow; driver: string; d
         </>
       )}
     </article>
+  )
+}
+
+/** Counter + truck bills of today: what came in, where the money sits, and what is still with partners. */
+function CounterDay() {
+  const { t } = useTranslation()
+  const today = todayIST()
+  const pays = useMoneyPayments(today, today)
+  const hold = useMoneyHoldings()
+  const bills = (pays.data ?? []).filter((p) => p.kind === 'counter_sale')
+  if (pays.isLoading) return <Skeleton rows={1} />
+  const sum = (f: (p: (typeof bills)[number]) => boolean) => bills.filter(f).reduce((a, p) => a + p.amount_paise, 0)
+  const byAcc = new Map<string, number>()
+  for (const b of bills) byAcc.set(b.account ?? (b.mode === 'cash' ? t('eod.counterCashBox') : t('eod.counterBank')), (byAcc.get(b.account ?? (b.mode === 'cash' ? t('eod.counterCashBox') : t('eod.counterBank'))) ?? 0) + b.amount_paise)
+  const held = (hold.data ?? []).filter((h) => h.kind !== 'company' && h.holding_paise > 0)
+  return (
+    <div className="card stack" data-testid="counter-day">
+      <div className="row-between"><h2>{t('eod.counterTitle')}</h2><Link to="/admin/sales" className="button btn-sm">{t('nav.sales')}</Link></div>
+      {!bills.length ? <p className="muted">{t('eod.counterNone')}</p> : <>
+        <div className="stats">
+          <div className="stat"><div className="label">{t('eod.counterBills')}</div><div className="value num">{bills.length}</div></div>
+          <div className="stat"><div className="label">{t('eod.counterTotal')}</div><div className="value num">{formatPaise(sum(() => true))}</div></div>
+          <div className="stat"><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(sum((p) => p.mode === 'cash'))}</div></div>
+          <div className="stat"><div className="label">UPI</div><div className="value num">{formatPaise(sum((p) => p.mode === 'upi'))}</div></div>
+        </div>
+        <ul className="plain-list cell-sub">{[...byAcc.entries()].map(([k, v]) => <li key={k}>{t('eod.counterInto', { acc: k, v: formatPaise(v) })}</li>)}</ul>
+      </>}
+      {held.length > 0 && <Alert msg={{ kind: 'warn', text: t('eod.counterHeld', { list: held.map((h) => `${h.name} ${formatPaise(h.holding_paise)}`).join(', ') }) }} />}
+      {held.length > 0 && <Link to="/admin/money" className="button btn-sm" style={{ alignSelf: 'flex-start' }}>{t('nav.money')}</Link>}
+    </div>
   )
 }

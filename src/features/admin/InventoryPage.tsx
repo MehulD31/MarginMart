@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Boxes } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
-import { isLowStock, must } from '../../shared/api/db'
+import { lowIds, must, useStockWatch } from '../../shared/api/db'
 import { useStockRows, type StockRow } from './stockRows'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
@@ -23,8 +23,12 @@ export default function InventoryPage() {
   const [filter, setFilter] = useState<'all' | 'low'>('all')
   const [open, setOpen] = useState<string | null>(null)
 
-  const list = rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase()) && (filter === 'all' || isLowStock(r)))
-  const low = rows.filter(isLowStock).length
+  const watch = useStockWatch().data
+  const lowSet = lowIds(watch)
+  const isLow = (r: StockRow) => lowSet.has(r.variant_id)
+  const days = new Map((watch ?? []).map((w) => [w.variant_id, w.days_left]))
+  const list = rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase()) && (filter === 'all' || isLow(r)))
+  const low = rows.filter(isLow).length
   const value = rows.reduce((a, r) => a + Math.max(r.on_hand, 0) * r.avg_cost_paise, 0)
   const cases = rows.reduce((a, r) => a + Math.max(r.on_hand, 0), 0)
   const current = rows.find((r) => r.variant_id === open)
@@ -48,7 +52,8 @@ export default function InventoryPage() {
             <tr key={r.variant_id} className={r.active ? '' : 'dim'}>
               <td className="lead"><div className="cell-title">{r.name}</div>{r.sub && <div className="cell-sub">{r.sub}</div>}</td>
               <td data-label={t('inventory.onHand')} className="num"><strong>{r.on_hand}</strong>{' '}
-                {r.on_hand < 0 ? <span className="badge badge-red">{t('inventory.negative')}</span> : isLowStock(r) && <span className="badge badge-amber">{t('inventory.low')}</span>}</td>
+                {r.on_hand < 0 ? <span className="badge badge-red">{t('inventory.negative')}</span> : isLow(r) && <span className="badge badge-amber">{t('inventory.low')}</span>}
+                {days.get(r.variant_id) != null && <div className="cell-sub">{t('inventory.lasts', { d: Math.floor(days.get(r.variant_id)!) })}</div>}</td>
               <td data-label={t('inventory.threshold')} className="num">{r.low_threshold || '—'}</td>
               <td data-label={t('inventory.avgCost')} className="num">{r.avg_cost_paise ? formatPaise(r.avg_cost_paise) : '—'}</td>
               <td data-label={t('inventory.value')} className="num">{formatPaise(Math.max(r.on_hand, 0) * r.avg_cost_paise)}</td>

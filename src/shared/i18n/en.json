@@ -721,7 +721,7 @@
     "stockLine": "{{item}}: expected {{expected}}, came back {{returned}}",
     "done": "Done",
     "adminTitle": "End of day",
-    "adminSub": "Cash and stock each truck brought back, for the last 7 days.",
+    "adminSub": "Counter cash of today, and cash and stock each truck brought back (last 7 days).",
     "noDays": "No delivery days yet",
     "cashIn": "Cash received",
     "awaitingCash": "Awaiting cash",
@@ -734,7 +734,15 @@
     "confirmCash": "Confirm cash received",
     "confirmed": "Cash confirmed.",
     "reopen": "Reopen day",
-    "reopenHint": "The driver can make more deliveries and must close the day again. The earlier count stays in change history."
+    "reopenHint": "The driver can make more deliveries and must close the day again. The earlier count stays in change history.",
+    "counterTitle": "Counter sales today",
+    "counterNone": "No counter bills yet today.",
+    "counterBills": "Bills",
+    "counterTotal": "Total",
+    "counterInto": "Into {{acc}}: {{v}}",
+    "counterCashBox": "Cash box",
+    "counterBank": "Company bank",
+    "counterHeld": "Company money not yet in the bank: {{list}}. Move it and record it on Money with partners."
   },
   "audit": {
     "title": "Change history",
@@ -812,7 +820,9 @@
     },
     "dashTitle": "Low stock",
     "dashOpen": "Inventory ({{n}})",
-    "dashLeft": "{{n}} left · alert at {{min}}"
+    "dashLeft": "{{n}} left · alert at {{min}}",
+    "dashDays": "{{n}} left · ~{{d}} days",
+    "lasts": "lasts ~{{d}} days"
   },
   "purchases": {
     "title": "Purchases",

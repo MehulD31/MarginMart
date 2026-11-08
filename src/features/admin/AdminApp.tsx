@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { BookOpen, Boxes, Calculator, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
-import { isLowStock, useStock } from '../../shared/api/db'
+import { useStockWatch } from '../../shared/api/db'
 import { useMoneyHoldings } from './money'
 import { supabase } from '../../shared/api/supabase'
 import { LanguageToggle } from '../../shared/ui/LanguageToggle'
@@ -50,7 +50,7 @@ export default function AdminApp() {
   // Closed days whose cash is not yet confirmed, or that came back with differences.
   const attention = (useClosings().data ?? []).filter((p) => p.status === 'closed' && needsAttention(p)).length
 
-  const lowStock = (useStock().data ?? []).filter(isLowStock).length
+  const lowStock = (useStockWatch().data ?? []).filter((x) => x.low).length
   // Personal accounts holding company money for more than 7 days.
   const moneyLate = (useMoneyHoldings().data ?? []).filter((h) => h.kind === 'personal' && h.holding_paise > 0 && (h.oldest_days ?? 0) > 7).length
   const ops: Item[] = [

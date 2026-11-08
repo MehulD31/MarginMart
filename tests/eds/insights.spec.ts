@@ -65,3 +65,17 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
   await expect(page.getByText('AI सलाहकार')).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('Low stock counts only bought items that sell; End of day shows counter cash', async ({ page }) => {
+  await login(page)
+  await page.goto('/admin/inventory')
+  const lowRadio = page.getByText(/^Low or negative \((\d+)\)$/)
+  await expect(lowRadio).toBeVisible({ timeout: 20_000 })
+  const n = Number((await lowRadio.innerText()).match(/\((\d+)\)/)![1])
+  expect(n).toBeLessThan(10)                                     // was 19 when every item with a level of 10 counted
+  await lowRadio.click()
+  await expect(page.locator('tbody tr')).toHaveCount(n)
+  await page.goto('/admin/closing')
+  const c = page.getByTestId('counter-day')
+  await expect(c).toContainText('Counter sales today')
+})

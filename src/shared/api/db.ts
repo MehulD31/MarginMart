@@ -66,6 +66,16 @@ export const useStock = () => useQuery({
 })
 /** Low when at or below its threshold (only if a threshold is set), or below zero. */
 export const isLowStock = (s: Pick<Stock, 'on_hand' | 'low_threshold'>) => s.on_hand < 0 || (s.low_threshold > 0 && s.on_hand <= s.low_threshold)
+/** Bought items only (never the whole catalogue): selling speed, days of stock left, and whether it is low.
+ *  Low = below zero, or it sells and runs out within 3 days / is at its alert level. */
+export interface StockWatch { variant_id: string; on_hand: number; low_threshold: number; per_day: number; days_left: number | null; low: boolean }
+export const useStockWatch = () => useQuery({
+  queryKey: ['stock', 'watch'],
+  queryFn: () => must<StockWatch[]>(supabase.rpc('stock_watch')),
+  refetchInterval: 120_000,
+})
+export const lowIds = (w?: StockWatch[]) => new Set((w ?? []).filter((x) => x.low).map((x) => x.variant_id))
+
 export const imageUrl = (path: string | null) =>
   path ? supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl : null
 

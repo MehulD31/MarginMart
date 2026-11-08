@@ -119,7 +119,9 @@ async function events() {
   // 3. items that just ran out (only items with a low-stock level set). Re-armed when stock comes back.
   try {
     const out = await db('stock?low_threshold=gt.0&on_hand=lte.0&select=variant_id,variant(flavour_en,active,pack(name_en,active))')
+    const bought = new Set((await db('stock_move?kind=eq.purchase&select=variant_id')).map((m) => m.variant_id))
     for (const s of out) {
+      if (!bought.has(s.variant_id)) continue                    // never bought: not our stock, no alert
       if (!s.variant?.active || !s.variant?.pack?.active || (await done('oos', s.variant_id))) continue
       await say(`🔴 Stock khatam: ${item(`${s.variant.pack.name_en} ${s.variant.flavour_en ?? ''}`)}. Pepsi ko order bhejo.`)
       await mark('oos', s.variant_id)
