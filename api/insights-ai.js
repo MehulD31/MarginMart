@@ -29,25 +29,30 @@ export function buildPrompt(facts, question, lang, who) {
 }
 
 export async function ask(prompt) {
-  for (const round of [0, 1]) {
-    if (round) await new Promise((ok) => setTimeout(ok, 2000))
-    for (const model of ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']) {
-      try {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          method: 'POST', signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 4096 } })   // thinking models spend tokens before answering })
-        const j = await r.json()
-        const c = j?.candidates?.[0]
-        const t = c?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? '').join('').trim()
-        if (t && c.finishReason === 'MAX_TOKENS') { console.log('insights-ai cut', model); continue }
-        if (t) return { text: t, model }
-        console.log('insights-ai', model, r.status, JSON.stringify(j).slice(0, 160))
-      } catch (e) { console.log('insights-ai error', model, e.message) }
-    }
+  // Vercel stops the function at 60s, so every try fits inside a 50s budget. Low thinking keeps answers fast and complete.
+  const deadline = Date.now() + 50_000
+  const call = async (model, thinking) => {
+    const generationConfig = { temperature: 0.3, maxOutputTokens: 4096, ...(thinking ? { thinkingConfig: { thinkingLevel: 'low' } } : {}) }
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', signal: AbortSignal.timeout(Math.max(3000, Math.min(25_000, deadline - Date.now()))),
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }) })
+    return { r, j: await r.json().catch(() => ({})) }
+  }
+  for (const model of ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash']) {
+    if (Date.now() > deadline - 4000) break
+    try {
+      let { r, j } = await call(model, true)
+      if (r.status === 400) ({ r, j } = await call(model, false))      // model without thinking settings
+      const c = j?.candidates?.[0]
+      const t = c?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? '').join('').trim()
+      if (t && c.finishReason !== 'MAX_TOKENS') return { text: t, model }
+      console.log('insights-ai', model, r.status, c?.finishReason, JSON.stringify(j).slice(0, 160))
+      if (r.status === 429) await new Promise((ok) => setTimeout(ok, 1500))
+    } catch (e) { console.log('insights-ai error', model, e.message) }
   }
   throw new Error('AI abhi busy hai, 1 minute baad dobara try karo.')
 }
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   try {
