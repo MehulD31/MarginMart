@@ -273,6 +273,7 @@ function Kpi({ icon, tone, label, value, sub }: { icon: React.ReactNode; tone: s
 }
 
 function Meter({ label, value, max, warn }: { label: string; value: number; max: number; warn?: boolean }) {
+  const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0
   const over = warn && value > max
   return (
     <div className="meter">
