@@ -17,6 +17,7 @@ for (const p of purchases) {
   // biggest lines first; one entry per product name
   const lines = (p.purchase_line ?? []).filter((l) => l.variant).sort((a, b) => b.qty - a.qty)
   const names = [...new Set(lines.map((l) => item(`${l.variant.pack?.name_en ?? ''} ${l.variant.flavour_en ?? ''}`).replace(/\s*\(MRP \d+\)/, '')))]
+  console.log('purchase', p.id, 'lines', (p.purchase_line ?? []).length, 'with variant', lines.length, 'names', names.length)
   if (!names.length) continue
   const images = [...new Set(lines.map((l) => l.variant.image_path).filter(Boolean))].slice(0, 5).map(img)
   fs.writeFileSync('stock.json', JSON.stringify({ items: names.slice(0, 6), images }))
