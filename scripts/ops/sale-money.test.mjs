@@ -6,28 +6,24 @@ const SHOBHIT = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', name: 'Shobhit (pe
 const BANK = { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Company bank', kind: 'company' }
 const STING = { variant_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', label: 'Sting PET 250ml (Red)', on_hand: 700, floor_paise: 48300, buy_paise: 48300, trade_paise: 52500 }
 const SHOP = { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', name: 'Shri Maruti Kirana', phone: '7999247999', locality: 'Charoda' }
-let sent, rpcCalls, state, AI_OUT, docs
+let sent, rpcCalls, state, AI_OUT
 const LINE = { variant_id: STING.variant_id, label: STING.label, qty: 50, price: 49500, floor: 48300, buy: 48300, stock: 700 }
 const data = (fn, body) => { if (fn === 'bot_session_set') { state = body.p_state; return null } return ({
   bot_money_accounts: [BANK, SHOBHIT, { id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', name: 'Cash', kind: 'cash' }],
   bot_session_get: state,
-  bot_record_sale_into: { id: '99999999-9999-4999-8999-999999999999', number: 'KD-00007', total_paise: 2475000, margin_paise: 60000, account: SHOBHIT.name },
-  bot_bill: { id: '99999999-9999-4999-8999-999999999999', number: 'KD-00007', at: '2026-11-08T06:00:00Z', mode: 'upi', total_paise: 2475000, taxable_paise: 1767857, cgst_paise: 353572, sgst_paise: 353571,
-    seller: { name: 'K.D. Foods' }, buyer: { name: SHOP.name }, lines: [{ item: STING.label, hsn: '22029999', rate_bp: 4000, qty: 50, price_paise: 49500, total_paise: 2475000, taxable_paise: 1767857, cgst_paise: 353572, sgst_paise: 353571 }] },
+  bot_record_sale_into: { number: 'KD-00007', total_paise: 2475000, margin_paise: 60000, account: SHOBHIT.name },
   bot_money_holdings: [{ account_id: SHOBHIT.id, name: SHOBHIT.name, kind: 'personal', holding_paise: 3175000, payments: 2, oldest_days: 0 }],
   bot_catalog: [STING], bot_shops: [SHOP], bot_shop_guess: [{ ...SHOP, score: 1 }],
 }[fn] ?? null) }
 
 beforeEach(() => {
-  sent = []; rpcCalls = []; docs = []
-  process.env.KD_BOT_KEY = 'k'.repeat(48)
+  sent = []; rpcCalls = []
   state = { flow: 'sale', step: 'cart', who: 'Mehul', shop: SHOP, lines: [LINE], mode: null }
   vi.stubGlobal('fetch', vi.fn(async (url, init) => {
     const u = String(url)
     if (u.includes('generativelanguage')) return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(AI_OUT) }] } }] }), { status: 200 })
-    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+    const body = init?.body ? JSON.parse(init.body) : {}
     if (u.includes('/rpc/')) { const fn = u.split('/rpc/')[1]; rpcCalls.push({ fn, body }); return new Response(JSON.stringify(data(fn, body)), { status: 200 }) }
-    if (u.endsWith('/sendDocument')) { docs.push(init.body); return new Response('{"ok":true}', { status: 200 }) }
     if (u.endsWith('/sendMessage')) sent.push(body)
     return new Response('{"ok":true}', { status: 200 })
   }))
@@ -48,12 +44,6 @@ describe('Telegram: paid into a partner account', () => {
     const save = rpcCalls.find((c) => c.fn === 'bot_record_sale_into')
     expect(save.body).toMatchObject({ p_account: SHOBHIT.id, p_mode: 'upi', p_shop: SHOP.id })
     expect(sent.at(-1).text).toContain('Unke paas ab company ka ₹31,750 hai')
-    // the GST bill PDF goes to the group, and the shop's WhatsApp text carries the signed PDF link
-    expect(docs).toHaveLength(1)
-    expect(docs[0].get('document').name).toBe('KD-00007.pdf')
-    expect(docs[0].get('caption')).toContain('KD-00007')
-    const wa = decodeURIComponent(sent.at(-1).reply_markup.inline_keyboard[0][0].url)
-    expect(wa).toMatch(/Bill PDF: https:\/\/kdfoods\.vercel\.app\/api\/bill-pdf\?id=99999999-9999-4999-8999-999999999999&t=[\w-]{32}/)
   })
   it('plain UPI / cash save with no account (= company bank / cash box)', async () => {
     await tap('s:pay:upi')

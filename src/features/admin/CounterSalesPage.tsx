@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Ban, FileText, MessageCircle, Pencil, Plus, Receipt } from 'lucide-react'
+import { Ban, Pencil, Plus, Receipt } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
@@ -11,7 +11,6 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../share
 import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { useMoneyPayments } from './money'
-import { openBillPdf, shareBillWhatsApp } from './bill'
 
 const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 const dayIST = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
@@ -30,7 +29,6 @@ export default function CounterSalesPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<Msg>(null)
-  const billAction = (fn: () => Promise<void>) => { setMsg(null); fn().catch((e) => setMsg({ kind: 'error', text: t('sales.billFailed', { msg: e instanceof Error ? e.message : String(e) }) })) }
 
   const valid = !!from && !!to && from <= to
   const sales = useQuery({
@@ -129,8 +127,6 @@ export default function CounterSalesPage() {
                 </ul>
                 {b.voided && <p className="cell-sub">{t('sales.voidReason', { reason: b.void_reason ?? '' })}</p>}
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                  <button type="button" className="btn-sm" aria-label={`${t('sales.billPdf')}: ${b.number}`} onClick={() => billAction(() => openBillPdf(b.id))}><FileText size={16} aria-hidden="true" />{t('sales.billPdf')}</button>
-                  {!b.voided && <button type="button" className="btn-sm" aria-label={`${t('sales.billWa')}: ${b.number}`} onClick={() => billAction(() => shareBillWhatsApp(b.id))}><MessageCircle size={16} aria-hidden="true" />{t('sales.billWa')}</button>}
                   {!b.voided && <button type="button" className="btn-sm" onClick={() => { setMsg(null); setEditing(b) }}><Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>}
                   {!b.voided && isAdmin && <button type="button" className="btn-sm danger" onClick={() => { setVoiding(b); setReason(''); setError(null) }}>
                     <Ban size={16} aria-hidden="true" />{t('sales.void')}</button>}

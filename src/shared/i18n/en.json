@@ -32,8 +32,7 @@
     "live": "Live deliveries",
     "schemes": "Schemes",
     "sales": "Counter sales",
-    "money": "Money with partners",
-    "business": "Business & GST"
+    "money": "Money with partners"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -189,8 +188,7 @@
     "SUPPLIER_HAS_PURCHASES": "There are purchases from this supplier, so it cannot be deleted. Untick Active instead.",
     "ACCOUNT_NOT_FOUND": "That money account was not found or is switched off. Pick another one.",
     "MORE_THAN_HELD": "That is more than this account holds. Check the amount.",
-    "ACCOUNT_EXISTS": "An account with this name already exists.",
-    "BAD_GSTIN": "This is not a valid Chhattisgarh GSTIN. It has 15 characters and starts with 22, like 22AAAAA0000A1Z5."
+    "ACCOUNT_EXISTS": "An account with this name already exists."
   },
   "days": {
     "1": "Mon",
@@ -241,11 +239,7 @@
     "photoHint": "Tap a photo to change it",
     "showToShops": "Show to shops",
     "uploadPhoto": "Add photo",
-    "flavours": "flavours",
-    "hsn": "HSN code",
-    "gstRate": "GST rate",
-    "gstHint": "Copy the HSN code and GST % from the Pepsi tax invoice for this item. Bills split the price into taxable value + CGST + SGST using these.",
-    "gstMissing": "HSN / GST not set"
+    "flavours": "flavours"
   },
   "prices": {
     "title": "Price lists",
@@ -999,10 +993,7 @@
       "badLine": "Every item needs whole cases (1 or more) and a rate of ₹{{min}} or more.",
       "saveSale": "Save sale",
       "saveChanges": "Save changes"
-    },
-    "billPdf": "Bill PDF",
-    "billWa": "WhatsApp bill",
-    "billFailed": "Could not open the bill: {{msg}}"
+    }
   },
   "del": {
     "title": "Delete {{name}}?",
@@ -1068,25 +1059,5 @@
     "saved": "Saved.",
     "default": "(default)",
     "amountCol": "Amount"
-  },
-  "biz": {
-    "title": "Business & GST",
-    "sub": "These details are printed on every bill. Add the GSTIN from your GST certificate: bills then become Tax Invoices.",
-    "details": "Bill header",
-    "name": "Shop / brand name",
-    "legal": "Registered company name",
-    "gstin": "GSTIN",
-    "phone": "Phone on bills",
-    "address": "Address on bills",
-    "gstinEmpty": "No GSTIN yet: bills are titled \"Bill\" and say \"GSTIN: to be added\". Prices and GST split are already correct.",
-    "gstinOn": "With a GSTIN, every new bill and every re-opened bill PDF is a Tax Invoice.",
-    "state": "State on bills: {{state}} ({{code}}). Sales inside Chhattisgarh use CGST + SGST.",
-    "saved": "Saved.",
-    "savedGst": "Saved. Bills are now Tax Invoices with your GSTIN.",
-    "itemsTitle": "HSN code and GST rate per item",
-    "itemsSub": "Filled from the Pepsi tax invoices of 4 Nov 2026. Change one in Catalogue → open the item.",
-    "itemsAllSet": "Every active item has an HSN code and GST rate.",
-    "itemsMissing_one": "{{count}} active item has no HSN / GST rate yet (it bills at 0%). Copy it from its first Pepsi invoice:",
-    "itemsMissing_other": "{{count}} active items have no HSN / GST rate yet (they bill at 0%). Copy them from their first Pepsi invoice:"
   }
 }

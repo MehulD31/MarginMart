@@ -3,7 +3,6 @@
 //              "/sale Sharma Kirana: sting 50 @495, nimbooz 30 @515, cash" -> AI reads it -> same confirm screen.
 // Every DB call goes through key-checked RPCs (KD_BOT_KEY), so no service key lives in Vercel.
 import { randomUUID } from 'node:crypto'
-import { billPdf, billToken } from './_billpdf.js'
 
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
 const rs = (p) => '₹' + (Number(p) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })
@@ -19,16 +18,6 @@ async function rpc(fn, args) {
 }
 const tg = (method, payload) => fetch(`https://api.telegram.org/bot${env.KD_BOT_TOKEN}/${method}`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then((r) => r.json()).catch(() => null)
-/** Builds the bill PDF and posts it to the chat as a document. */
-async function sendBillPdf(chat, id) {
-  const bill = await rpc('bot_bill', { p_id: id })
-  const fd = new FormData()
-  fd.append('chat_id', String(chat))
-  fd.append('document', new Blob([await billPdf(bill)], { type: 'application/pdf' }), `${bill.number}.pdf`)
-  fd.append('caption', `🧾 ${bill.number} · ${bill.buyer?.name ?? ''} · ${rs(bill.total_paise)}`)
-  const j = await fetch(`https://api.telegram.org/bot${env.KD_BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).then((x) => x.json())
-  if (!j.ok) throw new Error(JSON.stringify(j).slice(0, 160))
-}
 const send = (chat, text, buttons) => tg('sendMessage', { chat_id: chat, text, ...(buttons ? { reply_markup: { inline_keyboard: buttons } } : {}) })
 const getState = (user) => rpc('bot_session_get', { p_user: user })
 const setState = (user, state) => rpc('bot_session_set', { p_user: user, p_state: state })
@@ -316,11 +305,9 @@ export async function handleSaleTap(q) {
         p_lines: state.lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: l.price })) })
       await setState(user, {})
       if (r.repeat) { await send(chat, `Ye bill pehle hi save ho chuka hai: ${r.number} (${rs(r.total_paise)}).`); return }
-      // Signed link to the bill PDF (opens without login, only this bill) for the shop's WhatsApp.
-      const link = r.id ? `https://kdfoods.vercel.app/api/bill-pdf?id=${r.id}&t=${billToken(r.id, env.KD_BOT_KEY)}` : null
       const bill = [`*K.D. Foods* — Bill ${r.number}`, new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }), state.shop.name, '',
         ...state.lines.map((l) => `${l.label} × ${l.qty} @ ${rs(l.price)} = ${rs(l.qty * l.price)}`), '',
-        `Total: ${rs(r.total_paise)} (${state.mode === 'upi' ? 'UPI' : 'Cash'}, paid)`, ...(link ? ['', `Bill PDF: ${link}`] : []), 'Dhanyavaad 🙏 · 96300 12636'].join('\n')
+        `Total: ${rs(r.total_paise)} (${state.mode === 'upi' ? 'UPI' : 'Cash'}, paid)`, 'Dhanyavaad 🙏 · 96300 12636'].join('\n')
       const wa = state.shop.phone ? `https://wa.me/91${state.shop.phone}?text=${encodeURIComponent(bill)}` : null
       // Money that went into a partner's own account: say how much company money they now hold.
       let held = ''
@@ -330,8 +317,6 @@ export async function handleSaleTap(q) {
       }
       await send(chat, `✅ Sale save: ${r.number} · ${rs(r.total_paise)}${r.margin_paise != null ? ` · margin ${rs(r.margin_paise)}` : ''}\nStock kam ho gaya, sheet me 1 minute me aa jayega.${held}`,
         wa ? [[{ text: '📩 WhatsApp bill bhejo', url: wa }]] : undefined)
-      // The GST bill as a PDF in the group (best effort: a failure here never undoes the sale).
-      if (r.id) await sendBillPdf(chat, r.id).catch((e) => console.log('bill pdf', e.message))
       return
     }
   } catch (e) { await send(chat, `⚠️ ${String(e.message).slice(0, 200)}`) }

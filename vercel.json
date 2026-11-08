@@ -16,8 +16,7 @@
     }
   ],
   "functions": {
-    "api/scheme-tg.js": { "maxDuration": 60, "includeFiles": "api/_fonts/**" },
-    "api/voice-sale.js": { "maxDuration": 60 },
-    "api/bill-pdf.js": { "maxDuration": 30, "includeFiles": "api/_fonts/**" }
+    "api/scheme-tg.js": { "maxDuration": 60 },
+    "api/voice-sale.js": { "maxDuration": 60 }
   }
 }
