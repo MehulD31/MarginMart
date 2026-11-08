@@ -2,7 +2,7 @@
 
 B2B ordering and distribution platform for a beverage dealer (PepsiCo first). Shops order from their phones, the manager plans truck loads, drivers deliver and collect, and admins see dues, stock and profit.
 
-Docs: [PRD](docs/PRD.md), [HLD](docs/HLD.md).
+Docs: [PRD](docs/PRD.md), [HLD](docs/HLD.md), [Autopilot: what runs by itself](docs/autopilot.md), [Social page setup](docs/social-setup.md).
 
 ## What's in it
 - **App** (`src/`): shop ordering, driver trips and delivery (works offline), and admin pages for orders, loading, inventory, purchases, price lists, pricing, schemes, counter sales, khata, closing, users, join requests and audit.
