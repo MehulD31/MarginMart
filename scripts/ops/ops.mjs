@@ -273,6 +273,8 @@ async function social() {
   const [p] = await db('social_post?status=eq.queued&order=created_at&limit=1&select=*')
   if (!p) return console.log('nothing queued')
   const patch = (b) => db(`social_post?id=eq.${p.id}`, { method: 'PATCH', body: JSON.stringify(b) })
+  // auto-made posts go out only after the group has seen them (preview with ❌, see content.mjs)
+  if (p.kind !== 'scheme' && !(await db(`ops_log?job=eq.preview&key=eq.${p.id}&select=job`)).length) return console.log('waiting for preview', p.id)
   // an offer that already ended must never go out
   if (p.kind === 'scheme' && p.source_id) {
     const [s] = await db(`scheme?id=eq.${p.source_id}&select=ends_on,active`)
