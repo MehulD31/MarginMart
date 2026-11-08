@@ -53,7 +53,11 @@ export async function ask(prompt) {
   }
   throw new Error('AI abhi busy hai, 1 minute baad dobara try karo.')
 }
+let lastCrash = null
+process.on('uncaughtException', (e) => { lastCrash = String(e?.stack ?? e).slice(0, 600) })
+process.on('unhandledRejection', (e) => { lastCrash = String(e?.stack ?? e).slice(0, 600) })
 export default async function handler(req, res) {
+  if (req.query?.diag === '1') return res.status(200).json({ lastCrash, node: process.version })
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   try {
     const who = await caller(req)
