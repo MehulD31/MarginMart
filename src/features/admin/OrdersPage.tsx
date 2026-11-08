@@ -59,6 +59,14 @@ export default function OrdersPage() {
   const vName = (id: string | null) => vehicles.data?.find((v) => v.id === id)?.name
   const isAdmin = useAuth().profile?.role === 'admin'
   const [msg, setMsg] = useState<Msg>(null)
+  const qcR = useQueryClient()
+  const restoreOrder = async (id: string, shop: string) => {
+    try {
+      await must(supabase.rpc('restore_order', { p_order_id: id }))
+      for (const k of ['admin-orders', 'admin-order-counts', 'route-load', 'plans', 'trip-detail', 'trip-board']) void qcR.invalidateQueries({ queryKey: [k] })
+      setMsg({ kind: 'success', text: t('orders.restored', { shop }) })
+    } catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) }
+  }
 
   const planById = new Map(dayPlans.map((p) => [p.id, p]))
   const forRoute = (orders.data ?? []).filter((o) => !route || planById.get(o.route_day_plan_id)?.route_id === route)
@@ -99,6 +107,7 @@ export default function OrdersPage() {
                   {o.shop.phone && <a className="button btn-sm" href={`tel:+91${o.shop.phone}`} aria-label={`${t('shops.call')} ${o.shop.name}`}><Phone size={16} aria-hidden="true" /></a>}
                   {isAdmin && o.status === 'placed' && planById.get(o.route_day_plan_id)?.status === 'planning' && <button type="button" className="btn-sm" onClick={() => setMoving(o)}><ArrowRightLeft size={16} aria-hidden="true" />{t('orders.move')}</button>}
                   <button type="button" className="btn-sm" onClick={() => setOpen({ order: o, plan: planById.get(o.route_day_plan_id)! })}>{o.status === 'placed' ? t('common.edit') : t('common.view')}</button>
+                  {o.status === 'cancelled' && <button type="button" className="btn-sm" data-testid="restore-order" onClick={() => void restoreOrder(o.id, o.shop.name)}>{t('orders.restore')}</button>}
                   {(o.status === 'placed' || o.status === 'cancelled') && (
                     <DeleteButton kind="order" id={o.id} name={o.shop.name} invalidate={['admin-orders', 'admin-order-counts', 'load-lines', 'plans']}
                       onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} />)}

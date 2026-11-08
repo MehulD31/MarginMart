@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Ban, Pencil, Plus, Receipt } from 'lucide-react'
+import { Ban, Pencil, Plus, Receipt, Undo2 } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
@@ -50,6 +50,14 @@ export default function CounterSalesPage() {
     return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]))
   }, [live])
 
+  const restore = async (b: CounterBill) => {
+    setMsg(null)
+    try {
+      await must(supabase.rpc('unvoid_cash_sale', { p_id: b.id }))
+      for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats', 'insights', 'trip-detail', 'trip-board']) void qc.invalidateQueries({ queryKey: [k] })
+      setMsg({ kind: 'success', text: t('sales.restored', { n: b.number }) })
+    } catch (err) { setMsg({ kind: 'error', text: errorMessage(t, err) }) }
+  }
   const doVoid = async (e: FormEvent) => {
     e.preventDefault()
     if (!voiding) return
@@ -130,6 +138,7 @@ export default function CounterSalesPage() {
                 {b.voided && <p className="cell-sub">{t('sales.voidReason', { reason: b.void_reason ?? '' })}</p>}
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                   {!b.voided && <button type="button" className="btn-sm" onClick={() => { setMsg(null); setEditing(b) }}><Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>}
+                  {b.voided && isAdmin && <button type="button" className="btn-sm" data-testid="restore-bill" onClick={() => void restore(b)}><Undo2 size={16} aria-hidden="true" />{t('sales.restore')}</button>}
                   {!b.voided && isAdmin && <button type="button" className="btn-sm danger" onClick={() => { setVoiding(b); setReason(''); setError(null) }}>
                     <Ban size={16} aria-hidden="true" />{t('sales.void')}</button>}
                   <DeleteButton kind="counter_sale" id={b.id} name={b.number} invalidate={['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats', 'trip-detail', 'trip-board']}

@@ -1,0 +1,9 @@
+-- Revert buttons (applied live as trip_reverts, trip_reopen_short_zero, admin_reverts):
+--   trip_undo_load(plan)    loaded and nothing sold/delivered/unloaded -> stock back to the godown, orders open again
+--   trip_undo_unload(plan)  what came back goes onto the truck again (godown down by the same)
+--   trip_reopen(plan)       closed trip -> 'came back'; shortage/reason cleared; orders closed as not delivered open again; stock unchanged
+--   unvoid_cash_sale(id)    cancelled bill comes back (stock taken out again; truck bills checked against what is on the truck)
+--   restore_order(id)       cancelled order placed again (only while that day's truck is not loaded)
+--   undo_stock_adjust(move) adds the opposite move for one manual adjustment (once)
+-- plan_stock_sync: reopening a new-style trip (unloaded on the Loading page) keeps its returns.
+-- Full SQL: see the live functions; every revert writes audit_log.

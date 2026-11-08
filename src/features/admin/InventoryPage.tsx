@@ -12,7 +12,7 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../share
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
 
-interface Move { id: number; qty: number; kind: string; reason: string | null; balance_after: number; at: string }
+interface Move { id: number; qty: number; kind: string; reason: string | null; balance_after: number; at: string; cash_sale_id: string | null; route_day_plan_id: string | null }
 
 export default function InventoryPage() {
   const { t } = useTranslation()
@@ -79,8 +79,15 @@ function StockEditor({ row, canEdit }: { row: StockRow; canEdit: boolean }) {
   const [msg, setMsg] = useState<Msg>(null)
   const moves = useQuery({
     queryKey: ['stock_move', row.variant_id],
-    queryFn: () => must<Move[]>(supabase.from('stock_move').select('id, qty, kind, reason, balance_after, at').eq('variant_id', row.variant_id).order('at', { ascending: false }).limit(50)),
+    queryFn: () => must<Move[]>(supabase.from('stock_move').select('id, qty, kind, reason, balance_after, at, cash_sale_id, route_day_plan_id').eq('variant_id', row.variant_id).order('at', { ascending: false }).limit(50)),
   })
+  // Manual adjustments can be undone once (an opposite move is added; both stay in the history).
+  const undone = new Set((moves.data ?? []).map((m) => m.reason?.match(/^Undo: #(\d+)$/)?.[1]).filter(Boolean).map(Number))
+  const canUndo = (m: Move) => canEdit && m.kind === 'adjust' && !m.cash_sale_id && !m.route_day_plan_id && !m.reason?.startsWith('Undo:') && !undone.has(m.id)
+  const undo = async (m: Move) => {
+    try { await must(supabase.rpc('undo_stock_adjust', { p_move: m.id })); setMsg({ kind: 'success', text: t('inventory.undone', { n: m.qty > 0 ? `+${m.qty}` : m.qty }) }); refresh() }
+    catch (err) { setMsg({ kind: 'error', text: errorMessage(t, err) }) }
+  }
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['stock'] }); void qc.invalidateQueries({ queryKey: ['stock_move', row.variant_id] }) }
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
 
@@ -141,6 +148,7 @@ function StockEditor({ row, canEdit }: { row: StockRow; canEdit: boolean }) {
                 <td data-label={t('inventory.kind')}>{t(`inventory.kinds.${m.kind}`)}{m.reason && <div className="cell-sub">{m.reason}</div>}</td>
                 <td data-label={t('inventory.change')} className="num"><span className={`badge ${m.qty > 0 ? 'badge-green' : 'badge-red'}`}>{m.qty > 0 ? `+${m.qty}` : m.qty}</span></td>
                 <td data-label={t('inventory.balance')} className="num">{m.balance_after}</td>
+                <td className="actions">{canUndo(m) && <button type="button" className="btn-sm" data-testid="undo-adjust" onClick={() => void undo(m)}>{t('inventory.undo')}</button>}</td>
               </tr>))}
             </tbody>
           </table></div>

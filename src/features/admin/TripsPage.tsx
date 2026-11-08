@@ -16,6 +16,19 @@ import { refreshTrips, stageOf, sumBy, useTripBoard, useTripDetail, type Stage, 
 
 type Step = 'load' | 'unload' | 'bills' | 'close'
 const STEPS: Step[] = ['load', 'unload', 'bills', 'close']
+/** Revert one trip step through its RPC, with a confirm first. */
+function useRevert() {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const confirm = useConfirm()
+  const [busy, setBusy] = useState(false)
+  return { busy, run: async (fn: string, plan: string, title: string, body: string, ok: string, done: (m: Msg) => void) => {
+    if (!(await confirm({ title, body, confirm: title, danger: true }))) return
+    setBusy(true)
+    try { await must(supabase.rpc(fn, { p_plan: plan })); refreshTrips(qc); done({ kind: 'success', text: ok }) }
+    catch (e) { done({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
+  } }
+}
 const clamp = (n: number, max: number) => Math.max(0, Math.min(max, Math.floor(n) || 0))
 
 /** Loading: morning load, evening unload, parchis billed from the truck, then close. One trip per vehicle per day. */
@@ -187,6 +200,7 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
   const [editing, setEditing] = useState(!isLoaded)
+  const revert = useRevert()
 
   const brands = useMemo(() => [...new Set(d.items.map((i) => i.brand).filter(Boolean) as string[])].sort(), [d.items])
   const total = Object.values(qty).reduce((a, n) => a + n, 0)
@@ -216,9 +230,13 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
         <Alert msg={{ kind: 'success', text: t('trip.load.loadedNote', { v: d.plan.vehicle, n: sumBy(items, (i) => i.loaded) }) }} />
         <div className="card card-flush"><ul className="plain-list trip-list">{items.map((i) => (
           <li key={i.variant_id}><span className="grow">{i.label}</span><strong className="num">{i.loaded}</strong></li>))}</ul></div>
+        <Alert msg={msg} />
         {started && <p className="cell-sub">{t('trip.load.lockedHint')}</p>}
         <div className="row no-print" style={{ gap: 8, flexWrap: 'wrap' }}>
           {!started && <button type="button" onClick={() => setEditing(true)}>{t('trip.load.change')}</button>}
+          {!started && <button type="button" className="danger" disabled={revert.busy} data-testid="undo-load"
+            onClick={() => void revert.run('trip_undo_load', d.plan.id, t('trip.revert.load'), t('trip.revert.loadBody', { v: d.plan.vehicle, n: sumBy(items, (i) => i.loaded) }), t('trip.revert.loadDone', { v: d.plan.vehicle }), (m) => (m?.kind === 'error' ? setMsg(m) : onDone(m)))}>
+            <Undo2 size={18} aria-hidden="true" />{t('trip.revert.load')}</button>}
           <button type="button" onClick={() => window.print()}><Printer size={18} aria-hidden="true" />{t('loading.print')}</button>
         </div>
         {/* Printed for the helpers: what goes on the truck, then each advance order. */}
@@ -297,6 +315,7 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
   const closed = d.plan.status === 'closed'
+  const revert = useRevert()
 
   if (d.plan.status === 'planning') return <div className="card"><Empty icon={<PackageOpen size={26} />} title={t('trip.unload.notLoaded')} /></div>
   const totalBack = Object.values(back).reduce((a, n) => a + n, 0)
@@ -345,6 +364,8 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
       <Alert msg={msg} />
       {!closed && <div className="trip-bar">
         <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: totalBack })}</strong><span className="cell-sub">{t('trip.unload.toGodown')}</span></div>
+        {d.plan.unloaded_at && <button type="button" className="danger" disabled={revert.busy || busy} data-testid="undo-unload"
+          onClick={() => void revert.run('trip_undo_unload', d.plan.id, t('trip.revert.unload'), t('trip.revert.unloadBody', { n: d.items.reduce((a, i) => a + i.returned, 0) }), t('trip.revert.unloadDone'), setMsg)}>{t('trip.revert.unload')}</button>}
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}><Undo2 size={18} aria-hidden="true" />
           {busy ? t('common.loading') : d.plan.unloaded_at ? t('trip.unload.saveFix') : t('trip.unload.btn', { n: totalBack })}</button>
       </div>}
@@ -514,6 +535,7 @@ function CloseStep({ d, onUnload, onBills, onDone }: { d: TripDetail; onUnload: 
   const short = d.items.filter((i) => i.left > 0)
   const left = sumBy(short, (i) => i.left)
   const sales = sumBy(d.bills, (b) => b.total_paise) + sumBy(d.orders, (o) => o.delivered_paise)
+  const revert = useRevert()
 
   if (d.plan.status === 'closed') {
     const s = d.plan.short_cases ?? 0
@@ -523,6 +545,10 @@ function CloseStep({ d, onUnload, onBills, onDone }: { d: TripDetail; onUnload: 
         {d.plan.closed_at && <p className="cell-sub">{t('trip.close.closedAt', { at: new Date(d.plan.closed_at).toLocaleString(loc, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) })}</p>}
         {d.plan.close_note && <p>{t('trip.reasonWas', { r: d.plan.close_note })}</p>}
         <div className="row-between total-row"><span>{t('trip.sales')}</span><strong className="num">{formatPaise(sales)}</strong></div>
+        <Alert msg={msg} />
+        {d.plan.unloaded_at && <button type="button" className="danger" style={{ alignSelf: 'flex-start' }} disabled={revert.busy} data-testid="reopen-trip"
+          onClick={() => void revert.run('trip_reopen', d.plan.id, t('trip.revert.reopen'), t('trip.revert.reopenBody', { v: d.plan.vehicle }), t('trip.revert.reopenDone', { v: d.plan.vehicle }), setMsg)}>
+          <Undo2 size={18} aria-hidden="true" />{t('trip.revert.reopen')}</button>}
       </div>)
   }
   if (d.plan.status === 'planning') return <div className="card"><Empty icon={<PackageOpen size={26} />} title={t('trip.unload.notLoaded')} /></div>

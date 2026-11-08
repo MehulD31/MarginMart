@@ -174,7 +174,7 @@
     "PLAN_NOT_OUT": "This route is not out for delivery.",
     "APPEND_ONLY": "Entries cannot be changed. Use Void instead.",
     "ALREADY_VOIDED": "This bill is already cancelled.",
-    "ORDER_EXISTS": "This shop already has an open order on that trip. Edit that order instead.",
+    "ORDER_EXISTS": "This shop already has another order that day.",
     "TRIP_EXISTS": "That truck already has a trip on this route and day. Move the orders to it instead.",
     "ORDER_DELIVERED": "This order is already delivered, so it cannot be deleted.",
     "PURCHASE_STOCK_USED": "Some cases from this purchase are already sold or loaded, so it cannot be deleted. Fix the stock first.",
@@ -199,7 +199,11 @@
     "UNLOAD_FIRST": "Unload the truck first.",
     "REASON_REQUIRED": "Write the reason for the shortage.",
     "TRIP_NOT_OUT": "This truck is not loaded yet.",
-    "TRIP_CLOSED": "This trip is already closed."
+    "TRIP_CLOSED": "This trip is already closed.",
+    "TRIP_NOT_CLOSED": "This trip is not closed.",
+    "NOT_VOIDED": "This bill is not cancelled.",
+    "NOT_CANCELLED": "This order is not cancelled.",
+    "ALREADY_UNDONE": "Already undone."
   },
   "days": {
     "1": "Mon",
@@ -518,7 +522,9 @@
     "tripVehicle": "{{route}} truck",
     "noOtherTrips": "No other open trips on this day. Use New order to add a trip.",
     "moveHint": "Only trips not yet loaded are shown.",
-    "usually": "Not set (usually {{v}})"
+    "usually": "Not set (usually {{v}})",
+    "restore": "Restore",
+    "restored": "{{shop}}: order is back."
   },
   "loading": {
     "title": "Loading sheet",
@@ -822,7 +828,9 @@
     "dashOpen": "Inventory ({{n}})",
     "dashLeft": "{{n}} left · alert at {{min}}",
     "dashDays": "{{n}} left · ~{{d}} days",
-    "lasts": "lasts ~{{d}} days"
+    "lasts": "lasts ~{{d}} days",
+    "undo": "Undo",
+    "undone": "Adjustment {{n}} undone."
   },
   "purchases": {
     "title": "Purchases",
@@ -1023,7 +1031,9 @@
       "discount": "Discount (₹)",
       "itemsTotal": "Items total",
       "badDiscount": "Discount must be a rupee amount, not more than the items total."
-    }
+    },
+    "restore": "Restore bill",
+    "restored": "{{n}} is back. Stock was taken out again."
   },
   "del": {
     "title": "Delete {{name}}?",
@@ -1237,6 +1247,17 @@
       "onlyLeft": "Only {{n}} on truck",
       "overTruck": "More than what is left on the truck.",
       "truckEmpty": "Nothing left on this truck."
+    },
+    "revert": {
+      "load": "Undo load",
+      "loadBody": "Take everything off {{v}}? {{n}} cases go back into the godown and advance orders open again.",
+      "loadDone": "{{v}}: load undone, stock is back in the godown.",
+      "unload": "Undo unload",
+      "unloadBody": "Put the {{n}} cases that came back onto the truck again? The godown goes down by the same.",
+      "unloadDone": "Unload undone. Enter it again when ready.",
+      "reopen": "Reopen trip",
+      "reopenBody": "Reopen {{v}}? The shortage and reason are cleared and orders closed as not delivered open again. Stock stays as it is.",
+      "reopenDone": "{{v}} is open again. Fix what you need, then close it."
     }
   },
   "ins": {
