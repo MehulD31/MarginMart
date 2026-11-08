@@ -65,3 +65,24 @@ export function weekText(w, sleeping = [], waLink = () => null) {
   }
   return { text: L.join('\n'), cases }
 }
+
+/** Morning "smart" block from insights.analyze(): who to call with their usual order, items running out, untapped shops. */
+export function smartText(a, waLink = () => null) {
+  if (!a?.kpi?.all?.bills) return null
+  const L = ['🧠 Aaj ka smart plan']
+  const calls = [...a.callToday, ...a.dueSoon].slice(0, 6)
+  if (calls.length) {
+    L.push('', '📞 Inko call karo (order ka time ho gaya):')
+    for (const s of calls) {
+      const usual = s.likely.slice(0, 3).map((l) => `${item(l.label)} ${l.qty}`).join(', ')
+      const when = s.gap ? (s.lateBy > 0 ? `${s.lateBy} din late` : s.lateBy === 0 ? 'aaj ki baari' : `${-s.lateBy} din me baari`) : `${s.since} din pehle pehla bill`
+      const link = s.phone ? waLink(s.phone, `Namaste ${s.owner ?? s.name} ji, K.D. Foods se. Pichhli baar: ${usual}. Aaj bhej dein?`) : null
+      L.push(`• ${s.name}${s.owner ? ' · ' + s.owner : ''} (${when}): ${usual}${s.recommend[0] ? ` + try ${item(s.recommend[0].label)}` : ''}${link ? '\n  ' + link : ''}`)
+    }
+  }
+  const out = a.sold.filter((i) => i.coverDays != null && i.coverDays <= 3).slice(0, 5)
+  if (out.length) L.push('', '⏳ Jaldi khatam:', ...out.map((i) => `• ${item(i.label)}: ~${i.coverDays} din (${i.onHand} peti), ${i.reorder} mangao`))
+  if (a.deadStock.length) L.push('', `🧊 Bilkul nahi bika (${a.deadStock.length}): ${a.deadStock.slice(0, 4).map((i) => `${item(i.label)} ${i.onHand}`).join(', ')}. Scheme ya best seller ke saath push karo.`)
+  if (a.prospects.length) L.push('', `🎯 ${a.totalShops} me se sirf ${a.buyers} dukan kharid rahi hai. Aaj in areas me nayi dukan pakdo: ${[...new Set(a.prospects.map((p) => p.area).filter(Boolean))].slice(0, 4).join(', ')}.`)
+  return L.length > 1 ? L.join('\n') : null
+}

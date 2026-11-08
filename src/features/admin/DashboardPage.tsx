@@ -14,6 +14,7 @@ import { isLowStock } from '../../shared/api/db'
 import { useStockRows } from './stockRows'
 import { useMargin } from './marginData'
 import { fixedTotal } from '../../shared/margin'
+import { Insights } from './Insights'
 import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
 
 const useSetup = () => useQuery({
@@ -139,6 +140,8 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      <Insights />
 
       {setupLeft > 0 && (
         <div className="card stack">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayText, rs, weekText } from './report.mjs'
+import { dayText, rs, smartText, weekText } from './report.mjs'
 
 const empty = { day: '2026-11-08', counter: { bills: 0, cases: 0, total_paise: 0, cash_paise: 0, upi_paise: 0, margin_paise: 0, below_cost_lines: 0 },
   route: { bills: 0, cases: 0, total_paise: 0 }, collected: { cash_paise: 0, upi_paise: 0 }, top_items: [], trucks: [], open_orders_tomorrow: 0 }
@@ -50,4 +50,17 @@ describe('weekText', () => {
     expect(text).toContain('Best din: 2 Nov (30 peti)')
     expect(text).toContain('• Gupta · Supela: 12 din\n  LINK')
   })
+})
+
+describe('smartText', () => {
+  it('lists late shops with their usual order, run-outs and untapped areas', () => {
+    const s = { name: 'Gupta Store', owner: 'Ramesh', phone: '9876543210', gap: 4, lateBy: 2, since: 6, likely: [{ label: 'Sting PET 250ml (Red)', qty: 5 }], recommend: [{ label: 'Nimbooz 345ml' }] }
+    const a = { kpi: { all: { bills: 5 } }, callToday: [s], dueSoon: [], sold: [{ label: 'Nimbooz 345ml', coverDays: 2, onHand: 10, reorder: 40 }], deadStock: [], prospects: [{ area: 'Supela' }], totalShops: 700, buyers: 16 }
+    const text = smartText(a, () => 'LINK')
+    expect(text).toContain('Gupta Store · Ramesh (2 din late)')
+    expect(text).toContain('LINK')
+    expect(text).toContain('~2 din (10 peti), 40 mangao')
+    expect(text).toContain('Supela')
+  })
+  it('says nothing when there are no bills', () => { expect(smartText({ kpi: { all: { bills: 0 } } })).toBeNull() })
 })

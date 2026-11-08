@@ -10,7 +10,9 @@
 // Every job writes public.ops_log (job, key). A re-run of the same thing sees the row and does nothing (FORCE=1 overrides).
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
-import { dayText, weekText } from './report.mjs'
+import { dayText, weekText, smartText } from './report.mjs'
+import { analyze, factsForAI } from '../../src/shared/insights.js'
+const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
 
 const MODE = env('MODE'); const FORCE = process.env.FORCE === '1' || process.env.FORCE === 'true'
 const today = todayIST()
@@ -58,6 +60,9 @@ async function morning() {
     L.push('→ Driver aaj inse vasooli kare.')
   } else if (n(d.dues.total_paise) > 0) L.push('', `💰 Udhaar ${rs(n(d.dues.total_paise))} (${d.dues.shops} dukan), koi overdue nahi.`)
   await say(L.join('\n'))
+  const ins = await smart()
+  const st = ins && smartText(ins, waLink)
+  if (st) await say(st)
   if (reorder.length) await say(`📝 Pepsi ko ye order bhej do (7 din ka stock, pichhle 30 din ki bikri se):\n\n${reorderText(reorder, hi(today))}`)
   await mark('morning', today)
 }
@@ -298,9 +303,9 @@ async function social() {
 
 async function ask() {
   const q = env('QUESTION').slice(0, 800)
-  const [d, y, w] = await Promise.all([rpc('ops_daily', { p_day: today }), rpc('ops_daily', { p_day: addDays(today, -1) }), rpc('ops_weekly', { p_end: today })])
+  const [d, y, w, ins] = await Promise.all([rpc('ops_daily', { p_day: today }), rpc('ops_daily', { p_day: addDays(today, -1) }), rpc('ops_weekly', { p_end: today }), smart()])
   const a = await askJson(`You are the operations assistant of K.D. Foods (PepsiCo distributor, Durg-Bhilai). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as ₹). If the data can't answer it, say so and say which app page has it.\n` +
-    `TODAY ${JSON.stringify(d)}\nYESTERDAY ${JSON.stringify(y)}\nLAST 7 DAYS ${JSON.stringify(w.days)}\n\nQuestion: ${q}\n\nReply in short Hinglish (max 120 words). JSON: {"reply": "..."}`)
+    `TODAY ${JSON.stringify(d)}\nYESTERDAY ${JSON.stringify(y)}\nLAST 7 DAYS ${JSON.stringify(w.days)}\nINSIGHTS (who buys what, rhythm, stock cover, areas; rupees already formatted) ${ins ? JSON.stringify(factsForAI(ins)) : 'n/a'}\n\nQuestion: ${q}\n\nReply in short Hinglish (max 120 words). JSON: {"reply": "..."}`)
   await say(`🤖 ${String(a?.reply ?? 'Jawab nahi bana, dobara poochho.').slice(0, 3500)}`)
 }
 
