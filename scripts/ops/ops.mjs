@@ -295,6 +295,23 @@ async function diag() {
   console.log('members', JSON.stringify(n.result ?? n))
   const w = (await (await fetch(`https://api.telegram.org/bot${env('KD_BOT_TOKEN')}/getWebhookInfo`)).json()).result ?? {}
   console.log('webhook', JSON.stringify({ url: w.url, pending: w.pending_update_count, last_error: w.last_error_message ?? null, last_error_at: w.last_error_date ? new Date(w.last_error_date * 1000).toISOString() : null, allowed_updates: w.allowed_updates ?? null }))
+  if (process.env.QUESTION === 'hello') {
+    // Fill Telegram's "/" list and post the menu, so the group can start without typing anything.
+    const cmds = [['menu', 'Sab buttons'], ['sale', 'Sale likho'], ['aaj', 'Aaj ka hisaab'], ['kal', 'Kal ka hisaab'], ['week', 'Hafte ka report'],
+      ['due', 'Udhaar (naam bhi likh sakte ho)'], ['stock', 'Stock (item ka naam bhi)'], ['order', 'Pepsi ko kya mangana hai'],
+      ['sleeping', 'Jo dukane order nahi kar rahi'], ['ask', 'Kuch bhi poochho'], ['check', 'System check']]
+    for (const scope of [{ type: 'default' }, { type: 'all_group_chats' }]) {
+      const r = await tg('setMyCommands', { commands: cmds.map(([command, description]) => ({ command, description })), scope })
+      console.log('setMyCommands', scope.type, r)
+    }
+    const m = await tg('sendMessage', { chat_id: env('KD_CHAT_ID'), text: '👋 Namaste! Main KD Bot hun. Button dabao, ya seedha likho jaise "aaj ka hisaab", "sharma ka udhaar", "sting ka stock".', reply_markup: { inline_keyboard: [
+      [{ text: '📊 Aaj ka hisaab', callback_data: 'm:today' }, { text: '📅 Kal ka', callback_data: 'm:yday' }],
+      [{ text: '📈 Hafta', callback_data: 'm:week' }, { text: '💰 Udhaar', callback_data: 'm:due' }],
+      [{ text: '📦 Kam stock', callback_data: 'm:stock' }, { text: '📝 Pepsi order', callback_data: 'm:order' }],
+      [{ text: '😴 Chup dukane', callback_data: 'm:sleeping' }, { text: '🧾 Sale likho', callback_data: 'm:sale' }],
+      [{ text: '❓ Kaise use karein', callback_data: 'm:help' }]] } })
+    console.log('hello message_id', m.message_id, 'date', new Date(m.date * 1000).toISOString())
+  }
 }
 
 const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag }
