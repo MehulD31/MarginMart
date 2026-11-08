@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { handleSaleTap, parseLine } from '../../api/_sale.js'
+import { handleSaleMessage, handleSaleTap, parseLine, shopLabel } from '../../api/_sale.js'
 
 // Telegram sale flow + "Paid into". Network stubbed: RPCs return canned rows, Gemini returns AI_OUT, Telegram calls recorded.
 const SHOBHIT = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', name: 'Shobhit (personal)', kind: 'personal' }
 const BANK = { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Company bank', kind: 'company' }
 const STING = { variant_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', label: 'Sting PET 250ml (Red)', on_hand: 700, floor_paise: 48300, buy_paise: 48300, trade_paise: 52500 }
-const SHOP = { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', name: 'Shri Maruti Kirana', phone: '7999247999', locality: 'Charoda' }
+const SHOP = { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', name: 'Shri Maruti Kirana', phone: '7999247999', locality: 'Charoda', owner: 'Ramesh Sahu' }
 let sent, rpcCalls, state, AI_OUT
 const LINE = { variant_id: STING.variant_id, label: STING.label, qty: 50, price: 49500, floor: 48300, buy: 48300, stock: 700 }
 const data = (fn, body) => { if (fn === 'bot_session_set') { state = body.p_state; return null } return ({
@@ -72,5 +72,30 @@ describe('parser: account only when the note names it', () => {
     AI_OUT = { shop_id: SHOP.id, lines: [{ variant_id: STING.variant_id, qty: 50, price: 495, sure: true }], mode: 'upi', account_id: SHOBHIT.id, unclear: [] }
     const p = await parseLine('maruti kirana sting 50 crate 495 upi')
     expect(p.account).toBeNull()
+  })
+})
+
+describe('Telegram: owner name shown with the shop', () => {
+  it('label', () => {
+    expect(shopLabel(SHOP)).toBe('Shri Maruti Kirana · Ramesh Sahu')
+    expect(shopLabel({ name: 'Sai Kirana', owner: null })).toBe('Sai Kirana')
+  })
+  it('/sale shop buttons show shop · owner · area', async () => {
+    await handleSaleMessage({ chat: { id: 1 }, from: { id: 7, first_name: 'Mehul' }, text: '/sale' })
+    const btn = sent.at(-1).reply_markup.inline_keyboard.flat().find((b) => b.callback_data === 's:shop:' + SHOP.id)
+    expect(btn.text).toBe('Shri Maruti Kirana · Ramesh Sahu · Charoda')
+  })
+  it('cart and confirm show the owner', async () => {
+    await tap('s:pay:cash')
+    expect(sent.at(-1).text).toContain('🏪 Shri Maruti Kirana · Ramesh Sahu')
+  })
+  it('parser gives the AI the owner names (so "ramesh ki dukan" works) and keeps the owner on the shop', async () => {
+    AI_OUT = { shop_id: SHOP.id, lines: [{ variant_id: STING.variant_id, qty: 5, price: 495, sure: true }], mode: 'cash', account_id: null, unclear: [] }
+    let prompt = ''
+    const f = globalThis.fetch
+    globalThis.fetch = async (u, i) => { if (String(u).includes('generativelanguage')) prompt = JSON.parse(i.body).contents[0].parts[0].text; return f(u, i) }
+    const p = await parseLine('ramesh ki dukan sting 5 peti 495 cash')
+    expect(prompt).toContain('"owner":"Ramesh Sahu"')
+    expect(p.shop.owner).toBe('Ramesh Sahu')
   })
 })

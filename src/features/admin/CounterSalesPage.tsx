@@ -109,7 +109,7 @@ export default function CounterSalesPage() {
               <li key={b.id} className={`card stack ${b.voided ? 'dim' : ''}`} data-testid="sale-card">
                 <div className="row-between">
                   <div>
-                    <div className="cell-title">{b.number} · {b.shop}{b.locality ? ` · ${b.locality}` : ''}</div>
+                    <div className="cell-title">{b.number} · {b.shop}{b.owner ? ` · ${b.owner}` : ''}{b.locality ? ` · ${b.locality}` : ''}</div>
                     <div className="cell-sub">
                       {new Date(b.at).toLocaleString(loc, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
                       {b.by ? ` · ${b.by}` : ''}{b.phone ? ` · ${b.phone}` : ''}

@@ -50,7 +50,7 @@ test('New sale: shop search, items, rate, cases, UPI, checks, one bill only', as
   const save = d.getByRole('button', { name: 'Save sale' })
   await expect(save).toBeDisabled()
   // shop search by area
-  await d.getByLabel('Search shop by name, phone or area').fill('Kumhari')
+  await d.getByLabel('Search shop by name, owner, phone or area').fill('Kumhari')
   const firstShop = d.locator('ul button').first()
   const shopName = (await firstShop.locator('strong').textContent())!.trim()
   await firstShop.click()
@@ -58,9 +58,9 @@ test('New sale: shop search, items, rate, cases, UPI, checks, one bill only', as
   await expect(d.getByText('Add at least one item.')).toBeVisible()
   // search shop with no hits
   await d.getByRole('button', { name: 'Change' }).click()
-  await d.getByLabel('Search shop by name, phone or area').fill('zzzz no such shop')
+  await d.getByLabel('Search shop by name, owner, phone or area').fill('zzzz no such shop')
   await expect(d.getByText('No shop found. Add it on the Shops page first.')).toBeVisible()
-  await d.getByLabel('Search shop by name, phone or area').fill('Kumhari')
+  await d.getByLabel('Search shop by name, owner, phone or area').fill('Kumhari')
   await d.locator('ul button').first().click()
   // items
   await d.getByLabel(/Add an item/).fill('sting pet')

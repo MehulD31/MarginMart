@@ -6,7 +6,7 @@ import { Alert, type Msg } from '../../shared/ui/kit'
 
 export interface VoiceResult {
   heard: string
-  shop: { id: string; name: string; phone: string | null; locality: string | null } | null
+  shop: { id: string; name: string; phone: string | null; locality: string | null; owner_name: string | null } | null
   shopHint: string | null
   lines: { variant_id: string; qty: number; price_paise: number }[]
   mode: 'cash' | 'upi' | null

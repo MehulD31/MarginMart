@@ -16,12 +16,12 @@ import { PaidIntoSelect } from './PaidIntoSelect'
 
 export interface CounterLine { variant_id: string; item: string; qty: number; price_paise: number }
 export interface CounterBill {
-  id: string; number: string; at: string; shop: string; shop_id: string; locality: string | null; phone: string | null
+  id: string; number: string; at: string; shop: string; shop_id: string; locality: string | null; phone: string | null; owner: string | null
   mode: 'cash' | 'upi'; total_paise: number; by: string | null; voided: boolean; void_reason: string | null
   margin_paise: number | null; lines: CounterLine[]
 }
 interface CatalogRow { variant_id: string; label: string; trade_paise: number; buy_paise: number | null; floor_paise: number | null; on_hand: number }
-interface ShopRow { id: string; name: string; phone: string | null; locality: string | null }
+interface ShopRow { id: string; name: string; phone: string | null; locality: string | null; owner_name: string | null }
 interface Line { variant_id: string; qty: number; rate: string }
 
 const useCounterCatalog = () => useQuery({
@@ -30,7 +30,7 @@ const useCounterCatalog = () => useQuery({
 })
 const useShopPicker = () => useQuery({
   queryKey: ['shop', 'picker'],
-  queryFn: () => must<ShopRow[]>(supabase.from('shop').select('id, name, phone, locality').eq('active', true).order('name').limit(5000)),
+  queryFn: () => must<ShopRow[]>(supabase.from('shop').select('id, name, phone, locality, owner_name').eq('active', true).order('name').limit(5000)),
 })
 const MIN_RATE = 20
 
@@ -43,7 +43,7 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
   const catalog = useCounterCatalog()
   const shops = useShopPicker()
   const [action] = useState(() => crypto.randomUUID())
-  const [shop, setShop] = useState<ShopRow | null>(bill ? { id: bill.shop_id, name: bill.shop, phone: bill.phone, locality: bill.locality } : null)
+  const [shop, setShop] = useState<ShopRow | null>(bill ? { id: bill.shop_id, name: bill.shop, phone: bill.phone, locality: bill.locality, owner_name: bill.owner ?? null } : null)
   const [shopQ, setShopQ] = useState('')
   const [lines, setLines] = useState<Line[]>(() => (bill?.lines ?? []).map((l) => ({ variant_id: l.variant_id, qty: l.qty, rate: String(l.price_paise / 100) })))
   const [itemQ, setItemQ] = useState('')
@@ -59,7 +59,7 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
   const free = (id: string) => (byId.get(id)?.on_hand ?? 0) + (held.get(id) ?? 0)
 
   const sq = shopQ.trim().toLowerCase()
-  const shopHits = sq.length < 2 ? [] : (shops.data ?? []).filter((s) => `${s.name} ${s.phone ?? ''} ${s.locality ?? ''}`.toLowerCase().includes(sq)).slice(0, 8)
+  const shopHits = sq.length < 2 ? [] : (shops.data ?? []).filter((s) => `${s.name} ${s.owner_name ?? ''} ${s.phone ?? ''} ${s.locality ?? ''}`.toLowerCase().includes(sq)).slice(0, 8)
   const iq = itemQ.trim().toLowerCase()
   const itemHits = !iq ? [] : (catalog.data ?? []).filter((c) => c.label.toLowerCase().includes(iq) && !lines.some((l) => l.variant_id === c.variant_id))
     .sort((a, b) => Number(b.on_hand > 0) - Number(a.on_hand > 0) || a.label.localeCompare(b.label)).slice(0, 8)
@@ -117,7 +117,7 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
         <span className="cell-title">{t('sales.form.shop')}</span>
         {shop ? (
           <div className="row-between card" style={{ padding: '10px 12px' }}>
-            <span className="row"><Store size={18} aria-hidden="true" /><span><strong>{shop.name}</strong>
+            <span className="row"><Store size={18} aria-hidden="true" /><span><strong>{shop.name}</strong>{shop.owner_name && <span className="muted"> · {shop.owner_name}</span>}
               <span className="cell-sub" style={{ display: 'block' }}>{[shop.locality, shop.phone].filter(Boolean).join(' · ') || '—'}</span></span></span>
             <button type="button" className="btn-sm ghost" onClick={() => { setShop(null); setShopQ('') }} aria-label={t('sales.form.changeShop')}><X size={16} aria-hidden="true" />{t('sales.form.changeShop')}</button>
           </div>
@@ -128,7 +128,7 @@ export function CounterSaleForm({ bill, paidInto, onDone }: { bill?: CounterBill
             {sq.length >= 2 && (shopHits.length ? (
               <ul className="plain-list stack" style={{ gap: 4 }}>{shopHits.map((s) => (
                 <li key={s.id}><button type="button" className="btn-block" style={{ justifyContent: 'flex-start', textAlign: 'left' }} onClick={() => setShop(s)}>
-                  <Store size={16} aria-hidden="true" /><span className="grow"><strong>{s.name}</strong>
+                  <Store size={16} aria-hidden="true" /><span className="grow"><strong>{s.name}</strong>{s.owner_name && <span className="muted"> · {s.owner_name}</span>}
                     <span className="cell-sub" style={{ display: 'block' }}>{[s.locality, s.phone].filter(Boolean).join(' · ')}</span></span></button></li>))}
               </ul>) : <p className="muted">{t('sales.form.noShop')}</p>)}
           </>

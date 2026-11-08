@@ -24,14 +24,17 @@ const setState = (user, state) => rpc('bot_session_set', { p_user: user, p_state
 const pairs = (btns) => btns.reduce((rows, b, i) => (i % 2 ? rows[rows.length - 1].push(b) : rows.push([b]), rows), [])
 const cancelBtn = { text: '❌ Cancel', callback_data: 's:cancel' }
 
+/** "Usha Kirana · Om Prakash": the owner name goes with the shop name everywhere a shop is picked or shown in a sale. */
+export const shopLabel = (s) => (s ? `${s.name}${s.owner ? ' · ' + s.owner : ''}` : '')
+
 async function showShops(chat, q) {
   const shops = await rpc('bot_shops', { p_q: q || null })
-  // Many shops share a name ("Dewangan Kirana" x7), so the button also shows the area.
-  const rows = pairs(shops.map((s) => ({ text: `${s.name.slice(0, 26)}${s.locality ? ' · ' + s.locality.slice(0, 16) : ''}`, callback_data: `s:shop:${s.id}` })))
+  // Many shops share a name ("Dewangan Kirana" x7), so the button also shows the owner and the area.
+  const rows = pairs(shops.map((s) => ({ text: `${s.name.slice(0, 22)}${s.owner ? ' · ' + s.owner.slice(0, 14) : ''}${s.locality ? ' · ' + s.locality.slice(0, 12) : ''}`, callback_data: `s:shop:${s.id}` })))
   if (q) rows.push([{ text: `➕ Nayi dukan: ${q.slice(0, 25)}`, callback_data: 's:add' }])
   rows.push([cancelBtn])
   const head = q ? (shops.length ? `"${q}" se ye dukane mili. Chuno, ya nayi jodo:` : `"${q}" naam ki koi dukan nahi. Nayi jodni hai?`)
-    : (shops.length ? 'Kis dukan ka sale? Naam, area ya phone likh kar dhoondho, ya neeche chuno:' : 'Abhi koi dukan nahi hai. Dukan ka naam likho, main jod dunga.')
+    : (shops.length ? 'Kis dukan ka sale? Dukan ka naam, maalik ka naam, area ya phone likh kar dhoondho, ya neeche chuno:' : 'Abhi koi dukan nahi hai. Dukan ka naam likho, main jod dunga.')
   await send(chat, head, rows)
 }
 
@@ -41,14 +44,14 @@ async function showItems(chat, state) {
   const list = (inStock.length ? inStock : cat).slice(0, 30)
   const rows = pairs(list.map((c) => ({ text: `${c.label.replace(/ All Flavours| PET/gi, '').slice(0, 24)} (${c.on_hand})`, callback_data: `s:item:${c.variant_id}` })))
   rows.push([cancelBtn])
-  await send(chat, `🏪 ${state.shop.name}\nKaunsa item? (bracket me stock)`, rows)
+  await send(chat, `🏪 ${shopLabel(state.shop)}\nKaunsa item? (bracket me stock)`, rows)
 }
 
 function cartText(state) {
   const lines = state.lines.map((l, i) => `${i + 1}. ${l.label}: ${l.qty} × ${rs(l.price)} = ${rs(l.qty * l.price)}${l.price < l.floor ? `  ⚠️ loss (floor ${rs(l.floor)})` : ''}${l.stock != null && l.qty > l.stock ? `  ⚠️ stock me sirf ${Math.max(0, l.stock)} peti` : ''}`)
   const total = state.lines.reduce((a, l) => a + l.qty * l.price, 0)
   const margin = state.lines.reduce((a, l) => a + l.qty * (l.price - l.buy), 0)
-  return `🏪 ${state.shop?.name ?? state.newShop?.name}${state.shop ? '' : ' (nayi dukan)'}\n${lines.join('\n')}\n\nTotal: ${rs(total)} · ${state.lines.reduce((a, l) => a + l.qty, 0)} peti · margin ${rs(margin)}`
+  return `🏪 ${state.shop ? shopLabel(state.shop) : state.newShop?.name}${state.shop ? '' : ' (nayi dukan)'}\n${lines.join('\n')}\n\nTotal: ${rs(total)} · ${state.lines.reduce((a, l) => a + l.qty, 0)} peti · margin ${rs(margin)}`
 }
 async function showCart(chat, state) {
   // UPI into a partner's personal account gets its own button, so the money is tracked as held by that person.
@@ -117,11 +120,11 @@ export async function parseLine(text) {
   const [guess, all] = await Promise.all([
     rpc('bot_shop_guess', { p_text: text.slice(0, 300) }).catch(() => []),
     rpc('bot_shops', { p_q: text.split(/[:,]/)[0].trim().slice(0, 40) }).catch(() => [])])
-  const shopList = [...new Map([...guess, ...all, ...shops].map((s) => [s.id, { id: s.id, name: s.name, phone: s.phone, locality: s.locality }])).values()]
+  const shopList = [...new Map([...guess, ...all, ...shops].map((s) => [s.id, { id: s.id, name: s.name, phone: s.phone, locality: s.locality, owner: s.owner ?? null }])).values()]
   const out = await askJson(`Parse this Hindi/Hinglish sale note from a beverage distributor into JSON.
 Note: """${text}"""
-Known shops: ${JSON.stringify(shopList.map((s) => ({ id: s.id, name: s.name, area: s.locality })))}
-Pick shop_id only if the note clearly names that shop (a "Shri"/"Shree" prefix may be left out). If no known shop fits, set shop_id null and put the spoken shop name in new_shop_name.
+Known shops: ${JSON.stringify(shopList.map((s) => ({ id: s.id, name: s.name, owner: s.owner, area: s.locality })))}
+Pick shop_id only if the note clearly names that shop (a "Shri"/"Shree" prefix may be left out), or names its owner ("om prakash ki dukan"). If no known shop fits, set shop_id null and put the spoken shop name in new_shop_name.
 Items: ${JSON.stringify(cat.map((c) => ({ id: c.variant_id, name: c.label, stock: Number(c.on_hand) })))}
 If a spoken item fits several items, use the one with stock > 0. If several items with stock > 0 still fit (e.g. "pepsi" with no size), do NOT add that line: put a short Hinglish note in unclear asking which size.
 "crate", "case", "peti", "dabba", "carton" all mean one case. A number after @ or "ka"/"rate"/"ke"/"me"/"rupay", or the second number for an item (e.g. "sting 50 crate 495" = 50 cases at 495), is the price per case in rupees.
@@ -241,7 +244,7 @@ async function saleStep(chat, user, state, text) {
 async function addShopAndContinue(chat, user, state, phone) {
   try {
     const id = await rpc('bot_add_shop', { p_name: state.newShop.name, p_phone: phone })
-    const next = { ...state, shop: { id, name: state.newShop.name, phone }, newShop: null }
+    const next = { ...state, shop: { id, name: state.newShop.name, phone, owner: null }, newShop: null }
     await send(chat, `✅ Dukan jodi: ${state.newShop.name}${phone ? ' · ' + phone : ''}`)
     if (next.lines.length) { next.step = next.mode ? 'confirm' : 'cart'; if (next.mode) next.action = randomUUID(); await setState(user, next); await (next.mode ? showConfirm : showCart)(chat, next) }
     else { next.step = 'item'; await setState(user, next); await showItems(chat, next) }

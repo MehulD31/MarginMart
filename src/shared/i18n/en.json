@@ -977,7 +977,7 @@
     },
     "form": {
       "shop": "Shop",
-      "searchShop": "Search shop by name, phone or area",
+      "searchShop": "Search shop by name, owner, phone or area",
       "noShop": "No shop found. Add it on the Shops page first.",
       "changeShop": "Change",
       "items": "Items",

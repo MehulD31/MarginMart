@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     const p = await parseLine(heard)
     return res.status(200).json({
       heard,
-      shop: p.shop ? { id: p.shop.id, name: p.shop.name, phone: p.shop.phone ?? null, locality: p.shop.locality ?? null } : null,
+      shop: p.shop ? { id: p.shop.id, name: p.shop.name, phone: p.shop.phone ?? null, locality: p.shop.locality ?? null, owner_name: p.shop.owner ?? null } : null,
       shopHint: p.ambiguous ?? p.newName ?? null,
       lines: p.lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: l.price })),
       mode: p.mode, account_id: p.account?.id ?? null, unclear: p.unclear,

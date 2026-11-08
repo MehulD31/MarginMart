@@ -39,7 +39,7 @@ test('UPI sale paid into Shobhit -> badge, holding, change account, moved to com
   // New sale: UPI into Shobhit's account
   await page.goto('/admin/sales')
   await page.getByRole('button', { name: 'New sale' }).click()
-  await page.getByLabel('Search shop by name, phone or area').fill(SHOP)
+  await page.getByLabel('Search shop by name, owner, phone or area').fill(SHOP)
   await page.getByRole('button', { name: new RegExp(SHOP) }).click()
   await page.getByLabel(/^Add an item/).fill('Sting PET')
   await page.getByRole('button', { name: /Sting PET 250ml/ }).first().click()
