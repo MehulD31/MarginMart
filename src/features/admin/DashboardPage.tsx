@@ -14,7 +14,7 @@ import { isLowStock } from '../../shared/api/db'
 import { useStockRows } from './stockRows'
 import { useMargin } from './marginData'
 import { fixedTotal } from '../../shared/margin'
-import { Insights } from './Insights'
+import { Insights, useInsights } from './Insights'
 import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
 
 const useSetup = () => useQuery({
@@ -90,16 +90,20 @@ export default function DashboardPage() {
   const lowStock = stockRows.rows.filter((r) => r.active && isLowStock(r)).sort((a, b) => a.on_hand - b.on_hand)
 
   const live = useMemo(() => (orders.data ?? []).filter(isLive), [orders.data])
+  // Counter + truck bills are orders too: they count in 'Most ordered' and in the shop / case / value boxes.
+  const ins = useInsights().data
+  const boughtToday = useMemo(() => new Set((ins?.shops ?? []).filter((x) => x.since === 0).map((x) => x.id)), [ins])
   const top = useMemo(() => {
     const qty = new Map<string, number>()
     for (const o of live) for (const l of o.order_line) qty.set(l.variant_id, (qty.get(l.variant_id) ?? 0) + l.qty_ordered)
+    for (const i of ins?.items ?? []) if (i.cases7) qty.set(i.id, (qty.get(i.id) ?? 0) + i.cases7)
     const pk = new Map(packs.data?.map((p) => [p.id, p]))
     return [...qty.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id, n]) => {
       const v = variants.data?.find((x) => x.id === id); const p = v && pk.get(v.pack_id)
       const pn = (hi && p?.name_hi) || p?.name_en || ''
       return { id, n, img: v?.image_path, name: v && v.flavour_en !== p?.name_en ? `${(hi && v.flavour_hi) || v.flavour_en} · ${pn}` : pn }
     })
-  }, [live, packs.data, variants.data, hi])
+  }, [live, ins, packs.data, variants.data, hi])
 
   if (plans.isLoading || setup.isLoading) return <Skeleton rows={6} />
 
@@ -115,11 +119,11 @@ export default function DashboardPage() {
   const hour = Number(new Date(now).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }))
   const greet = t(hour < 12 ? 'dash.morning' : hour < 17 ? 'dash.afternoon' : 'dash.evening', { name: profile?.name.split(' ')[0] ?? '' })
   const total = shops.data?.length ?? 0
-  const orderedShops = new Set(live.map((o) => o.shop_id))
+  const orderedShops = new Set([...live.map((o) => o.shop_id), ...boughtToday])
   const missing = (shops.data ?? []).filter((x) => !orderedShops.has(x.id))
   const pct = total ? Math.round((orderedShops.size / total) * 100) : 0
-  const cases = live.reduce((a, o) => a + linesCases(o), 0)
-  const value = live.reduce((a, o) => a + linesTotal(o), 0)
+  const cases = live.reduce((a, o) => a + linesCases(o), 0) + (ins?.kpi.today.cases ?? 0)
+  const value = live.reduce((a, o) => a + linesTotal(o), 0) + (ins?.kpi.today.value ?? 0)
   // Shops order until midnight before the delivery day (IST).
   const cutoff = day ? new Date(`${day}T00:00:00+05:30`).getTime() - 60_000 : 0
   const left = cutoff - now
@@ -195,8 +199,8 @@ export default function DashboardPage() {
 
       {day && <>
         <div className="stats">
-          <Kpi icon={<Store size={18} />} tone="green" label={t('dash.orders')} value={`${orderedShops.size}`} sub={t('dash.ofShops', { n: total })} />
-          <Kpi icon={<Package size={18} />} tone="blue" label={t('orders.cases')} value={`${cases}`} sub={t('dash.ordersN', { count: live.length })} />
+          <Kpi icon={<Store size={18} />} tone="green" label={t('dash.orders')} value={`${orderedShops.size}`} sub={t('dash.ofShopsSales', { n: total, s: boughtToday.size })} />
+          <Kpi icon={<Package size={18} />} tone="blue" label={t('orders.cases')} value={`${cases}`} sub={t('dash.ordersBills', { o: live.length, b: ins?.kpi.today.bills ?? 0 })} />
           <Kpi icon={<IndianRupee size={18} />} tone="violet" label={t('dash.value')} value={formatPaise(value)} sub={cases ? t('dash.perCase', { v: formatPaise(Math.round(value / cases)) }) : '—'} />
           <Kpi icon={<Phone size={18} />} tone={missing.length ? 'amber' : 'green'} label={t('dash.notOrdered')} value={`${missing.length}`} sub={missing.length ? t('dash.callThem') : t('dash.allIn')} />
         </div>
@@ -220,7 +224,7 @@ export default function DashboardPage() {
             })}
           </div>
           <div className="stack">
-            <h2>{t('dash.topItems')}</h2>
+            <h2>{t('dash.topItems7')}</h2>
             <div className="card">
               {top.length === 0 ? <Empty icon={<TrendingUp size={24} />} title={t('dash.noOrdersYet')} /> : (
                 <ul className="plain-list top-list">{top.map((x) => (

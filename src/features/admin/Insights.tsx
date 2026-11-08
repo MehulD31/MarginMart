@@ -9,7 +9,7 @@ import { formatPaise } from '../../shared/money'
 import { analyze, factsForAI, type Alert, type Analysis, type ShopStat, type Segment } from '../../shared/insights.js'
 import { Alert as Note, Empty, Sheet, Skeleton } from '../../shared/ui/kit'
 
-const useInsights = () => useQuery({
+export const useInsights = () => useQuery({
   queryKey: ['insights'],
   queryFn: async () => analyze(await must<unknown>(supabase.rpc('insights_data', { p_days: 90 }))),
   refetchInterval: 120_000,

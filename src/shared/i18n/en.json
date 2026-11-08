@@ -466,7 +466,10 @@
     "shopsOrdered": "Shops ordered",
     "truckFill": "Truck filled (cases)",
     "topItems": "Most ordered",
-    "noOrdersYet": "No orders yet"
+    "noOrdersYet": "No orders yet",
+    "ofShopsSales": "of {{n}} route shops · {{s}} bought today",
+    "ordersBills": "{{o}} orders · {{b}} bills today",
+    "topItems7": "Most ordered (orders + sales, 7 days)"
   },
   "orders": {
     "title": "Orders",

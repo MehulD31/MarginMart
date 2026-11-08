@@ -28,6 +28,10 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
   await expect(page.getByTestId('ins-kpi').first()).toContainText('Sales today')
   await expect(page.getByText('Needs attention')).toBeVisible()
   await expect(page.getByRole('img', { name: 'Daily sales chart' })).toBeVisible()
+  // counter sales count as orders in the older 'Most ordered' box too
+  const most = page.locator('.stack', { has: page.getByRole('heading', { name: 'Most ordered (orders + sales, 7 days)' }) })
+  await expect(most.locator('.top-list li').first()).toContainText('Sting')
+  await expect(page.getByText(/bills today/).first()).toBeVisible()
 
   await ai.getByRole('button', { name: "Today's plan" }).click()
   await expect(ai.getByText('Paul Aqua ko call karo', { exact: false })).toBeVisible()
