@@ -35,9 +35,11 @@ export async function ask(prompt) {
       try {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST', signal: AbortSignal.timeout(15000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 700 } }) })
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 4096 } })   // thinking models spend tokens before answering })
         const j = await r.json()
-        const t = j?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim()
+        const c = j?.candidates?.[0]
+        const t = c?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? '').join('').trim()
+        if (t && c.finishReason === 'MAX_TOKENS') { console.log('insights-ai cut', model); continue }
         if (t) return { text: t, model }
         console.log('insights-ai', model, r.status, JSON.stringify(j).slice(0, 160))
       } catch (e) { console.log('insights-ai error', model, e.message) }
