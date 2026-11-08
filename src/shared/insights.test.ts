@@ -37,6 +37,7 @@ describe('analyze', () => {
   })
   it('most sold items, stock cover and Pepsi order', () => {
     expect(a.sold[0]).toMatchObject({ id: 'sting', cases: 28, shops: 3 })
+    expect(a.sold[0].topBuyers[0]).toMatchObject({ id: 's1', name: 'Shop s1', cases: 16 })
     const sting = a.items.find((i) => i.id === 'sting')!
     expect(sting.perDay).toBeGreaterThan(0)
     expect(sting.coverDays).toBeLessThanOrEqual(12)

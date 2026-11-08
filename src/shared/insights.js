@@ -59,7 +59,8 @@ export function analyze(data) {
   // ---------- items ----------
   const itemAgg = new Map()
   for (const b of bills) for (const l of b.lines) {
-    const a = itemAgg.get(l.item) ?? { cases: 0, value: 0, margin: 0, cases7: 0, casesPrev7: 0, shops: new Set(), bills: 0, lastDay: null }
+    const a = itemAgg.get(l.item) ?? { cases: 0, value: 0, margin: 0, cases7: 0, casesPrev7: 0, shops: new Set(), byShop: new Map(), bills: 0, lastDay: null }
+    a.byShop.set(b.shop, (a.byShop.get(b.shop) ?? 0) + l.qty)
     a.cases += l.qty; a.value += l.value; a.margin += admin ? l.value - (l.cost ?? 0) : 0; a.shops.add(b.shop); a.bills++
     if (b.day >= addDays(today, -6)) a.cases7 += l.qty
     else if (b.day >= addDays(today, -13)) a.casesPrev7 += l.qty
@@ -76,7 +77,9 @@ export function analyze(data) {
       id: it.id, label: it.label, brand: it.brand, img: it.img, onHand: it.on_hand, low: it.low,
       cases: a?.cases ?? 0, value: a?.value ?? 0, margin: admin && a ? a.margin : null,
       marginPerCase: admin && a?.cases ? Math.round(a.margin / a.cases) : null,
-      shops: a?.shops.size ?? 0, cases7: a?.cases7 ?? 0, trend: a ? pct(a.cases7, a.casesPrev7) : null,
+      shops: a?.shops.size ?? 0,
+      topBuyers: a ? [...a.byShop.entries()].sort((x, y) => y[1] - x[1]).slice(0, 5).map(([id, cases]) => ({ id, name: shopById.get(id)?.name ?? '?', cases })) : [],
+      cases7: a?.cases7 ?? 0, trend: a ? pct(a.cases7, a.casesPrev7) : null,
       perDay: Math.round(perDay * 10) / 10, coverDays: cover == null ? null : Math.floor(cover),
       runOut: cover == null ? null : addDays(today, Math.floor(cover)), lastSold: a?.lastDay ?? null,
       // Pepsi order: enough for 10 days of selling, minus what is in the godown.
@@ -216,7 +219,7 @@ export function factsForAI(a) {
     sales: { today: [a.kpi.today.cases, rs(a.kpi.today.value)], yesterday: [a.kpi.yesterday.cases, rs(a.kpi.yesterday.value)],
       last7: [a.kpi.last7.cases, rs(a.kpi.last7.value), a.kpi.last7.bills + ' bills'], prev7: [a.kpi.prev7.cases, rs(a.kpi.prev7.value)],
       margin7: a.admin ? rs(a.kpi.last7.margin ?? 0) : undefined },
-    top_items: a.sold.slice(0, 8).map((i) => ({ item: i.label, cases: i.cases, shops: i.shops, stock: i.onHand, days_cover: i.coverDays, trend7: i.trend, margin_per_case: a.admin && i.marginPerCase != null ? rs(i.marginPerCase) : undefined })),
+    top_items: a.sold.slice(0, 8).map((i) => ({ item: i.label, cases: i.cases, shops: i.shops, top_buyers: i.topBuyers.slice(0, 4).map((b) => ` `), stock: i.onHand, days_cover: i.coverDays, trend7: i.trend, margin_per_case: a.admin && i.marginPerCase != null ? rs(i.marginPerCase) : undefined })),
     top_shops: a.shops.slice(0, 8).map((s) => ({ shop: s.name, owner: s.owner, area: s.area, bills: s.bills, cases: s.cases, value: rs(s.value), last: s.last, every_days: s.gap, segment: s.segment })),
     call_today: a.callToday.slice(0, 8).map((s) => ({ shop: s.name, days_since: s.since, usual_every: s.gap, likely: s.likely.slice(0, 3).map((l) => `${l.label} ${l.qty}`) })),
     alerts: a.alerts.slice(0, 10),

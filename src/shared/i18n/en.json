@@ -1320,7 +1320,8 @@
       "pairShops": "{{n}} shops",
       "togetherHint": "Offer the second item when a shop orders the first.",
       "dead": "Not selling ({{n}})",
-      "deadHint": "Stock with no sale yet. Push with a small scheme or offer it with best sellers."
+      "deadHint": "Stock with no sale yet. Push with a small scheme or offer it with best sellers.",
+      "topBuyers": "Top buyers: {{list}}"
     },
     "shops": {
       "concentration": "Top 20% of shops give {{p}}% of sales.",

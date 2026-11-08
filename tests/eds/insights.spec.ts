@@ -38,6 +38,7 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
 
   await page.getByRole('tab', { name: /Items/ }).click()
   await expect(page.getByTestId('item-row').first()).toContainText('Sting')
+  await expect(page.getByTestId('item-row').first().getByTestId('top-buyers')).toContainText('Top buyers:')
   await expect(page.getByText('Suggested Pepsi order')).toBeVisible()
 
   await page.getByRole('tab', { name: /^Shops/ }).click()

@@ -261,6 +261,7 @@ function Items({ a }: { a: Analysis }) {
           <tbody>{a.sold.map((i) => (
             <tr key={i.id} data-testid="item-row">
               <td className="lead"><div className="cell-title">{i.label}</div>
+                {i.topBuyers.length > 0 && <div className="cell-sub" data-testid="top-buyers">{t('ins.items.topBuyers', { list: i.topBuyers.slice(0, 3).map((b) => `${b.name} ${b.cases}`).join(', ') })}</div>}
                 <div className="bar" style={{ marginTop: 6 }}><i style={{ width: `${(i.cases / max) * 100}%` }} /></div></td>
               <td data-label={t('ins.items.sold')} className="num"><strong>{i.cases}</strong> <span className="cell-sub">({rs(i.value)})</span> <Delta v={i.trend} /></td>
               <td data-label={t('ins.items.shops')} className="num">{i.shops}</td>

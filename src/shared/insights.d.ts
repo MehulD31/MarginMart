@@ -3,7 +3,7 @@ export interface Line { item: string; qty: number; value: number; cost: number |
 export interface Win { from: string; to: string; bills: number; value: number; cases: number; margin: number | null; shops: number; avgBill: number }
 export interface ItemStat {
   id: string; label: string; brand: string | null; img: string | null; onHand: number; low: number
-  cases: number; value: number; margin: number | null; marginPerCase: number | null; shops: number; cases7: number; trend: number | null
+  cases: number; value: number; margin: number | null; marginPerCase: number | null; shops: number; topBuyers: { id: string; name: string; cases: number }[]; cases7: number; trend: number | null
   perDay: number; coverDays: number | null; runOut: string | null; lastSold: string | null; reorder: number
 }
 export type Segment = 'champion' | 'loyal' | 'new' | 'oneTime' | 'atRisk' | 'lost'
