@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- K.D. Foods "fresh stock arrived" poster, 1080x1350. Data in ?d=<base64 JSON>, see render.mjs.
+     No prices on purpose (public post): only what arrived and how to order. -->
+<html lang="hi"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mukta:wght@500;700;800&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1350px; overflow: hidden; }
+  body { font-family: 'Mukta', sans-serif; color: #fff; position: relative;
+    background: radial-gradient(1200px 800px at 50% 30%, #1f6fe0 0%, #0a3fa8 45%, #062a73 100%); }
+  .rays { position: absolute; inset: 0; background: repeating-conic-gradient(from 0deg at 50% 30%, rgba(255,255,255,.07) 0 6deg, transparent 6deg 18deg); }
+  header { position: absolute; top: 44px; left: 56px; right: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 14px; font-family: 'Baloo 2'; font-weight: 800; font-size: 40px; }
+  .mark { width: 64px; height: 64px; border-radius: 16px; background: #fff; color: #0a3fa8; display: grid; place-items: center; font-size: 30px; }
+  .tag { background: #25a244; padding: 10px 26px; border-radius: 999px; font-weight: 800; font-size: 30px; box-shadow: 0 6px 0 #187a31; }
+  .head { position: absolute; top: 170px; left: 0; right: 0; text-align: center; }
+  .burst { margin: 0 auto; width: 860px; padding: 30px 20px 36px; position: relative; }
+  .burst::before { content: ''; position: absolute; inset: 0; background: #ffd200; border-radius: 40px; transform: rotate(-2deg); box-shadow: 0 18px 0 #c79f00, 0 30px 60px rgba(0,0,0,.35); }
+  .burst .big { position: relative; color: #062a73; font-family: 'Baloo 2'; font-weight: 800; font-size: 120px; line-height: 1.05; }
+  .burst .sub { position: relative; color: #062a73; font-weight: 800; font-size: 40px; }
+  .list { position: absolute; top: 560px; left: 70px; right: 70px; text-align: center; font-family: 'Baloo 2'; font-weight: 800; font-size: 46px; line-height: 1.25; text-shadow: 0 4px 0 rgba(0,0,0,.25); }
+  .shelf { position: absolute; left: 56px; right: 56px; top: 780px; height: 300px; background: #fff; border-radius: 36px; display: flex; align-items: center; justify-content: space-evenly; padding: 18px 20px; box-shadow: 0 22px 50px rgba(0,0,0,.35); overflow: hidden; }
+  .shelf img { height: 260px; width: 190px; object-fit: contain; mix-blend-mode: multiply; filter: brightness(1.12) contrast(1.18) saturate(1.1); }
+  .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 200px; background: #fff; color: #062a73; display: flex; align-items: center; justify-content: space-between; padding: 0 56px; }
+  .valid { font-weight: 800; font-size: 38px; line-height: 1.1; }
+  .valid span { display: block; font-weight: 500; font-size: 28px; color: #4a5a7a; }
+  .call { background: #25a244; color: #fff; border-radius: 22px; padding: 18px 30px; font-weight: 800; font-size: 46px; box-shadow: 0 8px 0 #187a31; }
+  .call span { display: block; font-size: 24px; font-weight: 700; opacity: .9; }
+</style></head>
+<body>
+  <div class="rays"></div>
+  <header>
+    <div class="brand"><div class="mark">KD</div>K.D. Foods</div>
+    <div class="tag" id="tag"></div>
+  </header>
+  <div class="head"><div class="burst"><div class="big" id="big"></div><div class="sub" id="sub"></div></div></div>
+  <div class="list" id="list"></div>
+  <div class="shelf" id="shelf"></div>
+  <div class="foot">
+    <div class="valid" id="valid"></div>
+    <div class="call" id="call"></div>
+  </div>
+<script>
+  const d = JSON.parse(decodeURIComponent(escape(atob(new URLSearchParams(location.search).get('d') || 'e30='))))
+  const set = (id, v) => { document.getElementById(id).textContent = v ?? '' }
+  set('tag', d.tag || 'ताज़ा स्टॉक')
+  set('big', d.big || 'माल आ गया!')
+  set('sub', d.sub || 'गोदाम से सीधे आपकी दुकान तक')
+  // one name never breaks across lines; the bullets sit between whole names
+  const list = document.getElementById('list')
+  ;(d.items || []).slice(0, 6).forEach((t, i) => {
+    if (i) list.append(' • ')
+    const s = document.createElement('span'); s.style.whiteSpace = 'nowrap'; s.textContent = t; list.append(s)
+  })
+  document.getElementById('valid').innerHTML = `${d.valid || 'आज ही ऑर्डर करें'}<span>${d.validSub || 'MarginMart ऐप या WhatsApp'}</span>`
+  document.getElementById('call').innerHTML = `${d.phone || '96300 12636'}<span>ऑर्डर के लिए कॉल / WhatsApp</span>`
+  const shelf = document.getElementById('shelf')
+  for (const src of (d.images || []).slice(0, 5)) { const i = new Image(); i.src = src; shelf.appendChild(i) }
+</script>
+</body></html>

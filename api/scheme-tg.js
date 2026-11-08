@@ -7,7 +7,7 @@
 //                  GH_DISPATCH_TOKEN (fine-grained token: this repo only, Actions read+write), GH_REPO (owner/name)
 
 import { handleSaleMessage, handleSaleTap, handleSaleVoice } from './_sale.js'
-import { handleOpsCommand } from './_ops.js'
+import { handleOpsCommand, handleOpsTap } from './_ops.js'
 
 // Values are trimmed so a stray newline in a Vercel variable can never break a token or a comparison.
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
@@ -40,6 +40,7 @@ export default async function handler(req, res) {
       const q = u.callback_query
       if (!allowed(q.from, q.message?.chat?.id)) { await tg('answerCallbackQuery', { callback_query_id: q.id, text: 'Sirf owners' }); return res.status(200).end() }
       if (String(q.data ?? '').startsWith('s:')) { await handleSaleTap(q); return res.status(200).end() }
+      if (await handleOpsTap(q)) return res.status(200).end()
       const m = /^(ok|no):([0-9a-f-]{36})$/i.exec(q.data ?? '')
       if (!m) return res.status(200).end()
       await tg('answerCallbackQuery', { callback_query_id: q.id, text: m[1] === 'ok' ? 'App me save kar raha hun…' : 'Theek hai' })

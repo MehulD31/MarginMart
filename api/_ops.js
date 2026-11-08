@@ -45,3 +45,21 @@ export async function handleOpsCommand(msg, text) {
   }
   return true
 }
+
+// ❌ "Mat daalo" under a queued social post preview: callback_data "sp:no:<social_post id>".
+export async function handleOpsTap(q) {
+  const m = /^sp:no:([0-9a-f-]{36})$/i.exec(q.data ?? '')
+  if (!m) return false
+  const answer = (text) => fetch(`https://api.telegram.org/bot${env.KD_BOT_TOKEN}/answerCallbackQuery`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callback_query_id: q.id, text }) }).catch(() => null)
+  try {
+    const r = await rpc('bot_social_skip', { p_id: m[1] })
+    await answer(r === 'skipped' ? 'Theek hai, post nahi hoga' : r === 'posted' ? 'Ye pehle hi post ho chuka' : 'Ye post ab queue me nahi')
+    if (r === 'skipped') {
+      await fetch(`https://api.telegram.org/bot${env.KD_BOT_TOKEN}/editMessageReplyMarkup`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: q.message.chat.id, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }) }).catch(() => null)
+      await send(q.message.chat.id, `❌ ${q.from?.first_name ?? ''}: ye post nahi jayega.`)
+    }
+  } catch (e) { await answer(`Error: ${String(e.message).slice(0, 150)}`) }
+  return true
+}
