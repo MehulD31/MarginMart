@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Boxes, Calculator, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BookOpen, Boxes, Calculator, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, Building2, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { isLowStock, useStock } from '../../shared/api/db'
 import { useMoneyHoldings } from './money'
@@ -29,6 +29,7 @@ import SchemesPage from './SchemesPage'
 import LivePage from './LivePage'
 import CounterSalesPage from './CounterSalesPage'
 import MoneyPage from './MoneyPage'
+import BusinessPage from './BusinessPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -72,6 +73,7 @@ export default function AdminApp() {
     { to: 'catalog', label: t('nav.catalog'), icon: Package },
     { to: 'prices', label: t('nav.prices'), icon: Tags },
     { to: 'network', label: t('nav.network'), icon: RouteIcon },
+    ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'business', label: t('nav.business'), icon: Building2 }] : []),
   ]
   const people: Item[] = [
     { to: 'join-requests', label: t('nav.joinRequests'), icon: Inbox, badge: joins },
@@ -127,6 +129,7 @@ export default function AdminApp() {
           <Route path="sales" element={<CounterSalesPage />} />
           <Route path="khata" element={<KhataPage />} />
           <Route path="money" element={<MoneyPage />} />
+          <Route path="business" element={<BusinessPage />} />
           <Route path="closing" element={<ClosingPage />} />
           <Route path="audit" element={<AuditPage />} />
           <Route path="inventory" element={<InventoryPage />} />

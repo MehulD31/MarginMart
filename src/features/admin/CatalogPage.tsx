@@ -12,6 +12,9 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 
+/** GST slabs in use for drinks (2026): 40% fizzy/caffeinated, 5% juice/milk/water, 18% some waters, 0% exempt. */
+const GST_RATES = [0, 5, 18, 40]
+
 export default function CatalogPage() {
   const { t } = useTranslation()
   const { profile } = useAuth()
@@ -48,7 +51,8 @@ export default function CatalogPage() {
                 <ProductImage path={vs.find((v) => v.image_path)?.image_path} name={p.name_en} size={64} />
                 <div className="grow">
                   <div className="cell-title">{p.name_en}</div>
-                  <div className="cell-sub">{t('catalog.caseOf', { n: p.units_per_case })} · MRP {formatPaise(p.mrp_paise)}</div>
+                  <div className="cell-sub">{t('catalog.caseOf', { n: p.units_per_case })} · MRP {formatPaise(p.mrp_paise)}{p.hsn ? ` · GST ${p.gst_rate_bp / 100}%` : ''}</div>
+                  {!p.hsn && p.active && <span className="badge badge-amber" style={{ marginTop: 4 }}>{t('catalog.gstMissing')}</span>}
                   <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                     <span className="badge">{t('catalog.nFlavours', { count: vs.length })}</span>
                     {p.is_returnable && <span className="badge badge-amber"><Recycle size={12} aria-hidden="true" />{t('catalog.returnable')}</span>}
@@ -74,6 +78,7 @@ function PackEditor({ pack, variants, canEdit }: { pack: Pack; variants: Variant
   const [form, setForm] = useState({
     name_en: pack.name_en, name_hi: pack.name_hi ?? '', units: String(pack.units_per_case),
     mrp: String(pack.mrp_paise / 100), returnable: pack.is_returnable, active: pack.active,
+    hsn: pack.hsn ?? '', gst: String(pack.gst_rate_bp / 100),
   })
   const [msg, setMsg] = useState<Msg>(null)
 
@@ -84,12 +89,14 @@ function PackEditor({ pack, variants, canEdit }: { pack: Pack; variants: Variant
       await must(supabase.from('pack').update({
         name_en: form.name_en.trim(), name_hi: form.name_hi.trim() || null, units_per_case: Number(form.units),
         mrp_paise: rupeesToPaise(Number(form.mrp)), is_returnable: form.returnable, active: form.active,
+        hsn: form.hsn.trim() || null, gst_rate_bp: Math.round(Number(form.gst) * 100),
       }).eq('id', pack.id).select())
       setMsg({ kind: 'success', text: t('common.saved') })
       void qc.invalidateQueries({ queryKey: ['pack'] })
     } catch (err) { setMsg({ kind: 'error', text: errorMessage(t, err) }) }
   }
-  const valid = form.name_en.trim() && Number(form.units) >= 1 && Number(form.mrp) > 0
+  const hsnOk = !form.hsn.trim() || /^\d{4,8}$/.test(form.hsn.trim())
+  const valid = form.name_en.trim() && Number(form.units) >= 1 && Number(form.mrp) > 0 && hsnOk && GST_RATES.includes(Number(form.gst))
 
   return (
     <div className="stack-lg">
@@ -100,7 +107,11 @@ function PackEditor({ pack, variants, canEdit }: { pack: Pack; variants: Variant
             <label className="field"><span>{t('catalog.nameHi')}</span><input lang="hi" value={form.name_hi} onChange={(e) => setForm({ ...form, name_hi: e.target.value })} /></label>
             <label className="field"><span>{t('catalog.unitsPerCase')}</span><input type="number" inputMode="numeric" min={1} value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} /></label>
             <label className="field"><span>{t('catalog.mrpPerUnit')}</span><input type="number" inputMode="decimal" min={0} step="0.5" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} /></label>
+            <label className="field"><span>{t('catalog.hsn')}</span><input inputMode="numeric" maxLength={8} value={form.hsn} aria-invalid={!hsnOk} onChange={(e) => setForm({ ...form, hsn: e.target.value.replace(/\D/g, '') })} /></label>
+            <label className="field"><span>{t('catalog.gstRate')}</span>
+              <select value={form.gst} onChange={(e) => setForm({ ...form, gst: e.target.value })}>{GST_RATES.map((r) => <option key={r} value={String(r)}>{r}%</option>)}</select></label>
           </div>
+          <p className="cell-sub">{t('catalog.gstHint')}</p>
           <div className="row" style={{ flexWrap: 'wrap' }}>
             <label className="chip"><input type="checkbox" checked={form.returnable} onChange={(e) => setForm({ ...form, returnable: e.target.checked })} />{t('catalog.returnableLabel')}</label>
             <label className="chip"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />{t('catalog.activeLabel')}</label>
