@@ -285,7 +285,19 @@ async function ask() {
   await say(`ðŸ¤– ${String(a?.reply ?? 'Jawab nahi bana, dobara poochho.').slice(0, 3500)}`)
 }
 
-const jobs = { morning, night, weekly, events, month, watchdog, social, ask }
+// Which chat is the bot actually wired to? Prints names only (no tokens), so the owner can match it with the group they use.
+async function diag() {
+  const bot = (await (await fetch(`https://api.telegram.org/bot${env('KD_BOT_TOKEN')}/getMe`)).json()).result
+  console.log('bot', bot?.username, 'id', bot?.id, 'can_read_all_group_messages', bot?.can_read_all_group_messages)
+  const c = await (await fetch(`https://api.telegram.org/bot${env('KD_BOT_TOKEN')}/getChat?chat_id=${encodeURIComponent(env('KD_CHAT_ID'))}`)).json()
+  console.log('KD_CHAT_ID chat:', c.ok ? JSON.stringify({ id: c.result.id, type: c.result.type, title: c.result.title, migrated: c.result.migrate_to_chat_id ?? null }) : JSON.stringify(c))
+  const n = await (await fetch(`https://api.telegram.org/bot${env('KD_BOT_TOKEN')}/getChatMemberCount?chat_id=${encodeURIComponent(env('KD_CHAT_ID'))}`)).json()
+  console.log('members', JSON.stringify(n.result ?? n))
+  const w = (await (await fetch(`https://api.telegram.org/bot${env('KD_BOT_TOKEN')}/getWebhookInfo`)).json()).result ?? {}
+  console.log('webhook', JSON.stringify({ url: w.url, pending: w.pending_update_count, last_error: w.last_error_message ?? null, last_error_at: w.last_error_date ? new Date(w.last_error_date * 1000).toISOString() : null, allowed_updates: w.allowed_updates ?? null }))
+}
+
+const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)
