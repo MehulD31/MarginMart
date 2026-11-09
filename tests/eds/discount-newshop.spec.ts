@@ -35,6 +35,12 @@ test('New shop from the sale screen + discount: total, card and margin', async (
   await page.getByRole('button', { name: 'New shop' }).click()
   const f = page.getByTestId('new-shop-form')
   await expect(f.getByLabel(/Shop name/)).toHaveValue(SHOP)               // what was typed in search carries over
+  // a typo gets a one-tap fix
+  await f.getByLabel(/Shop name/).fill(`${SHOP} Daily Needa`)
+  await f.getByTestId('name-hint').getByRole('button', { name: `${SHOP} Daily Needs` }).click()
+  await expect(f.getByLabel(/Shop name/)).toHaveValue(`${SHOP} Daily Needs`)
+  await expect(f.getByTestId('name-hint')).toHaveCount(0)
+  await f.getByLabel(/Shop name/).fill(SHOP)
   const save = f.getByRole('button', { name: 'Add shop and use it' })
   await expect(save).toBeDisabled()
   await f.getByLabel(/Owner name/).fill(OWNER)

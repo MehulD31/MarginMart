@@ -8,6 +8,7 @@ import { callFunction } from '../../shared/api/functions'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert } from '../../shared/ui/kit'
 import { PinIssued, type Issued } from './PinIssued'
+import { suggestName } from '../../shared/spelling'
 
 export interface NewShop { id: string; name: string; phone: string | null; locality: string | null; owner_name: string | null }
 
@@ -51,7 +52,8 @@ export function NewShopForm({ initialName = '', onDone, onCancel }: { initialNam
     <form className="card stack" onSubmit={submit} noValidate data-testid="new-shop-form" style={{ padding: '12px' }}>
       <span className="cell-title row"><Store size={18} aria-hidden="true" />{t('newShop.title')}</span>
       <div className="form-grid">
-        <label className="field"><span>{t('newShop.name')} *</span><input autoFocus maxLength={100} value={f.name} onChange={(e) => set('name')(e.target.value)} /></label>
+        <label className="field"><span>{t('newShop.name')} *</span><input autoFocus maxLength={100} value={f.name} onChange={(e) => set('name')(e.target.value)} />
+        {suggestName(f.name) && <span className="hint" data-testid="name-hint">{t('newShop.didYouMean')} <button type="button" className="btn-sm ghost" onClick={() => set('name')(suggestName(f.name)!)}>{suggestName(f.name)}</button></span>}</label>
         <label className="field"><span>{t('newShop.owner')} *</span><input maxLength={100} value={f.owner} onChange={(e) => set('owner')(e.target.value)} /></label>
         <label className="field"><span>{t('newShop.phone')} *</span>
           <input type="tel" inputMode="numeric" maxLength={10} value={f.phone} aria-invalid={f.phone.length > 0 && !phoneOk}

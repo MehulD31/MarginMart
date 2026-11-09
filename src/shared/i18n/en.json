@@ -1123,7 +1123,8 @@
     "login": "Also create app login (PIN)",
     "save": "Add shop and use it",
     "phoneUsed": "This number already belongs to {{name}}. Search for that shop instead.",
-    "loginFailed": "Shop added, but the login was not made: {{msg}}"
+    "loginFailed": "Shop added, but the login was not made: {{msg}}",
+    "didYouMean": "Did you mean"
   },
   "trip": {
     "title": "Loading",
