@@ -53,7 +53,7 @@ describe('analyze', () => {
     expect(a.callToday.map((s) => s.id)).toContain('s1')
     expect(a.callToday.map((s) => s.id)).not.toContain('s2')   // bought today
     const s2 = a.shops.find((s) => s.id === 's2')!
-    expect(s2).toMatchObject({ gap: 7, since: 0, overdue: 50000 })
+    expect(s2).toMatchObject({ gap: 7, since: 0, overdue: 50000, cases7: 4 })
   })
   it('segments and recommendations', () => {
     expect(a.shops.find((s) => s.id === 's3')!.segment).toBe('new')

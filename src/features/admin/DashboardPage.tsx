@@ -126,6 +126,9 @@ export default function DashboardPage() {
   const hour = Number(new Date(now).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }))
   const greet = t(hour < 12 ? 'dash.morning' : hour < 17 ? 'dash.afternoon' : 'dash.evening', { name: profile?.name.split(' ')[0] ?? '' })
   const total = shops.data?.length ?? 0
+  const topShops = (ins?.shops ?? []).map((x) => {
+    return { id: x.id, name: x.name, owner: x.owner, cases: x.cases7, top: x.likely.slice(0, 2).map((l) => `${l.label} ×${l.qty}`).join(', ') }
+  }).filter((x) => x.cases > 0).sort((a, b) => b.cases - a.cases).slice(0, 6)
   const orderedShops = new Set([...live.map((o) => o.shop_id), ...boughtToday])
   const missing = (shops.data ?? []).filter((x) => !orderedShops.has(x.id))
   const cases = live.reduce((a, o) => a + linesCases(o), 0) + (ins?.kpi.today.cases ?? 0)
@@ -208,16 +211,16 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {day && live.length > 0 && <>
-        <div className="stats">
-          <Kpi icon={<Store size={18} />} tone="green" label={t('dash.orders')} value={`${orderedShops.size}`} sub={t('dash.ofShopsSales', { n: total, s: boughtToday.size })} />
+      {(live.length > 0 || (ins?.kpi.all.bills ?? 0) > 0) && <>
+        <div className="stats" data-testid="today-boxes">
+          <Kpi icon={<Store size={18} />} tone="green" label={t('dash.orders')} value={`${orderedShops.size}`} sub={total ? t('dash.ofShopsSales', { n: total, s: boughtToday.size }) : t('dash.boughtTodaySub', { n: boughtToday.size, w: ins?.kpi.last7.shops ?? 0 })} />
           <Kpi icon={<Package size={18} />} tone="blue" label={t('orders.cases')} value={`${cases}`} sub={t('dash.ordersBills', { o: live.length, b: ins?.kpi.today.bills ?? 0 })} />
           <Kpi icon={<IndianRupee size={18} />} tone="violet" label={t('dash.value')} value={formatPaise(value)} sub={cases ? t('dash.perCase', { v: formatPaise(Math.round(value / cases)) }) : '—'} />
           <Kpi icon={<Phone size={18} />} tone={missing.length ? 'amber' : 'green'} label={t('dash.notOrdered')} value={`${missing.length}`} sub={missing.length ? t('dash.callThem') : t('dash.allIn')} />
         </div>
 
         <div className="dash-grid">
-          <div className="stack">
+          {live.length > 0 ? <div className="stack">
             <h2>{t('dash.routes')}</h2>
             {dayPlans.map((p) => {
               const os = live.filter((o) => o.route_day_plan_id === p.id)
@@ -233,8 +236,20 @@ export default function DashboardPage() {
                   <div className="cell-sub num">{formatPaise(os.reduce((a, o) => a + linesTotal(o), 0))}</div>
                 </Link>)
             })}
-          </div>
-          <div className="stack">
+          </div> : (
+          <div className="stack" data-testid="top-shops">
+            <h2>{t('dash.topShops7')}</h2>
+            <div className="card">
+              {!topShops.length ? <Empty icon={<Store size={24} />} title={t('dash.noOrdersYet')} /> : (
+                <ul className="plain-list top-list">{topShops.map((x) => (
+                  <li key={x.id}><span className="avatar-sm" aria-hidden="true">{initials(x.name)}</span>
+                    <div className="grow"><div className="row-between"><span className="cell-title">{x.name}{x.owner ? <span className="muted"> · {x.owner}</span> : null}</span><strong className="num">{x.cases}</strong></div>
+                      <div className="bar"><i style={{ width: `${(x.cases / (topShops[0]?.cases || 1)) * 100}%` }} /></div>
+                      <div className="cell-sub">{x.top}</div></div></li>))}
+                </ul>)}
+            </div>
+          </div>)}
+          <div className="stack" data-testid="most-ordered">
             <h2>{t('dash.topItems7')}</h2>
             <div className="card">
               {top.length === 0 ? <Empty icon={<TrendingUp size={24} />} title={t('dash.noOrdersYet')} /> : (
@@ -248,7 +263,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="stack">
+        {total > 0 && <div className="stack">
           <div className="row-between"><h2>{t('dash.callList', { n: missing.length })}</h2>
             <Link to="/admin/orders" className="button btn-sm"><ClipboardList size={16} aria-hidden="true" />{t('orders.new')}</Link></div>
           {missing.length === 0 ? <p className="muted">{t('dash.allOrdered')}</p> : (
@@ -258,7 +273,7 @@ export default function DashboardPage() {
                 <td className="actions">{x.phone && <a className="button btn-sm" href={`tel:+91${x.phone}`}><Phone size={16} aria-hidden="true" />{t('shops.call')}</a>}</td></tr>))}
             </tbody></table></div>
           )}
-        </div>
+        </div>}
       </>}
     </section>
   )

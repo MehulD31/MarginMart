@@ -475,9 +475,13 @@
     "noOrdersYet": "No orders yet",
     "ofShopsSales": "of {{n}} route shops · {{s}} bought today",
     "ordersBills": "{{o}} orders · {{b}} bills today",
-    "topItems7": "Most ordered (orders + sales, 7 days)",
+    "topItems7": "Most ordered (sales + deliveries + orders, 7 days)",
     "heroSales": "Sales today {{v}} · {{c}} cases · {{b}} bills",
-    "ringToday": "{{n}} of {{total}} shops buying this week bought today"
+    "ringToday": "{{n}} of {{total}} shops buying this week bought today",
+    "boughtTodaySub": "{{n}} bought today · {{w}} this week",
+    "week": "Last 7 days",
+    "weekSub": "{{c}} cases · {{b}} bills",
+    "topShops7": "Top shops (7 days)"
   },
   "orders": {
     "title": "Orders",

@@ -10,7 +10,7 @@ export type Segment = 'champion' | 'loyal' | 'new' | 'oneTime' | 'atRisk' | 'los
 export interface Rec { item: string; label: string; score: number; onHand: number }
 export interface ShopStat {
   id: string; name: string; owner: string | null; phone: string | null; area: string | null; route: string | null
-  bills: number; days: number; cases: number; value: number; margin: number | null; first: string; last: string; since: number
+  bills: number; days: number; cases: number; cases7: number; value: number; margin: number | null; first: string; last: string; since: number
   gap: number | null; nextDue: string | null; lateBy: number | null; avgBill: number; likelyValue: number
   likely: { item: string; label: string; qty: number; times: number }[]; balance: number; overdue: number
   segment: Segment; recommend: Rec[]; reason?: 'late' | 'due' | 'firstRepeat'

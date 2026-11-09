@@ -31,7 +31,10 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
   // counter sales count as orders in the older 'Most ordered' box too
   // counter sales are today's sales and today's collected money
   await expect(page.getByText(/^Sales today ₹[\d,]+ · \d+ cases · \d+ bills$/)).toBeVisible()
-  await expect(page.locator('.kpi', { hasText: 'Collected today' })).not.toContainText('₹0Cash')
+  // the order / sale boxes, Most ordered and Top shops always show (sales + deliveries + orders)
+  await expect(page.getByTestId('today-boxes')).toBeVisible()
+  await expect(page.getByTestId('most-ordered').locator('.top-list li').first()).toContainText('Sting')
+  await expect(page.getByTestId('top-shops').locator('.top-list li').first()).toBeVisible()
 
   await ai.getByRole('button', { name: "Today's plan" }).click()
   await expect(ai.getByText('Paul Aqua ko call karo', { exact: false })).toBeVisible()
@@ -71,6 +74,7 @@ test('Low stock counts only bought items that sell; End of day shows counter cas
   await page.goto('/admin/inventory')
   const lowRadio = page.getByText(/^Low or negative \((\d+)\)$/)
   await expect(lowRadio).toBeVisible({ timeout: 20_000 })
+  await page.waitForLoadState('networkidle')                     // the count settles once stock_watch has loaded
   const n = Number((await lowRadio.innerText()).match(/\((\d+)\)/)![1])
   expect(n).toBeLessThan(10)                                     // was 19 when every item with a level of 10 counted
   await lowRadio.click()

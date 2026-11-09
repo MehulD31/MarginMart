@@ -107,7 +107,8 @@ export function analyze(data) {
     const due = data.dues?.[id]
     return {
       id, name: s.name, owner: s.owner ?? null, phone: s.phone ?? null, area: s.area ?? null, route: s.route ?? null,
-      bills: bs.length, days: days.length, cases: sum(bs, (b) => b.cases), value, margin: admin ? sum(bs, (b) => b.margin) : null,
+      bills: bs.length, days: days.length, cases: sum(bs, (b) => b.cases), value,
+      cases7: sum(bs.filter((b) => b.day >= addDays(today, -6)), (b) => b.cases), margin: admin ? sum(bs, (b) => b.margin) : null,
       first: days[0], last, since, gap, nextDue: gap ? addDays(last, Math.round(gap)) : null,
       lateBy: gap ? since - Math.round(gap) : null, avgBill: Math.round(value / bs.length), likely,
       likelyValue: sum(likely, (l) => l.qty * (sum(bs.flatMap((b) => b.lines.filter((x) => x.item === l.item)), (x) => x.value) / Math.max(1, sum(bs.flatMap((b) => b.lines.filter((x) => x.item === l.item)), (x) => x.qty)))),
