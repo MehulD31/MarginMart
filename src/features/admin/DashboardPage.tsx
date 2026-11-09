@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Boxes, Scale, Wallet, CircleCheck, Circle, ClipboardList, IndianRupee, Package, Phone, Store, Truck, TrendingUp } from 'lucide-react'
+import { AlertTriangle, Boxes, Scale, Wallet, ClipboardList, IndianRupee, Package, Phone, Store, Truck, TrendingUp } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must, usePacks, useVariants, useVehicles, type Shop } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
@@ -17,21 +17,6 @@ import { fixedTotal } from '../../shared/margin'
 import { Insights } from './Insights'
 import { useInsights } from './useInsights'
 import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
-
-const useSetup = () => useQuery({
-  queryKey: ['setup-status'],
-  queryFn: async () => {
-    const count = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0
-    const [shops, live, drivers, photos, flavours] = await Promise.all([
-      count(supabase.from('shop').select('id', { count: 'exact', head: true }).eq('active', true)),
-      count(supabase.from('price_list').select('id', { count: 'exact', head: true }).eq('status', 'active')),
-      count(supabase.from('profiles').select('user_id', { count: 'exact', head: true }).eq('role', 'driver').eq('active', true)),
-      count(supabase.from('variant').select('id', { count: 'exact', head: true }).eq('active', true).not('image_path', 'is', null)),
-      count(supabase.from('variant').select('id', { count: 'exact', head: true }).eq('active', true)),
-    ])
-    return { shops, live, drivers, photos, flavours }
-  },
-})
 
 type Handover = { expected_cash_paise: number; handed_cash_paise: number; stock_diff: unknown[]; received_at: string | null }
 
@@ -75,7 +60,6 @@ export default function DashboardPage() {
   const fmt = useLocaleDate()
   const now = useNow()
   const plans = usePlans()
-  const setup = useSetup()
   const money = useMoney()
   const packs = usePacks()
   const variants = useVariants()
@@ -112,16 +96,7 @@ export default function DashboardPage() {
     })
   }, [live, ins, packs.data, variants.data, hi])
 
-  if (plans.isLoading || setup.isLoading) return <Skeleton rows={6} />
-
-  const s = setup.data!
-  const steps = [
-    { done: s.live > 0, label: t('dash.stepPrices'), to: '/admin/prices' },
-    { done: s.shops > 0, label: t('dash.stepShops'), to: '/admin/shops' },
-    { done: s.drivers > 0, label: t('dash.stepDrivers'), to: '/admin/users' },
-    { done: s.flavours > 0 && s.photos >= s.flavours, label: t('dash.stepPhotos', { n: s.photos, total: s.flavours }), to: '/admin/catalog' },
-  ]
-  const setupLeft = steps.filter((x) => !x.done).length
+  if (plans.isLoading) return <Skeleton rows={6} />
 
   const hour = Number(new Date(now).toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }))
   const greet = t(hour < 12 ? 'dash.morning' : hour < 17 ? 'dash.afternoon' : 'dash.evening', { name: profile?.name.split(' ')[0] ?? '' })
@@ -157,15 +132,6 @@ export default function DashboardPage() {
 
       <Insights />
 
-      {setupLeft > 0 && (
-        <div className="card stack">
-          <div className="row-between"><h2>{t('dash.setupTitle')}</h2><span className="badge badge-amber">{t('dash.setupLeft', { n: setupLeft })}</span></div>
-          <ul className="plain-list checklist">{steps.map((x) => (
-            <li key={x.to}><Link to={x.to} className={x.done ? 'done' : ''}>
-              {x.done ? <CircleCheck size={20} aria-hidden="true" /> : <Circle size={20} aria-hidden="true" />}<span>{x.label}</span></Link></li>))}
-          </ul>
-        </div>
-      )}
 
       {money.data && (
         <div className="stack">
