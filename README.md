@@ -64,3 +64,7 @@ pg_restore --no-owner --no-privileges --clean --if-exists -d "<target db url>" d
 `.github/workflows/scheme.yml` is started by the bot on the `main` branch, so bot script changes only take effect once they are on `main`. Repo secrets: `KD_BOT_TOKEN`, `KD_CHAT_ID`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_FREE_KEY`, `GROQ_API_KEY`.
 
 Before the pilot, run `supabase/qa/teardown.sql` to remove test data and restart bill numbers.
+
+## Photo credits
+
+- Creambell Kesar Badam 180 ml product photo: [Open Food Facts](https://world.openfoodfacts.org/product/8906023416656), licensed CC BY-SA 3.0.
