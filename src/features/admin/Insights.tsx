@@ -239,9 +239,10 @@ function CallList({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void })
           <span className="grow" style={{ textAlign: 'left' }}><span className="cell-title">{s.name}</span>{s.owner && <span className="muted"> · {s.owner}</span>}
             <span className="cell-sub" style={{ display: 'block' }}>{[s.area, s.phone].filter(Boolean).join(' · ')}</span></span>
           <span className={`badge ${s.lateBy != null && s.lateBy > 0 ? 'badge-amber' : 'badge-blue'}`}>
-            {s.gap ? (s.lateBy! > 0 ? t('ins.call.late', { n: s.lateBy }) : s.lateBy === 0 ? t('ins.call.dueToday') : t('ins.call.dueIn', { n: -s.lateBy! })) : t('ins.call.repeat')}</span>
+            {s.gap ? (s.lateBy! > 0 ? t('ins.call.late', { count: s.lateBy! }) : s.lateBy === 0 ? t('ins.call.dueToday') : t('ins.call.dueIn', { count: -s.lateBy! })) : t('ins.call.repeat')}</span>
         </button>
-        <p className="cell-sub">{s.gap ? t('ins.call.rhythm', { g: Math.round(s.gap), d: s.since, v: rs(s.avgBill) }) : t('ins.call.once', { d: s.since, v: rs(s.avgBill) })}</p>
+        <p data-testid="call-why">{s.gap ? (s.lateBy! > 0 ? t('ins.call.whyLate', { g: Math.round(s.gap), count: s.since }) : t('ins.call.whyDue', { g: Math.round(s.gap), count: s.since })) : t('ins.call.whyOnce', { count: s.since })}</p>
+        <p className="cell-sub">{t('ins.call.avg', { v: rs(s.avgBill) })} · {t('ins.call.usualLabel')}</p>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
           {s.likely.slice(0, 3).map((l) => <span key={l.item} className="badge badge-green">{l.label} × {l.qty}</span>)}
           {s.recommend.slice(0, 1).map((r) => <span key={r.item} className="badge badge-blue">✨ {t('ins.call.try', { item: r.label })}</span>)}

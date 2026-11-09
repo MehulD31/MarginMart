@@ -46,6 +46,9 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
   await expect(ai.getByText('Abhilash sabse zyada Sting')).toBeVisible()
   expect(sent.question).toBe('Which items make me the most money?')
 
+  // Call today cards say in plain words why to call
+  const callCard = page.getByTestId('call-card').first()
+  if (await callCard.count()) await expect(callCard.getByTestId('call-why')).toContainText(/Buys about every|Bought once/)
   await page.getByRole('tab', { name: /Items/ }).click()
   await expect(page.getByTestId('item-row').first()).toContainText('Sting')
   await expect(page.getByTestId('item-row').first().getByTestId('top-buyers')).toContainText('Top buyers:')
