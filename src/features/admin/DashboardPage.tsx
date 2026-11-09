@@ -8,6 +8,8 @@ import { must, usePacks, useVariants, useVehicles, type Shop } from '../../share
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { Empty, Skeleton } from '../../shared/ui/kit'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 import { ProductImage } from '../../shared/ui/ProductImage'
 import { initials } from '../../shared/ui/util'
 import { lowIds, useStockWatch } from '../../shared/api/db'
@@ -123,11 +125,6 @@ export default function DashboardPage() {
           {ins && <p className="hero-sub">{t('dash.heroSales', { v: formatPaise(Math.round(ins.kpi.today.value / 100) * 100), c: ins.kpi.today.cases, b: ins.kpi.today.bills })}</p>}
           {day && live.length > 0 && <p className="hero-sub">{t('dash.heroLine', { routes: dayPlans.map((p) => p.route.name).join(', ') })} · <strong>{leftLabel}</strong></p>}
         </div>
-        {ins && ins.kpi.last7.shops > 0 && (
-          <div className="ring" style={{ ['--p' as string]: Math.round((boughtToday.size / ins.kpi.last7.shops) * 100) }} role="img" aria-label={t('dash.ringToday', { n: boughtToday.size, total: ins.kpi.last7.shops })}>
-            <span><b>{boughtToday.size}</b><small>/ {ins.kpi.last7.shops}</small></span>
-          </div>
-        )}
       </section>
 
       <Insights />
@@ -232,16 +229,30 @@ export default function DashboardPage() {
         {total > 0 && <div className="stack">
           <div className="row-between"><h2>{t('dash.callList', { n: missing.length })}</h2>
             <Link to="/admin/orders" className="button btn-sm"><ClipboardList size={16} aria-hidden="true" />{t('orders.new')}</Link></div>
-          {missing.length === 0 ? <p className="muted">{t('dash.allOrdered')}</p> : (
-            <div className="table-wrap"><table className="table-stack"><tbody>{missing.map((x) => (
-              <tr key={x.id}><td className="lead"><div className="row"><span className="avatar-sm" aria-hidden="true">{initials(x.name)}</span>
-                <div><div className="cell-title">{x.name}</div><div className="cell-sub">{[x.owner_name, x.phone].filter(Boolean).join(' · ')}</div></div></div></td>
-                <td className="actions">{x.phone && <a className="button btn-sm" href={`tel:+91${x.phone}`}><Phone size={16} aria-hidden="true" />{t('shops.call')}</a>}</td></tr>))}
-            </tbody></table></div>
-          )}
+          {missing.length === 0 ? <p className="muted">{t('dash.allOrdered')}</p> : <CallShops shops={missing} />}
         </div>}
       </>}
     </section>
+  )
+}
+
+/** Route shops that have not ordered yet: searchable, 20 at a time. */
+function CallShops({ shops }: { shops: Shop[] }) {
+  const { t } = useTranslation()
+  const [q, setQ] = useState('')
+  const ql = q.trim().toLowerCase()
+  const list = ql ? shops.filter((x) => `${x.name} ${x.owner_name ?? ''} ${x.phone ?? ''} ${x.locality ?? ''}`.toLowerCase().includes(ql)) : shops
+  const pg = usePaged(list, 20)
+  return (
+    <div className="stack" data-testid="call-shops">
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ins.shops.search')} aria-label={t('ins.shops.search')} style={{ maxWidth: 420 }} />
+      <div className="table-wrap"><table className="table-stack"><tbody>{pg.rows.map((x) => (
+        <tr key={x.id}><td className="lead"><div className="row"><span className="avatar-sm" aria-hidden="true">{initials(x.name)}</span>
+          <div><div className="cell-title">{x.name}</div><div className="cell-sub">{[x.owner_name, x.locality, x.phone].filter(Boolean).join(' · ')}</div></div></div></td>
+          <td className="actions">{x.phone && <a className="button btn-sm" href={`tel:+91${x.phone}`}><Phone size={16} aria-hidden="true" />{t('shops.call')}</a>}</td></tr>))}
+        {!list.length && <tr><td className="muted">{t('common.noMatches')}</td></tr>}
+      </tbody></table><Pager p={pg} /></div>
+    </div>
   )
 }
 
