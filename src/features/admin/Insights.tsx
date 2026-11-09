@@ -8,6 +8,8 @@ import { formatPaise } from '../../shared/money'
 import { useInsights } from './useInsights'
 import { factsForAI, type Alert, type Analysis, type ShopStat, type Segment } from '../../shared/insights.js'
 import { Alert as Note, Empty, Sheet, Skeleton } from '../../shared/ui/kit'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 const rs = (p: number) => formatPaise(Math.round(p / 100) * 100)          // whole rupees: easier to read
 const short = (p: number) => (Math.abs(p) >= 1e7 ? `₹${(p / 1e7).toFixed(1)}L` : Math.abs(p) >= 1e5 ? `₹${(p / 1e5).toFixed(1)}k` : rs(p))
@@ -259,6 +261,7 @@ function Items({ a }: { a: Analysis }) {
   const [copied, setCopied] = useState(false)
   const order = a.sold.filter((i) => i.reorder > 0)
   const max = a.sold[0]?.cases ?? 1
+  const pgItems = usePaged(a.sold, 15)
   const copy = async () => {
     const text = `${t('ins.items.pepsiHead', { d: a.today })}\n${order.map((i) => `• ${i.label}: ${i.reorder}`).join('\n')}\n${t('ins.items.total', { n: order.reduce((s, i) => s + i.reorder, 0) })}`
     await navigator.clipboard?.writeText(text).catch(() => undefined); setCopied(true); setTimeout(() => setCopied(false), 2500)
@@ -269,7 +272,7 @@ function Items({ a }: { a: Analysis }) {
         <div className="table-wrap"><table className="table-stack" aria-label={t('ins.items.title')}>
           <thead><tr><th scope="col">{t('ins.items.item')}</th><th scope="col">{t('ins.items.sold')}</th><th scope="col">{t('ins.items.shops')}</th>
             <th scope="col">{t('ins.items.stock')}</th>{a.admin && <th scope="col">{t('ins.items.margin')}</th>}</tr></thead>
-          <tbody>{a.sold.map((i) => (
+          <tbody>{pgItems.rows.map((i) => (
             <tr key={i.id} data-testid="item-row">
               <td className="lead"><div className="cell-title">{i.label}</div>
                 {i.topBuyers.length > 0 && <div className="cell-sub" data-testid="top-buyers">{t('ins.items.topBuyers', { list: i.topBuyers.slice(0, 3).map((b) => `${b.name} ${b.cases}`).join(', ') })}</div>}
@@ -281,6 +284,7 @@ function Items({ a }: { a: Analysis }) {
               {a.admin && <td data-label={t('ins.items.margin')} className={`num ${(i.marginPerCase ?? 0) < 0 ? 'text-danger' : ''}`}>{i.marginPerCase != null ? rs(i.marginPerCase) : '—'}</td>}
             </tr>))}</tbody>
         </table></div>
+        <Pager p={pgItems} />
       </div>
       {order.length > 0 && (
         <div className="card stack">
@@ -313,6 +317,7 @@ function Shops({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void }) {
   const ql = q.trim().toLowerCase()
   const list = a.shops.filter((s) => (!seg || s.segment === seg) && (!ql || `${s.name} ${s.owner ?? ''} ${s.area ?? ''} ${s.phone ?? ''}`.toLowerCase().includes(ql)))
   const max = a.shops[0]?.value ?? 1
+  const pg = usePaged(list, 20)
   return (
     <div className="stack">
       <p className="cell-sub"><Users size={14} aria-hidden="true" /> {t('ins.shops.concentration', { p: a.concentration })}</p>
@@ -324,9 +329,9 @@ function Shops({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void }) {
       <label className="field search-field"><Search size={18} aria-hidden="true" /><span className="sr-only">{t('ins.shops.search')}</span>
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ins.shops.search')} aria-label={t('ins.shops.search')} /></label>
       {seg && <p className="cell-sub">{t(`ins.segHint.${seg}`)}</p>}
-      <ul className="plain-list stack" style={{ gap: 8 }}>{list.map((s, i) => (
+      <ul className="plain-list stack" style={{ gap: 8 }}>{pg.rows.map((s, i) => (
         <li key={s.id}><button type="button" className="card ins-shop-row" onClick={() => onShop(s)} data-testid="shop-row">
-          <span className="ins-rank">{i + 1}</span>
+          <span className="ins-rank">{pg.from + i}</span>
           <span className="grow" style={{ textAlign: 'left' }}>
             <span className="cell-title">{s.name}</span>{s.owner && <span className="muted"> · {s.owner}</span>}
             <span className="cell-sub" style={{ display: 'block' }}>{t('ins.shops.line', { b: s.bills, c: s.cases, d: s.since })}{s.gap ? ` · ${t('ins.shops.every', { n: Math.round(s.gap) })}` : ''}</span>
@@ -336,6 +341,7 @@ function Shops({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void }) {
         </button></li>))}
         {!list.length && <li className="muted">{t('common.noMatches')}</li>}
       </ul>
+      <Pager p={pg} />
     </div>
   )
 }

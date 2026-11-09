@@ -9,6 +9,8 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { PinIssued, type Issued } from './PinIssued'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 interface JoinRequest { id: string; phone: string; shop_name: string; owner_name: string; address: string; created_at: string }
 
@@ -38,6 +40,8 @@ export default function JoinRequestsPage() {
     onError: (err) => setMsg({ kind: 'error', text: errorMessage(t, err) }),
   })
 
+  const pg = usePaged(list.data ?? [], 24)
+
   return (
     <section className="stack-lg">
       <PageHeader title={t('joinRequests.title')} sub={t('joinRequests.sub')} />
@@ -46,7 +50,7 @@ export default function JoinRequestsPage() {
         <div className="card"><Empty icon={<Inbox size={26} />} title={t('joinRequests.empty')}><p>{t('joinRequests.emptyHint')}</p></Empty></div>
       ) : (
         <div className="pack-grid">
-          {list.data?.map((r) => (
+          {pg.rows.map((r) => (
             <article key={r.id} className="card stack">
               <div className="row-between">
                 <h2>{r.shop_name}</h2>
@@ -69,6 +73,7 @@ export default function JoinRequestsPage() {
           ))}
         </div>
       )}
+      <Pager p={pg} />
 
       <Sheet open={!!approving} wide title={t('joinRequests.approveTitle', { name: approving?.shop_name ?? '' })} onClose={() => setApproving(null)}>
         {approving && routes.data && <ApproveForm req={approving} routes={routes.data}

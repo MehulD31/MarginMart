@@ -11,6 +11,8 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { useStockRows } from './stockRows'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 interface Supplier { id: string; name: string; phone: string | null; gstin: string | null; active: boolean }
 interface Purchase {
@@ -43,6 +45,7 @@ export default function PurchasesPage() {
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
   const current = purchases.data?.find((p) => p.id === view)
   const [msg, setMsg] = useState<Msg>(null)
+  const pg = usePaged(purchases.data ?? [])
 
   return (
     <section className="stack-lg">
@@ -59,7 +62,7 @@ export default function PurchasesPage() {
       ) : (
         <div className="table-wrap"><table className="table-stack">
           <thead><tr><th scope="col">{t('purchases.date')}</th><th scope="col">{t('purchases.supplier')}</th><th scope="col">{t('purchases.invoice')}</th><th scope="col">{t('orders.cases')}</th><th scope="col">{t('purchases.total')}</th><th scope="col"><span className="sr-only">{t('common.view')}</span></th></tr></thead>
-          <tbody>{purchases.data.map((p) => (
+          <tbody>{pg.rows.map((p) => (
             <tr key={p.id}>
               <td className="lead num nowrap">{new Date(p.purchase_date).toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
               <td data-label={t('purchases.supplier')}>{supp.get(p.supplier_id) ?? '—'}</td>
@@ -69,7 +72,7 @@ export default function PurchasesPage() {
               <td className="actions"><button type="button" className="btn-sm" onClick={() => setView(p.id)}>{t('common.view')}</button></td>
             </tr>))}
           </tbody>
-        </table></div>
+        </table><Pager p={pg} /></div>
       )}
 
       <Sheet open={!!current} title={current ? `${supp.get(current.supplier_id) ?? ''} ${current.invoice_no ?? ''}` : ''} onClose={() => setView(null)}>

@@ -11,6 +11,8 @@ import { initials } from '../../shared/ui/util'
 import { PinIssued, type Issued } from './PinIssued'
 import { useConfirm } from '../../shared/ui/confirm'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 const ROLES: Role[] = ['admin', 'manager', 'driver', 'shop']
 const ROLE_BADGE: Record<Role, string> = { admin: 'badge-blue', manager: 'badge-amber', driver: 'badge-green', shop: '' }
@@ -27,7 +29,6 @@ export default function UsersPage() {
   // 700+ shop logins: staff first, a search box, and 40 rows at a time so the page stays fast.
   const [roleFilter, setRoleFilter] = useState<Role | ''>('')
   const [uq, setUq] = useState('')
-  const [shown, setShown] = useState(40)
 
   const users = useQuery({
     queryKey: ['profiles'],
@@ -61,7 +62,8 @@ export default function UsersPage() {
   const uql = uq.trim().toLowerCase()
   const all = (users.data ?? []).filter((u) => (!roleFilter || u.role === roleFilter) && (!uql || ` `.toLowerCase().includes(uql)))
     .sort((a, b) => Number(a.role === 'shop') - Number(b.role === 'shop'))
-  const list = all.slice(0, shown)
+  const pg = usePaged(all)
+  const list = pg.rows
 
   return (
     <section className="stack-lg">
@@ -78,7 +80,7 @@ export default function UsersPage() {
       </div>
 
       <label className="field" style={{ maxWidth: 420 }}><span className="sr-only">{t('users.search')}</span>
-        <input type="search" value={uq} onChange={(e) => { setUq(e.target.value); setShown(40) }} placeholder={t('users.search')} aria-label={t('users.search')} /></label>
+        <input type="search" value={uq} onChange={(e) => setUq(e.target.value)} placeholder={t('users.search')} aria-label={t('users.search')} /></label>
       {users.isLoading ? <Skeleton /> : list.length === 0 ? (
         <div className="card"><Empty icon={<Users size={26} />} title={t('users.empty')} /></div>
       ) : (
@@ -123,8 +125,7 @@ export default function UsersPage() {
           </table>
         </div>
       )}
-      {all.length > list.length && (
-        <button type="button" style={{ alignSelf: 'flex-start' }} onClick={() => setShown((n) => n + 100)}>{t('users.showMore', { n: all.length - list.length })}</button>)}
+      <Pager p={pg} />
 
       <Sheet open={adding} title={t('users.add')} onClose={() => setAdding(false)}>
         <AddUserForm allowedRoles={isAdmin ? ROLES.filter((r) => r !== 'shop') : []}

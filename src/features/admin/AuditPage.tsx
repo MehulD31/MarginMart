@@ -5,6 +5,8 @@ import { History } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { Empty, PageHeader, Skeleton } from '../../shared/ui/kit'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 interface AuditRow { id: number; actor: string | null; table_name: string; row_id: string | null; action: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null; at: string }
 
@@ -26,7 +28,7 @@ export default function AuditPage() {
   const log = useQuery({
     queryKey: ['audit', table],
     queryFn: () => {
-      let q = supabase.from('audit_log').select('*').order('at', { ascending: false }).limit(150)
+      let q = supabase.from('audit_log').select('*').order('at', { ascending: false }).limit(1000)
       if (table) q = q.eq('table_name', table)
       return must<AuditRow[]>(q)
     },
@@ -34,6 +36,7 @@ export default function AuditPage() {
   const people = useQuery({ queryKey: ['profiles', 'names'], queryFn: () => must<{ user_id: string; name: string }[]>(supabase.from('profiles').select('user_id, name')) })
   const who = new Map(people.data?.map((p) => [p.user_id, p.name]))
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
+  const pg = usePaged(log.data ?? [])
 
   return (
     <section className="stack-lg">
@@ -45,7 +48,7 @@ export default function AuditPage() {
       {log.isLoading ? <Skeleton rows={6} /> : !log.data?.length ? <div className="card"><Empty icon={<History size={26} />} title={t('audit.empty')} /></div> : (
         <div className="table-wrap"><table className="table-stack">
           <thead><tr><th scope="col">{t('audit.when')}</th><th scope="col">{t('audit.who')}</th><th scope="col">{t('audit.what')}</th><th scope="col">{t('audit.change')}</th></tr></thead>
-          <tbody>{log.data.map((r) => (
+          <tbody>{pg.rows.map((r) => (
             <tr key={r.id}>
               <td className="lead num nowrap">{new Date(r.at).toLocaleString(loc, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</td>
               <td data-label={t('audit.who')}>{r.actor ? who.get(r.actor) ?? t('audit.someone') : t('audit.system')}</td>
@@ -53,7 +56,7 @@ export default function AuditPage() {
               <td data-label={t('audit.change')} className="cell-sub">{changes(r).join(' · ') || '—'}</td>
             </tr>))}
           </tbody>
-        </table></div>
+        </table><Pager p={pg} /></div>
       )}
     </section>
   )

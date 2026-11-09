@@ -10,6 +10,8 @@ import { capacityCases, fixedTotal, slabOff, type BusinessSettings, type Slab } 
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { useMargin } from './marginData'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 const rs = (p: number) => formatPaise(p)
 
@@ -17,6 +19,7 @@ export default function PricingPage() {
   const { t, i18n } = useTranslation()
   const isAdmin = useAuth().profile?.role === 'admin'
   const m = useMargin()
+  const pg = usePaged(m ? m.packs.filter((p) => p.active && m.byPack.has(p.id)) : [])
   const [edit, setEdit] = useState(false)
   if (!m) return <Skeleton rows={6} />
   const { s, cost, volume, onSeason } = m
@@ -48,7 +51,7 @@ export default function PricingPage() {
           {steps.map((n, i) => <th key={n} scope="col">{i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n })}</th>)}
           <th scope="col">{t('pricing.min')}</th><th scope="col">{t('pricing.floor')}</th>
         </tr></thead>
-        <tbody>{rows.map(({ p, x, list }) => {
+        <tbody>{rows.filter((r) => pg.rows.includes(r.p)).map(({ p, x, list }) => {
           const room = x.trade - x.min
           return (
             <tr key={p.id}>
@@ -62,6 +65,7 @@ export default function PricingPage() {
             </tr>)
         })}</tbody>
       </table></div>
+      <Pager p={pg} />
       <p className="muted">{t('pricing.legend', { m: rs(s.default_margin_paise) })}</p>
 
       <Sheet open={edit} wide title={t('pricing.settings')} onClose={() => setEdit(false)}>

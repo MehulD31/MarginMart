@@ -11,6 +11,8 @@ import { ProductImage } from '../../shared/ui/ProductImage'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 export default function CatalogPage() {
   const { t } = useTranslation()
@@ -29,6 +31,7 @@ export default function CatalogPage() {
   const list = (packs.data ?? []).filter((p) => `${p.name_en} ${p.name_hi ?? ''}`.toLowerCase().includes(q.toLowerCase()))
   const photos = (variants.data ?? []).filter((v) => v.image_path).length
   const current = packs.data?.find((p) => p.id === open)
+  const pg = usePaged(list, 24)
 
   return (
     <section className="stack-lg">
@@ -41,7 +44,7 @@ export default function CatalogPage() {
         <div className="card"><Empty icon={<Package size={26} />} title={t('common.noMatches')} /></div>
       ) : (
         <div className="pack-grid">
-          {list.map((p) => {
+          {pg.rows.map((p) => {
             const vs = byPack.get(p.id) ?? []
             return (
               <button key={p.id} type="button" className={`pack-card ${p.active ? '' : 'dim'}`} onClick={() => setOpen(p.id)}>
@@ -60,6 +63,7 @@ export default function CatalogPage() {
           })}
         </div>
       )}
+      <Pager p={pg} />
 
       <Sheet open={!!current} wide title={current?.name_en} onClose={() => setOpen(null)}>
         {current && <PackEditor key={current.id} pack={current} variants={byPack.get(current.id) ?? []} canEdit={isAdmin} />}

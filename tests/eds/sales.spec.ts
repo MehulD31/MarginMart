@@ -173,7 +173,7 @@ test('Cancel bill, totals, empty range, menu, Hindi', async ({ page }) => {
   await expect(page.getByText('No counter sales in these dates')).toBeVisible()
   await page.goto('/admin/dashboard')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  if (page.viewportSize()!.width < 900) await page.getByRole('button', { name: 'More' }).click()
+  if (page.viewportSize()!.width < 900) await page.getByRole('button', { name: 'More', exact: true }).click()
   await page.getByRole('link', { name: 'Counter sales' }).first().click()
   await expect(page).toHaveURL(/\/admin\/sales/)
   await page.getByRole('button', { name: /हिंदी/ }).first().click()

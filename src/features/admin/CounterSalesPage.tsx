@@ -11,6 +11,8 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../share
 import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { useMoneyPayments } from './money'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 const dayIST = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
@@ -41,6 +43,7 @@ export default function CounterSalesPage() {
   const money = useMoneyPayments(from, to, valid)
   const paidBy = useMemo(() => new Map((money.data ?? []).filter((p) => p.kind === 'counter_sale').map((p) => [p.ref_id, p])), [money.data])
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
+  const pg = usePaged(sales.data ?? [])
   const live = useMemo(() => (sales.data ?? []).filter((b) => !b.voided), [sales.data])
   const sum = (bs: CounterBill[], f: (b: CounterBill) => number) => bs.reduce((a, b) => a + f(b), 0)
   const casesOf = (b: CounterBill) => b.lines.reduce((a, l) => a + l.qty, 0)
@@ -113,7 +116,7 @@ export default function CounterSalesPage() {
         : !sales.data?.length ? <div className="card"><Empty icon={<Receipt size={26} />} title={t('sales.empty')}><p>{t('sales.emptyHint')}</p></Empty></div>
         : (
           <ul className="plain-list stack">
-            {sales.data.map((b) => (
+            {pg.rows.map((b) => (
               <li key={b.id} className={`card stack ${b.voided ? 'dim' : ''}`} data-testid="sale-card">
                 <div className="row-between">
                   <div>
@@ -145,6 +148,7 @@ export default function CounterSalesPage() {
                     onDone={(text) => setMsg({ kind: 'success', text })} onError={(text) => setMsg({ kind: 'error', text })} />
                 </div>
               </li>))}
+            <li><Pager p={pg} /></li>
           </ul>
         )}
 

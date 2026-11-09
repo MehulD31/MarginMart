@@ -10,6 +10,8 @@ import { toCsv } from '../../shared/csv'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { refreshMoney, useMoneyAccounts, useMoneyHoldings, useMoneyPayments, useTransfers, type AccountKind, type Holding, type MoneyPayment, type Transfer } from './money'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 
 const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 const monthStart = () => todayIST().slice(0, 8) + '01'
@@ -35,6 +37,7 @@ export default function MoneyPage() {
   const [busyRef, setBusyRef] = useState<string | null>(null)
 
   const list = useMemo(() => (payments.data ?? []).filter((p) => !filter || p.account_id === filter), [payments.data, filter])
+  const pg = usePaged(list)
   const when = (iso: string) => new Date(iso).toLocaleString(loc, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 
   const change = async (p: MoneyPayment, accountId: string) => {
@@ -109,7 +112,7 @@ export default function MoneyPage() {
             <div className="table-wrap">
               <table className="table-stack">
                 <thead><tr><th scope="col">{t('money.what')}</th><th scope="col">{t('money.when')}</th><th scope="col">{t('money.amountCol')}</th><th scope="col">{t('money.paidInto')}</th></tr></thead>
-                <tbody>{list.map((p) => (
+                <tbody>{pg.rows.map((p) => (
                   <tr key={`${p.kind}:${p.ref_id}`} data-testid="money-row">
                     <td className="lead"><div className="cell-title">{p.number} · {p.shop}</div>
                       <div className="cell-sub">{p.kind === 'counter_sale' ? t('nav.sales') : t('nav.khata')} · {p.mode === 'upi' ? 'UPI' : t('driver.cash')}</div></td>
@@ -123,6 +126,7 @@ export default function MoneyPage() {
                     </td>
                   </tr>))}</tbody>
               </table>
+              <Pager p={pg} />
             </div>
           )}
       </div>
