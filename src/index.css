@@ -653,3 +653,50 @@ html, body { overflow-x: clip; }
 .spinner { width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 3px solid var(--brand-100); border-top-color: var(--brand-700); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+/* ======================= Theme polish: captions, dates, files, photo tiles ======================= */
+/* Table captions sit inside the rounded card (which clips): same padding as the cells, so nothing is cut. */
+caption { caption-side: top; text-align: left; padding: 14px 14px 12px; font-weight: 700; font-size: 0.95rem; color: var(--ink); border-bottom: 1px solid var(--line-2); }
+@media (max-width: 719px) { .table-stack caption { display: block; padding: 14px 16px 12px; } }
+
+/* Date / month / time pickers: one look on iPhone, Android and desktop.
+   iOS Safari draws its own box (wide minimum width, centred text) that overflows narrow cards; appearance:none removes it.
+   Our calendar icon is a background; the browser's own icon is made invisible but still covers it, so a tap opens the picker. */
+input[type='date'], input[type='month'], input[type='time'], input[type='datetime-local'] {
+  -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; line-height: 1.5; text-align: left;
+  padding-right: 42px; cursor: pointer;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") no-repeat right 12px center / 18px;
+}
+input[type='time'] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E"); }
+input[type='date']:focus, input[type='month']:focus, input[type='datetime-local']:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%2316a34a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+}
+input[type='date']::-webkit-calendar-picker-indicator, input[type='month']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator, input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  position: absolute; right: 0; top: 0; width: 44px; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; background: none;
+}
+input[type='date']::-webkit-date-and-time-value, input[type='month']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value, input[type='datetime-local']::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.5em; }
+input[type='date']::-webkit-datetime-edit, input[type='time']::-webkit-datetime-edit { padding: 0; }
+input[type='date']:disabled { cursor: not-allowed; }
+
+/* File pickers ("Choose file"): a themed button and a file name that shortens instead of spilling out of the card. */
+input[type='file'] {
+  padding: 5px 8px 5px 5px; cursor: pointer; color: var(--muted); font-size: 0.9rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 34px;
+}
+input[type='file']::file-selector-button, input[type='file']::-webkit-file-upload-button {
+  font: inherit; font-size: 0.9rem; font-weight: 600; line-height: 1.2; margin: 0 10px 0 0; padding: 9px 14px; border-radius: 8px;
+  border: 1px solid var(--brand-200); background: var(--brand-50); color: var(--brand-800); cursor: pointer; transition: background .15s;
+}
+input[type='file']:hover::file-selector-button { background: var(--brand-100); }
+input[type='file']:disabled { cursor: not-allowed; opacity: 0.65; }
+input[type='file']:disabled::file-selector-button { cursor: not-allowed; }
+
+/* Product photo tiles: the hidden file input stays inside the tile; empty text wraps; a photo shows it can be changed. */
+.thumb { position: relative; }
+.thumb > .stack { padding: 8px; text-align: center; max-width: 100%; }
+.thumb > .stack .muted { overflow-wrap: anywhere; line-height: 1.25; }
+.thumb-edit { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px;
+  background: rgb(15 23 42 / 0.72); color: #fff; font-size: 0.75rem; font-weight: 600; pointer-events: none; }
+.thumb-upload:hover .thumb-edit { background: var(--brand-700); }

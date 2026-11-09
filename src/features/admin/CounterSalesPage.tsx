@@ -92,7 +92,7 @@ export default function CounterSalesPage() {
       {days.length > 1 && (
         <div className="table-wrap">
           <table className="table-stack" aria-label={t('sales.byDay')}>
-            <caption className="cell-title" style={{ textAlign: 'left', padding: '0 0 8px' }}>{t('sales.byDay')}</caption>
+            <caption>{t('sales.byDay')}</caption>
             <thead><tr><th scope="col">{t('sales.day')}</th><th scope="col">{t('sales.bills')}</th><th scope="col">{t('sales.cases')}</th>
               <th scope="col">{t('sales.total')}</th><th scope="col">{t('driver.cash')}</th><th scope="col">UPI</th>{isAdmin && <th scope="col">{t('sales.margin')}</th>}</tr></thead>
             <tbody>{days.map(([d, bs]) => (

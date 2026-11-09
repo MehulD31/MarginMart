@@ -257,7 +257,8 @@
     "photoHint": "Tap a photo to change it",
     "showToShops": "Show to shops",
     "uploadPhoto": "Add photo",
-    "flavours": "flavours"
+    "flavours": "flavours",
+    "changePhoto": "Change"
   },
   "prices": {
     "title": "Price lists",

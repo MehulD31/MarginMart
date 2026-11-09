@@ -157,6 +157,7 @@ function VariantCard({ v, canEdit }: { v: Variant; canEdit: boolean }) {
     <li className={`card variant ${v.active ? '' : 'dim'}`}>
       <label className={`thumb${canEdit ? ' thumb-upload' : ''}`} aria-busy={busy}>
         {src ? <img src={src} alt={v.flavour_en} loading="lazy" /> : <span className="stack" style={{ alignItems: 'center', gap: 4 }}><ImagePlus size={28} aria-hidden="true" /><span className="muted">{canEdit ? t('catalog.uploadPhoto') : t('catalog.noPhoto')}</span></span>}
+        {src && canEdit && <span className="thumb-edit" aria-hidden="true"><ImagePlus size={12} />{t('catalog.changePhoto')}</span>}
         {canEdit && <input type="file" accept="image/*" className="sr-only" disabled={busy} aria-label={`${t('catalog.uploadPhoto')}: ${v.flavour_en}`} onChange={(e) => void upload(e.target.files?.[0])} />}
       </label>
       <fieldset disabled={!canEdit || busy} className="stack plain" style={{ gap: 8 }}>
