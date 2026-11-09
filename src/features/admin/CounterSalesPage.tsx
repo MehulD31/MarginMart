@@ -151,10 +151,14 @@ export default function CounterSalesPage() {
       <Sheet open={!!editing} wide title={editing === 'new' ? t('sales.new') : editing ? t('sales.editTitle', { n: editing.number }) : ''} onClose={() => setEditing(null)}>
         {editing && <CounterSaleForm key={editing === 'new' ? 'new' : editing.id} bill={editing === 'new' ? undefined : editing}
           paidInto={editing === 'new' ? undefined : (paidBy.get(editing.id)?.explicit ? paidBy.get(editing.id)!.account_id ?? undefined : undefined)}
-          onDone={(number) => {
+          onDone={(number, day) => {
             const wasNew = editing === 'new'
             setEditing(null)
-            if (number) { setMsg({ kind: 'success', text: wasNew ? t('sales.savedNew', { n: number }) : t('sales.savedEdit', { n: number }) }); if (wasNew) { setFrom(todayIST()); setTo(todayIST()) } }
+            if (!number) return
+            setMsg({ kind: 'success', text: wasNew ? t('sales.savedNew', { n: number }) : t('sales.savedEdit', { n: number }) })
+            // show the bill where it now lives: a new bill opens its own day; an edited bill widens the range to include its day
+            const d = day ?? todayIST()
+            if (wasNew) { setFrom(d); setTo(d) } else { setFrom((f) => (d < f ? d : f)); setTo((x) => (d > x ? d : x)) }
           }} />}
       </Sheet>
 

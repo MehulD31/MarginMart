@@ -35,10 +35,13 @@ const useShopPicker = () => useQuery({
   queryFn: () => must<ShopRow[]>(supabase.from('shop').select('id, name, phone, locality, owner_name').eq('active', true).order('name').limit(5000)),
 })
 const MIN_RATE = 20
+// Bill day (IST). The database refuses future days and days more than a year back; a truck bill keeps its trip's day.
+const dayIST = (d: Date | string) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+const shiftDay = (iso: string, n: number) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
 
 /** New counter sale or edit of an existing one. Saves through counter_sale_save, so stock and checks match Telegram and the sheet. */
-export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehicle: vehicleProp }: { bill?: CounterBill; paidInto?: string; onDone: (number?: string) => void; planId?: string; vehicle?: string }) {
-  const { t } = useTranslation()
+export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehicle: vehicleProp }: { bill?: CounterBill; paidInto?: string; onDone: (number?: string, day?: string) => void; planId?: string; vehicle?: string }) {
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const confirm = useConfirm()
   const isAdmin = useAuth().profile?.role === 'admin'
@@ -58,6 +61,8 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   // '' = the default for the mode (cash box / company bank); a picked account is saved with the bill.
   const [account, setAccount] = useState(paidInto ?? '')
   const [discount, setDiscount] = useState(bill?.discount_paise ? String(bill.discount_paise / 100) : '')
+  const [today] = useState(() => dayIST(new Date()))
+  const [day, setDay] = useState(() => (bill ? dayIST(bill.at) : today))
   const [addingShop, setAddingShop] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
@@ -82,7 +87,9 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   const total = subtotal - (discBad ? 0 : disc)
   const margin = lines.reduce((a, l) => a + l.qty * ((paise(l.rate) || 0) - (byId.get(l.variant_id)?.buy_paise ?? 0)), 0) - (discBad ? 0 : disc)
   const belowFloor = lines.filter((l) => { const f = byId.get(l.variant_id)?.floor_paise; return f != null && paise(l.rate) < f })
-  const problem = !shop ? t('sales.form.needShop') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : planId && lines.some((l) => l.qty > free(l.variant_id)) ? t('trip.form.overTruck') : discBad ? t('sales.form.badDiscount') : null
+  const minDay = shiftDay(today, -366)
+  const dayBad = !planId && (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > today || day < minDay)
+  const problem = !shop ? t('sales.form.needShop') : dayBad ? t('sales.form.badDay') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : planId && lines.some((l) => l.qty > free(l.variant_id)) ? t('trip.form.overTruck') : discBad ? t('sales.form.badDiscount') : null
 
   const setLine = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const addItem = (c: CatalogRow) => { setLines((ls) => [...ls, { variant_id: c.variant_id, qty: 1, rate: String(c.trade_paise / 100) }]); setItemQ('') }
@@ -91,15 +98,18 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
     if (problem || !shop) return
     if (belowFloor.length && !(await confirm({ title: t('pricing.belowFloorTitle'), body: t('pricing.belowFloorBody', { n: belowFloor.length }), confirm: t('common.save'), danger: true }))) return
     setBusy(true); setMsg(null)
-    const { data, error } = await supabase.rpc('counter_sale_save_into', {
+    const { data, error } = await supabase.rpc('counter_sale_save_dated', {
       p_id: bill?.id ?? null, p_action: action, p_shop: shop.id, p_mode: mode, p_account: account || null, p_discount: disc, p_plan: bill ? null : planId ?? null,
       p_lines: lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: paise(l.rate) })),
+      // null = keep the date as it is (a new bill for today keeps the current time; a truck bill keeps its trip's day)
+      p_day: planId || (!bill && day === today) ? null : day,
     })
     setBusy(false)
     if (error) { setMsg({ kind: 'error', text: errorMessage(t, error) }); return }
     for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats', 'trip-detail', 'trip-board']) void qc.invalidateQueries({ queryKey: [k] })
     refreshMoney(qc)
-    onDone((data as { number: string }).number)
+    const saved = data as { number: string; day?: string }
+    onDone(saved.number, saved.day)
   }
 
   // Voice / typed note -> prefill. Same item replaces its line; nothing is saved until the user taps Save.
@@ -126,6 +136,19 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
     <div className="stack-lg">
       {planId && <span className="badge badge-blue" style={{ alignSelf: 'flex-start', fontSize: '0.85rem' }} data-testid="truck-tag">🚚 {t('trip.form.from', { v: vehicle ?? '' })}</span>}
       {!bill && <VoiceSale onResult={applyVoice} />}
+      {/* Bill date: today by default; pick an earlier day for an old parchi. Truck bills stay on their trip's day. */}
+      {!planId && (
+        <div className="stack" style={{ gap: 4 }}>
+          <label className="row" style={{ gap: 8, flexWrap: 'wrap' }} htmlFor="cs-day">
+            <span className="cell-title">{t('sales.form.day')}</span>
+            <input id="cs-day" type="date" value={day} min={minDay} max={today} required aria-invalid={dayBad} style={{ width: 'auto' }}
+              onChange={(e) => setDay(e.target.value)} data-testid="sale-day" />
+            {day !== today && !dayBad && <button type="button" className="btn-sm ghost" onClick={() => setDay(today)}>{t('sales.form.today')}</button>}
+          </label>
+          {day !== today && !dayBad && <span className="badge badge-amber" style={{ alignSelf: 'flex-start' }} data-testid="sale-day-note">
+            {t('sales.form.dayNote', { day: new Date(`${day}T00:00:00`).toLocaleDateString(i18n.language === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) })}</span>}
+        </div>
+      )}
       {/* Shop */}
       <div className="stack">
         <span className="cell-title">{t('sales.form.shop')}</span>

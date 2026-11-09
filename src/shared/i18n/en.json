@@ -203,7 +203,10 @@
     "TRIP_NOT_CLOSED": "This trip is not closed.",
     "NOT_VOIDED": "This bill is not cancelled.",
     "NOT_CANCELLED": "This order is not cancelled.",
-    "ALREADY_UNDONE": "Already undone."
+    "ALREADY_UNDONE": "Already undone.",
+    "DATE_IN_FUTURE": "The bill date cannot be in the future.",
+    "DATE_TOO_OLD": "The bill date cannot be more than a year back.",
+    "TRUCK_BILL_DATE": "A truck bill stays on its trip's day."
   },
   "days": {
     "1": "Mon",
@@ -1034,7 +1037,11 @@
       "saveChanges": "Save changes",
       "discount": "Discount (₹)",
       "itemsTotal": "Items total",
-      "badDiscount": "Discount must be a rupee amount, not more than the items total."
+      "badDiscount": "Discount must be a rupee amount, not more than the items total.",
+      "day": "Bill date",
+      "today": "Today",
+      "badDay": "Pick a date that is not in the future and not more than a year back.",
+      "dayNote": "This bill will count on {{day}}"
     },
     "restore": "Restore bill",
     "restored": "{{n}} is back. Stock was taken out again."
