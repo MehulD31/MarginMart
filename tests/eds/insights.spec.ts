@@ -18,6 +18,7 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
   let sent: { facts?: { top_items?: unknown[] }; question?: string } = {}
   await page.route('**/api/insights-ai', async (r) => {
     sent = r.request().postDataJSON()
+    await new Promise((ok) => setTimeout(ok, 1500))               // the real AI takes 10-30 s
     await r.fulfill({ json: { text: sent.question ? '• Abhilash sabse zyada Sting leta hai.' : '• Paul Aqua ko call karo: 70 peti ka order.\n• Nimbooz 3 din me khatam, 117 peti mangao.' } })
   })
   await login(page)
@@ -37,9 +38,11 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
   await expect(page.getByTestId('top-shops').locator('.top-list li').first()).toBeVisible()
 
   await ai.getByRole('button', { name: "Today's plan" }).click()
+  await expect(ai.getByTestId('ai-thinking')).toContainText(/Reading your \d+ bills/)
   await expect(ai.getByText('Paul Aqua ko call karo', { exact: false })).toBeVisible()
   expect(sent.facts?.top_items?.length).toBeGreaterThan(0)
   await ai.getByRole('button', { name: 'Which items make me the most money?' }).click()
+  await expect(ai.getByTestId('ai-thinking')).toContainText('Which items make me the most money?')
   await expect(ai.getByText('Abhilash sabse zyada Sting')).toBeVisible()
   expect(sent.question).toBe('Which items make me the most money?')
 

@@ -23,10 +23,16 @@ export function buildPrompt(facts, question, lang, who) {
     question
       ? `Answer this question: "${String(question).slice(0, 300)}". Be specific: shop names, items, cases, rupees. Max 120 words.`
       : `Write today's plan: 4-6 bullet points, most money-making first. Each bullet = one action + why (a number). Cover: who to call/visit and what to offer them, stock to order or push, any risk (dues, loss, running out), one growth idea (new shops in areas where we already sell, items to cross-sell). Max 130 words.`,
-    `Reply in ${language}. Plain text, bullets start with "ΓÇó ". No markdown headings, no bold.`,
+    `Reply in ${language}. Plain text, bullets start with "• ". No markdown headings, no bold.`,
     `DATA: ${JSON.stringify(facts).slice(0, 12000)}`,
   ].join('\n')
 }
+
+/** Plain text for a phone: markdown bold/headings out, any bullet style -> one dot, no empty runs. */
+export const clean = (t) => String(t)
+  .replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s*/gm, '')
+  .replace(/^\s*(?:[-*+]|\d+[.)])\s+/gm, '\u2022 ')
+  .replace(/\u2022\s*\u2022\s*/g, '\u2022 ').replace(/\n{3,}/g, '\n\n').trim()
 
 export async function ask(prompt) {
   // Vercel stops the function at 60s, so every try fits inside a 50s budget. Low thinking keeps answers fast and complete.
@@ -46,7 +52,7 @@ export async function ask(prompt) {
       if (r.status === 400) ({ r, j } = await call(model, false))      // model without thinking settings
       const c = j?.candidates?.[0]
       const t = c?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? '').join('').trim()
-      if (t && c.finishReason !== 'MAX_TOKENS') return { text: t, model }
+      if (t && c.finishReason !== 'MAX_TOKENS') return { text: clean(t), model }
       console.log('insights-ai', model, r.status, c?.finishReason, JSON.stringify(j).slice(0, 160))
       if (r.status === 429) await new Promise((ok) => setTimeout(ok, 1500))
     } catch (e) { console.log('insights-ai error', model, e.message) }

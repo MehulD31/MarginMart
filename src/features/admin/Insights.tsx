@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +51,22 @@ export function Insights() {
 }
 
 // ---------------------------------------------------------------- AI advisor
+/** Shown while Gemini works (10-30 s): what was asked, what the AI is doing, and a seconds counter. */
+function Thinking({ q, bills }: { q: string; bills: number }) {
+  const { t } = useTranslation()
+  const [sec, setSec] = useState(0)
+  useEffect(() => { const id = setInterval(() => setSec((s) => s + 1), 1000); return () => clearInterval(id) }, [])
+  const steps = [t('ins.ai.step1', { n: bills }), t('ins.ai.step2'), t('ins.ai.step3')]
+  return (
+    <div className="ai-thinking" role="status" aria-live="polite" data-testid="ai-thinking">
+      {q && <p className="cell-sub">“{q}”</p>}
+      <div className="row" style={{ gap: 10 }}><span className="spinner" aria-hidden="true" /><strong>{steps[Math.min(steps.length - 1, Math.floor(sec / 5))]}</strong></div>
+      <div className="bar"><i style={{ width: `${Math.min(95, sec * 3.5)}%` }} /></div>
+      <p className="cell-sub num">{t('ins.ai.wait', { s: sec })}</p>
+    </div>
+  )
+}
+
 function Advisor({ a }: { a: Analysis }) {
   const { t, i18n } = useTranslation()
   const [question, setQuestion] = useState('')
@@ -78,13 +94,12 @@ function Advisor({ a }: { a: Analysis }) {
         <button type="button" className="btn-sm primary" disabled={run.isPending} onClick={() => ask('')}>
           <Sparkles size={16} aria-hidden="true" />{run.isPending && !question ? t('ins.ai.thinking') : answer && !answer.q ? t('ins.ai.refresh') : t('ins.ai.plan')}</button>
       </div>
-      {answer ? (
-        <div className="ai-answer" aria-live="polite">
+      {run.isPending ? <Thinking q={run.variables ?? ''} bills={a.kpi.all.bills} /> : answer ? (
+        <div className="ai-answer" aria-live="polite" data-testid="ai-answer">
           {answer.q && <p className="cell-sub">“{answer.q}”</p>}
           {answer.text.split('\n').filter((l) => l.trim()).map((l, i) => <p key={i}>{l}</p>)}
         </div>
-      ) : !run.isPending && <p className="muted">{t('ins.ai.intro')}</p>}
-      {run.isPending && <Skeleton rows={2} />}
+      ) : <p className="muted">{t('ins.ai.intro')}</p>}
       {run.isError && <Note msg={{ kind: 'error', text: (run.error as Error).message }} />}
       <form className="row" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); if (question.trim()) ask(question.trim()) }}>
         <label className="field grow" style={{ margin: 0 }}><span className="sr-only">{t('ins.ai.ask')}</span>

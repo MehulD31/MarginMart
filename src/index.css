@@ -648,3 +648,8 @@ html, body { overflow-x: clip; }
 .ins-shop-row:hover { border-color: var(--brand-200); }
 .ins-rank { width: 28px; height: 28px; flex-shrink: 0; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--line-2); font-size: 0.8rem; font-weight: 800; }
 .tab-n { margin-left: 4px; min-width: 18px; padding: 0 5px; border-radius: 999px; background: rgb(127 127 127 / 0.2); font-size: 0.7rem; }
+/* AI advisor: thinking state */
+.ai-thinking { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: rgb(255 255 255 / 0.7); border: 1px dashed var(--brand-200); }
+.spinner { width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 3px solid var(--brand-100); border-top-color: var(--brand-700); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }

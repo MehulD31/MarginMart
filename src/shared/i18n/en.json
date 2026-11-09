@@ -1280,7 +1280,7 @@
       "title": "AI advisor",
       "plan": "Today's plan",
       "refresh": "New plan",
-      "thinking": "Thinking…",
+      "thinking": "Calculating…",
       "send": "Ask",
       "intro": "Tap Today's plan: the AI reads every bill and tells you who to call, what to push and what to order.",
       "ask": "Ask anything: \"Which shop buys most Sting?\"",
@@ -1290,7 +1290,11 @@
       "q3": "How do I sell 50 more cases this week?",
       "q4": "Which shops are slowing down?",
       "early": "Based on {{n}} days of bills. Predictions get sharper every day.",
-      "basis": "Based on {{n}} bills."
+      "basis": "Based on {{n}} bills.",
+      "step1": "Reading your {{n}} bills…",
+      "step2": "Working out who to call and what to push…",
+      "step3": "Writing the answer…",
+      "wait": "{{s}} s · usually 10–30 seconds"
     },
     "kpi": {
       "today": "Sales today",
