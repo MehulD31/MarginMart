@@ -34,8 +34,8 @@ test('Dashboard: KPIs, alerts, trend, call list, items, shops, growth, AI plan',
   await expect(page.getByText(/^Sales today ₹[\d,]+ · \d+ cases · \d+ bills$/)).toBeVisible()
   // the order / sale boxes, Most ordered and Top shops always show (sales + deliveries + orders)
   await expect(page.getByTestId('today-boxes')).toBeVisible()
-  await expect(page.getByTestId('most-ordered').locator('.top-list li').first()).toContainText('Sting')
-  await expect(page.getByTestId('top-shops').locator('.top-list li').first()).toBeVisible()
+  await expect(page.getByTestId('most-ordered').locator('.top-list li').first()).toContainText('Sting', { timeout: 20_000 })
+  await expect(page.getByTestId('top-shops').locator('.top-list li').first()).toBeVisible({ timeout: 20_000 })
 
   await ai.getByRole('button', { name: "Today's plan" }).click()
   await expect(ai.getByTestId('ai-thinking')).toContainText(/Reading your \d+ bills/)

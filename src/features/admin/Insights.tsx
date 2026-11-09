@@ -233,9 +233,11 @@ function ShopActions({ s }: { s: ShopStat }) {
 function CallList({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void }) {
   const { t } = useTranslation()
   const list = [...a.callToday, ...a.dueSoon]
+  const pg = usePaged(list, 12)
   if (!list.length) return <div className="card"><Empty icon={<Phone size={24} />} title={t('ins.call.none')}><p>{a.spanDays < 7 ? t('ins.call.early') : t('ins.call.noneHint')}</p></Empty></div>
   return (
-    <ul className="plain-list ins-grid">{list.map((s) => (
+<>
+    <ul className="plain-list ins-grid">{pg.rows.map((s) => (
       <li key={s.id} className="card stack" data-testid="call-card">
         <button type="button" className="ghost ins-shop-head" onClick={() => onShop(s)}>
           <span className="grow" style={{ textAlign: 'left' }}><span className="cell-title">{s.name}</span>{s.owner && <span className="muted"> · {s.owner}</span>}
@@ -252,6 +254,7 @@ function CallList({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void })
         <ShopActions s={s} />
       </li>))}
     </ul>
+    <Pager p={pg} /></>
   )
 }
 

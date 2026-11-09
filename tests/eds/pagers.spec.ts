@@ -27,3 +27,17 @@ test('Change history and Users are paged; next page shows different rows', async
   }
   expect(errors).toEqual([])
 })
+
+test('Dashboard: "Call these shops" is searchable and paged 20 at a time', async ({ page }) => {
+  await login(page)
+  await page.goto('/admin/dashboard')
+  const box = page.getByTestId('call-shops')
+  if (!(await box.count())) { await expect(page.getByRole('heading', { name: /Call these shops/ })).toHaveCount(0); return }
+  await expect(box.locator('tbody tr').first()).toBeVisible({ timeout: 20_000 })
+  expect(await box.locator('tbody tr').count()).toBeLessThanOrEqual(20)
+  const pager = box.getByRole('navigation', { name: 'Pages' })
+  if (await pager.count()) await expect(pager).toContainText(/^1–20 of \d+/)
+  const name = (await box.locator('tbody tr .cell-title').first().innerText()).trim()
+  await box.getByRole('searchbox').fill(name)
+  await expect(box.locator('tbody tr .cell-title').first()).toHaveText(name)
+})

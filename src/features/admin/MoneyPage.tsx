@@ -26,6 +26,7 @@ export default function MoneyPage() {
   const holdings = useMoneyHoldings()
   const accounts = useMoneyAccounts()
   const transfers = useTransfers()
+  const pgMoves = usePaged(transfers.data ?? [], 15)
   const [from, setFrom] = useState(monthStart)
   const [to, setTo] = useState(todayIST)
   const [filter, setFilter] = useState('')
@@ -135,7 +136,7 @@ export default function MoneyPage() {
       <div className="card stack">
         <h2>{t('money.transfers')}</h2>
         {transfers.isLoading ? <Skeleton rows={2} /> : !(transfers.data ?? []).length ? <p className="muted">{t('money.noTransfers')}</p> : (
-          <ul className="plain-list stack">{(transfers.data ?? []).map((x) => (
+          <ul className="plain-list stack">{pgMoves.rows.map((x) => (
             <li key={x.id} className={`row-between ${x.voided_at ? 'dim' : ''}`} data-testid="transfer">
               <span><ArrowRightLeft size={16} aria-hidden="true" /> <strong className="num">{formatPaise(x.amount_paise)}</strong> · {x.account} → {t('money.kind.company')}
                 <span className="cell-sub" style={{ display: 'block' }}>{new Date(x.moved_on + 'T00:00:00').toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -143,6 +144,7 @@ export default function MoneyPage() {
               {isAdmin && !x.voided_at && <button type="button" className="btn-sm ghost" onClick={() => { setMsg(null); setUndoing(x) }}><Undo2 size={16} aria-hidden="true" />{t('money.undo')}</button>}
             </li>))}</ul>
         )}
+        <Pager p={pgMoves} />
       </div>
 
       {isAdmin && <AccountsCard onMsg={setMsg} />}

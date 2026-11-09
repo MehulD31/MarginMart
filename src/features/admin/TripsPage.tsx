@@ -8,6 +8,8 @@ import { must } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { Pager } from '../../shared/ui/Pager'
+import { usePaged } from '../../shared/ui/paging'
 import { Stepper } from '../../shared/ui/Stepper'
 import { useConfirm } from '../../shared/ui/confirm'
 import { addDays, todayIST, useDrivers, useLocaleDate } from './opsData'
@@ -386,6 +388,7 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
   const out = d.plan.status === 'loaded' || d.plan.status === 'out'
   const left = sumBy(d.items, (i) => Math.max(0, i.left))
+  const pgBills = usePaged(d.bills, 20)
   const pending = d.orders.filter((o) => o.status === 'placed' || o.status === 'locked')
   const doneOrders = d.orders.filter((o) => o.status === 'delivered' || o.status === 'partially_delivered')
 
@@ -441,13 +444,14 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
       <div className="stack">
         <h2>{t('trip.bills.title', { n: d.bills.length })}</h2>
         {d.bills.length === 0 ? <p className="muted">{t('trip.bills.none')}</p> : (
-          <ul className="plain-list stack">{d.bills.map((b) => (
+          <ul className="plain-list stack">{pgBills.rows.map((b) => (
             <li key={b.id} className="card row-between" data-testid="trip-bill">
               <div><div className="cell-title">{b.number} · {b.shop}{b.owner ? ` · ${b.owner}` : ''}</div>
                 <div className="cell-sub">{new Date(b.at).toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit' })} · {t('trip.load.cases', { n: b.cases })}</div></div>
               <div style={{ textAlign: 'right' }}><strong className="num">{formatPaise(b.total_paise)}</strong>{' '}
                 <span className={`badge ${b.mode === 'upi' ? 'badge-blue' : 'badge-green'}`}>{b.mode === 'upi' ? 'UPI' : t('driver.cash')}</span></div>
             </li>))}</ul>)}
+        <Pager p={pgBills} />
         {d.bills.length > 0 && <p className="cell-sub">{t('trip.bills.editHint')}</p>}
       </div>
 
