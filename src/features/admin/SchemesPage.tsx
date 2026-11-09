@@ -9,6 +9,7 @@ import { formatPaise, rupeesToPaise } from '../../shared/money'
 import type { Scheme } from '../../shared/margin'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DateField } from '../../shared/ui/DateField'
 import { useConfirm } from '../../shared/ui/confirm'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { addDays, todayIST, useLocaleDate } from './opsData'
@@ -105,8 +106,8 @@ function NewScheme() {
             {sorted.map((p) => <option key={p.id} value={p.id}>{(hi && p.name_hi) || p.name_en}</option>)}
           </select></label>
         <label className="field"><span>{t('schemes.amountRs')}</span><input type="number" inputMode="decimal" min={0} step="0.5" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-        <label className="field"><span>{t('schemes.from')}</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
-        <label className="field"><span>{t('schemes.to')}</span><input type="date" min={from} value={to} onChange={(e) => setTo(e.target.value)} /></label>
+        <label className="field"><span>{t('schemes.from')}</span><DateField value={from} onChange={setFrom} /></label>
+        <label className="field"><span>{t('schemes.to')}</span><DateField min={from} value={to} onChange={setTo} /></label>
       </div>
       {flavours.length > 1 && (
         <div className="row" style={{ flexWrap: 'wrap' }} role="group" aria-label={t('schemes.flavours')}>

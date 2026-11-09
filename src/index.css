@@ -700,3 +700,55 @@ input[type='file']:disabled::file-selector-button { cursor: not-allowed; }
 .thumb-edit { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px;
   background: rgb(15 23 42 / 0.72); color: #fff; font-size: 0.75rem; font-weight: 600; pointer-events: none; }
 .thumb-upload:hover .thumb-edit { background: var(--brand-700); }
+
+/* ======================= DateField: our own themed date picker (src/shared/ui/DateField.tsx) ======================= */
+/* The field looks exactly like the other inputs. */
+button.date-field {
+  width: 100%; min-height: 46px; padding: 10px 12px; justify-content: space-between; gap: 10px;
+  font-size: 1rem; font-weight: 400; color: var(--ink); text-align: left; white-space: nowrap;
+  border: 1px solid #cbd5e1; border-radius: var(--radius-sm); background: var(--surface);
+}
+button.date-field svg { color: var(--muted); flex-shrink: 0; }
+button.date-field:hover { background: var(--surface); border-color: #94a3b8; }
+button.date-field:active { transform: none; }
+button.date-field:focus-visible, button.date-field[aria-expanded='true'] { outline: none; border-color: var(--brand-600); box-shadow: 0 0 0 3px rgb(22 163 74 / 0.18); }
+button.date-field[aria-expanded='true'] svg, button.date-field:focus-visible svg { color: var(--brand-700); }
+button.date-field.empty .date-field-text { color: #94a3b8; }
+button.date-field:disabled { background: var(--line-2); color: var(--muted); opacity: 1; }
+button.date-field[aria-invalid='true'] { border-color: var(--danger); box-shadow: 0 0 0 3px rgb(185 28 28 / 0.15); }
+.date-field-text { overflow: hidden; text-overflow: ellipsis; }
+.field button.date-field, .row-wrap .field button.date-field { width: 100%; }
+
+/* The calendar */
+.dp {
+  position: fixed; z-index: 1000; width: 304px; max-width: calc(100vw - 16px); padding: 10px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-lg);
+  animation: dp-in .12s ease-out; font-size: 0.95rem;
+}
+@keyframes dp-in { from { transform: translateY(-4px); } }
+.dp button { min-height: 0; padding: 0; border: 0; background: none; color: inherit; font-weight: 500; }
+.dp button:active { transform: none; }
+.dp-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 6px; }
+.dp .dp-nav { width: 36px; height: 36px; border-radius: 10px; color: var(--ink-2); }
+.dp .dp-nav:hover:not(:disabled) { background: var(--line-2); }
+.dp .dp-title { flex: 1; height: 36px; border-radius: 10px; font-weight: 700; font-size: 0.975rem; }
+.dp .dp-title:hover { background: var(--brand-50); color: var(--brand-800); }
+.dp-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dp-row > span { display: flex; justify-content: center; }
+.dp-wd { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 4px 0 6px; }
+.dp .dp-day { width: 38px; height: 38px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.dp .dp-day:hover:not(:disabled) { background: var(--brand-50); color: var(--brand-800); }
+.dp .dp-day[aria-current='date'] { box-shadow: inset 0 0 0 1.5px var(--brand-600); color: var(--brand-800); font-weight: 700; }
+.dp .dp-day[aria-pressed='true'] { background: var(--brand-700); color: #fff; font-weight: 700; box-shadow: none; }
+.dp .dp-day[aria-pressed='true']:hover { background: var(--brand-800); color: #fff; }
+.dp .dp-day:disabled { color: #cbd5e1; opacity: 1; cursor: not-allowed; }
+.dp .dp-day:focus-visible, .dp .dp-month:focus-visible, .dp .dp-nav:focus-visible, .dp .dp-title:focus-visible { outline: 3px solid #f59e0b; outline-offset: 1px; }
+.dp-months { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px 0; }
+.dp .dp-month { height: 44px; border-radius: 12px; font-weight: 600; }
+.dp .dp-month:hover:not(:disabled) { background: var(--brand-50); color: var(--brand-800); }
+.dp .dp-month[aria-pressed='true'] { background: var(--brand-700); color: #fff; }
+.dp .dp-month:disabled { color: #cbd5e1; opacity: 1; }
+.dp-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line-2); }
+.dp-foot button.btn-sm { min-height: 34px; padding: 6px 12px; border-radius: 10px; color: var(--brand-700); font-weight: 600; }
+.dp-foot button.btn-sm:hover:not(:disabled) { background: var(--brand-50); }
+@media (max-width: 360px) { .dp .dp-day { width: 34px; height: 34px; } }

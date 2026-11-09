@@ -6,6 +6,7 @@ import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
 import { Empty, PageHeader, Skeleton } from '../../shared/ui/kit'
+import { DateField } from '../../shared/ui/DateField'
 import { todayIST, useLocaleDate } from './opsData'
 
 interface LPlan { id: string; date: string; status: string; route: { name: string }; vehicle: { name: string } | null }
@@ -76,7 +77,7 @@ export default function LivePage() {
   return (
     <section className="stack-lg">
       <PageHeader title={t('live.title')} sub={<span className="row" style={{ gap: 6 }}><Radio size={14} aria-hidden="true" style={{ color: 'var(--success, #16a34a)' }} />{t('live.updated', { time: time(new Date(Math.max(stamp, live.dataUpdatedAt || 0)).toISOString()) })}</span>}
-        actions={<input type="date" aria-label={t('orders.deliveryDay')} value={date} onChange={(e) => setDate(e.target.value || todayIST())} />} />
+        actions={<DateField label={t('orders.deliveryDay')} value={date} onChange={(v) => setDate(v || todayIST())} style={{ minWidth: 170 }} />} />
       {live.isLoading ? <Skeleton rows={5} /> : !trips.length ? (
         <div className="card"><Empty icon={<Truck size={26} />} title={t('live.none', { date: fmt(date, true) })}><p>{t('live.noneHint')}</p></Empty></div>
       ) : <>

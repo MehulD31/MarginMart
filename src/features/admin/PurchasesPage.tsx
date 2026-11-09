@@ -9,6 +9,7 @@ import { useAuth } from '../../shared/api/auth'
 import { formatPaise, rupeesToPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DateField } from '../../shared/ui/DateField'
 import { useStockRows } from './stockRows'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { Pager } from '../../shared/ui/Pager'
@@ -142,7 +143,7 @@ function PurchaseForm({ suppliers, items, onDone }: { suppliers: Supplier[]; ite
         <label className="field"><span>{t('purchases.supplier')}</span>
           <select value={supplier} onChange={(e) => setSupplier(e.target.value)}>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
         <label className="field"><span>{t('purchases.invoice')}</span><input maxLength={40} value={invoice} onChange={(e) => setInvoice(e.target.value)} /></label>
-        <label className="field"><span>{t('purchases.date')}</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <label className="field"><span>{t('purchases.date')}</span><DateField value={date} onChange={setDate} /></label>
         <label className="field"><span>{t('purchases.note')}</span><input maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} /></label>
       </div>
       <div className="stack">
@@ -272,7 +273,7 @@ function ImportInvoice({ suppliers, items, onDone }: { suppliers: Supplier[]; it
         <label className="field"><span>{t('purchases.supplier')}</span>
           <select value={supplier} disabled={!!lines} onChange={(e) => setSupplier(e.target.value)}>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
         <label className="field"><span>{t('purchases.invoice')}</span><input maxLength={40} value={invoice} onChange={(e) => setInvoice(e.target.value)} /></label>
-        <label className="field"><span>{t('purchases.date')}</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <label className="field"><span>{t('purchases.date')}</span><DateField value={date} onChange={setDate} /></label>
         <label className="field"><span>{t('purchases.excelFile')}</span><input type="file" accept=".xlsx" disabled={busy || !supplier} onChange={(e) => void read(e.target.files?.[0])} /></label>
       </div>
       <p className="muted">{t('purchases.importHint')}</p>

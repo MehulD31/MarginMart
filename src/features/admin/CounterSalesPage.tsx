@@ -8,6 +8,7 @@ import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DateField } from '../../shared/ui/DateField'
 import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { useMoneyPayments } from './money'
@@ -78,8 +79,8 @@ export default function CounterSalesPage() {
         actions={<button type="button" className="primary" onClick={() => { setMsg(null); setEditing('new') }}><Plus size={18} aria-hidden="true" />{t('sales.new')}</button>} />
       <Alert msg={msg} />
       <div className="form-grid" style={{ maxWidth: 440 }}>
-        <label className="field"><span>{t('sales.from')}</span><input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} /></label>
-        <label className="field"><span>{t('sales.to')}</span><input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} /></label>
+        <label className="field"><span>{t('sales.from')}</span><DateField value={from} max={to || undefined} onChange={setFrom} /></label>
+        <label className="field"><span>{t('sales.to')}</span><DateField value={to} min={from || undefined} onChange={setTo} /></label>
       </div>
       {!valid && <Alert msg={{ kind: 'error', text: t('sales.badRange') }} />}
 

@@ -1441,5 +1441,17 @@
       "prospectsHint": "कभी नहीं खरीदा, पर उन एरिया में जहाँ हमारी गाड़ी पहले से बेचती है। एक कॉल या विज़िट दूर।",
       "wa": "Namaste {{owner}} ji, main K.D. Foods (PepsiCo distributor) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina best rate pe. Order chahiye?"
     }
+  },
+  "date": {
+    "pick": "तारीख चुनें",
+    "choose": "तारीख चुनें",
+    "prevMonth": "पिछला महीना",
+    "nextMonth": "अगला महीना",
+    "prevYear": "पिछला साल",
+    "nextYear": "अगला साल",
+    "pickMonth": "महीना और साल चुनें",
+    "backToDays": "दिनों पर वापस",
+    "clear": "हटाएँ",
+    "today": "आज"
   }
 }

@@ -8,6 +8,7 @@ import { formatPaise } from '../../shared/money'
 import { useAuth } from '../../shared/api/auth'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DateField } from '../../shared/ui/DateField'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { OrderEditor } from './OrderEditor'
 import { isLive, linesCases, linesTotal, ordersByDate, planDates, useOrderCounts, useOrdersFor, usePlans, todayIST, addDays, type AdminOrder, type Plan } from './opsData'
@@ -235,7 +236,7 @@ export function AddOrder({ initialDate, initialVehicle, onReady }: { initialDate
   return (
     <div className="stack">
       <label className="field"><span>{t('orders.deliveryDay')}</span>
-        <input type="date" min={todayIST()} max={addDays(todayIST(), 14)} value={date} onChange={(e) => changeDate(e.target.value)} /></label>
+        <DateField min={todayIST()} max={addDays(todayIST(), 14)} value={date} onChange={changeDate} /></label>
       {!shop ? <>
         <input type="search" aria-label={t('shops.searchLabel')} placeholder={t('shops.searchLabel')} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
         {shops.isLoading ? <Skeleton /> : list.length === 0 ? <p className="muted">{t('common.noMatches')}</p> : (
@@ -321,7 +322,7 @@ function MoveOrder({ order, initialDate, onDone }: { order: AdminOrder; initialD
   return (
     <div className="stack">
       <label className="field"><span>{t('orders.deliveryDay')}</span>
-        <input type="date" min={todayIST()} max={addDays(todayIST(), 14)} value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <DateField min={todayIST()} max={addDays(todayIST(), 14)} value={date} onChange={setDate} /></label>
       {trips.isLoading ? <Skeleton /> : list.length === 0 ? <p className="muted">{t('orders.noOtherTrips')}</p> : (
         <ul className="plain-list more-list">{list.map((p) => (
           <li key={p.id}><button type="button" className="btn-block" disabled={busy} onClick={() => void move(p)}>

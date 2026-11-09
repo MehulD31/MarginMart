@@ -1441,5 +1441,17 @@
       "prospectsHint": "Never bought, but in areas where our truck already sells. One call or visit away.",
       "wa": "Namaste {{owner}} ji, main K.D. Foods (PepsiCo distributor) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina best rate pe. Order chahiye?"
     }
+  },
+  "date": {
+    "pick": "Pick a date",
+    "choose": "Choose a date",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "prevYear": "Previous year",
+    "nextYear": "Next year",
+    "pickMonth": "Pick month and year",
+    "backToDays": "Back to days",
+    "clear": "Clear",
+    "today": "Today"
   }
 }

@@ -10,6 +10,7 @@ import { matchRows, parseSheet, type ImportResult, type PackRef } from '../../sh
 import { errorMessage } from '../../shared/ui/errors'
 import { CircleCheck, Copy, FileSpreadsheet, Tags, Trash2 } from 'lucide-react'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DateField } from '../../shared/ui/DateField'
 import { useConfirm } from '../../shared/ui/confirm'
 
 const usePriceLists = () => useQuery({
@@ -270,7 +271,7 @@ function ImportPanel({ packs, onDone }: { packs: Pack[]; onDone: (listId: string
           ))}
           <div className="form-grid">
             <label className="field"><span>{t('prices.listName')}</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
-            <label className="field"><span>{t('prices.effective')}</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+            <label className="field"><span>{t('prices.effective')}</span><DateField value={date} onChange={setDate} /></label>
           </div>
           <div className="sheet-foot">
             <button type="button" className="primary" disabled={busy || !name.trim() || !result.matched.length} onClick={() => void create()}>{t('prices.createDraft')}</button>

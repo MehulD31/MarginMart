@@ -8,6 +8,7 @@ import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Skeleton, type Msg } from '../../shared/ui/kit'
+import { DateField } from '../../shared/ui/DateField'
 import { Stepper } from '../../shared/ui/Stepper'
 import { useConfirm } from '../../shared/ui/confirm'
 import { VoiceSale, type VoiceResult } from './VoiceSale'
@@ -141,8 +142,8 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
         <div className="stack" style={{ gap: 4 }}>
           <label className="row" style={{ gap: 8, flexWrap: 'wrap' }} htmlFor="cs-day">
             <span className="cell-title">{t('sales.form.day')}</span>
-            <input id="cs-day" type="date" value={day} min={minDay} max={today} required aria-invalid={dayBad} style={{ width: 'auto' }}
-              onChange={(e) => setDay(e.target.value)} data-testid="sale-day" />
+            <DateField id="cs-day" value={day} min={minDay} max={today} invalid={dayBad} style={{ width: 'auto', minWidth: 170 }}
+              onChange={setDay} testId="sale-day" />
             {day !== today && !dayBad && <button type="button" className="btn-sm ghost" onClick={() => setDay(today)}>{t('sales.form.today')}</button>}
           </label>
           {day !== today && !dayBad && <span className="badge badge-amber" style={{ alignSelf: 'flex-start' }} data-testid="sale-day-note">
