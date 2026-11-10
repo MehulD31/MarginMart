@@ -108,7 +108,7 @@ test.describe('Manager', () => {
     await page.goto('/admin/prices')
     await expect(page.getByRole('heading', { level: 1, name: 'Price lists' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Make live' })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Import PepsiCo sheet' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Import Pepsi rate sheet' })).toHaveCount(0)
     await expect(page.locator('table input')).toHaveCount(0)
     await page.goto('/admin/users')
     await page.getByRole('button', { name: 'Add user' }).click()

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { netRate, parseRupees, shopMargin, shopMarginPct } from './pricing'
 
-// Rows taken from the PepsiCo sheet dated 01-09-26.
+// Rows taken from the Pepsi rate sheet dated 01-09-26.
 const can300 = { units_per_case: 24, mrp_paise: 4000, trade_price_paise: 77500, scheme_value_paise: 0 }
 const slice12 = { units_per_case: 12, mrp_paise: 7000, trade_price_paise: 71000, scheme_value_paise: 29000 }
 const aquafina1l = { units_per_case: 12, mrp_paise: 2000, trade_price_paise: 14000, scheme_value_paise: 500 }

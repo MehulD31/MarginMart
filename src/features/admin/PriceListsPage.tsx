@@ -216,7 +216,7 @@ function ImportPanel({ packs, onDone }: { packs: Pack[]; onDone: (listId: string
       })
       const res = matchRows(parseSheet(grid), refs)
       setResult(res)
-      setName(`PepsiCo ${date.split('-').reverse().join('-')}`)
+      setName(`Pepsi ${date.split('-').reverse().join('-')}`)
     } catch (err) {
       setError((err as Error).message === 'SHEET_FORMAT' ? t('prices.badSheet') : errorMessage(t, err))
     } finally { setBusy(false) }

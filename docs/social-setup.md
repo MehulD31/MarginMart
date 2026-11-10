@@ -5,9 +5,9 @@ Meta has no API to create a Page or an Instagram account, so these clicks are th
 The Meta account currently has 4 Pages (Vajra Formwork, Fibbi, Getmeflat, Planstalk), none for KD Foods.
 
 ## 1. Facebook Page (facebook.com/pages/create, logged in as Mehul)
-- **Name:** `KD Foods – PepsiCo Distributor Durg Bhilai` (change the city if needed)
+- **Name:** `K.D. Foods Bhilai` (keep "Pepsi" out of the page name; put it in the bio) (change the city if needed)
 - **Category:** Wholesale & Supply Store, plus Beverage Company
-- **Bio (≤255):** `PepsiCo distributor for Durg–Bhilai. Pepsi, 7UP, Mirinda, Dew, Sting, Slice, Aquafina at trade rates. Daily truck delivery to your shop. Order on the MarginMart app or WhatsApp.`
+- **Bio (≤255):** `Pepsi cold drinks dealer for Durg–Bhilai. Pepsi, 7UP, Mirinda, Dew, Sting, Slice, Aquafina at trade rates. Daily truck delivery to your shop. Order on the MarginMart app or WhatsApp.`
 - **Phone / WhatsApp:** the KD order number. **Address:** the godown. **Hours:** godown hours.
 - **Button:** "Send WhatsApp message" (connect the KD WhatsApp Business number).
 - **Website:** https://kdfoods.vercel.app/join (the join request page).
@@ -27,5 +27,5 @@ Until then `ops.yml` keeps approved posters queued and tells the KD group once a
 
 ## 4. Later (after posting runs)
 - WhatsApp Business: catalogue of packs + Status every morning with the day's scheme poster.
-- Google Business Profile: "PepsiCo distributor Durg", for wedding and bulk buyers searching "cold drink wholesale near me".
+- Google Business Profile: "Pepsi cold drinks dealer Durg", for wedding and bulk buyers searching "cold drink wholesale near me".
 - Ads: Click-to-WhatsApp from the best organic post, ₹150–300/day, 15–20 km around the routes. This only starts after the owner OKs the budget (money rule).

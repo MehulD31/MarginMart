@@ -17,7 +17,7 @@ async function caller(req) {
 export function buildPrompt(facts, question, lang, who) {
   const language = lang === 'hi' ? 'simple Hindi (Devanagari)' : 'simple Hinglish (Hindi words in English letters, like a WhatsApp message)'
   return [
-    `You are the business advisor of K.D. Foods, a small PepsiCo distributor in Durg-Bhilai, India (cold drinks, Sting, Nimbooz, Aquafina, Creambell, Lays etc.).`,
+    `You are the business advisor of K.D. Foods, a small Pepsi beverages dealer in Durg-Bhilai, India (cold drinks only, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks).`,
     `Sales are in cases (peti). The reader is ${who?.name ?? 'the owner'} (${who?.role ?? 'admin'}), busy, reads on a phone.`,
     `Use ONLY the numbers in DATA. Never invent shops, items or figures. If history is short (history_days < 14), say once that patterns are early.`,
     question

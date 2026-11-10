@@ -1,6 +1,6 @@
 # MarginMart
 
-B2B ordering and distribution platform for a beverage dealer (PepsiCo first). Shops order from their phones, the manager plans truck loads, drivers deliver and collect, and admins see dues, stock and profit.
+B2B ordering and distribution platform for a beverage dealer (Pepsi cold drinks first). Shops order from their phones, the manager plans truck loads, drivers deliver and collect, and admins see dues, stock and profit.
 
 Docs: [PRD](docs/PRD.md), [HLD](docs/HLD.md), [Autopilot: what runs by itself](docs/autopilot.md), [Social page setup](docs/social-setup.md).
 

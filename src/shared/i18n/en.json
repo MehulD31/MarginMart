@@ -262,7 +262,7 @@
   },
   "prices": {
     "title": "Price lists",
-    "import": "Import PepsiCo sheet",
+    "import": "Import Pepsi rate sheet",
     "confirmActivate": "Make \"{{name}}\" the live price list? Shops will see these prices immediately. Past orders keep their old prices.",
     "activated": "Price list is now live.",
     "confirmDelete": "Delete draft \"{{name}}\"?",
@@ -286,8 +286,8 @@
     "margin": "Shop margin",
     "invalid": "Trade price must be above 0 and above the scheme.",
     "netRate": "Net rate",
-    "badSheet": "This doesn't look like the PepsiCo scheme sheet. It needs PACK, # Btls, MRP and Trade Price columns.",
-    "importHint": "Upload the monthly .xlsx from PepsiCo. It creates a draft for you to check before making it live.",
+    "badSheet": "This doesn't look like the Pepsi rate sheet. It needs PACK, # Btls, MRP and Trade Price columns.",
+    "importHint": "Upload the monthly .xlsx rate sheet from Pepsi. It creates a draft for you to check before making it live.",
     "chooseFile": "Choose file",
     "matched": "{{n}} packs matched",
     "unmatchedCount": "{{n}} not matched",
@@ -299,7 +299,7 @@
     "mapRow": "Row {{row}}: \"{{name}}\" — which pack is this?",
     "skip": "Skip this row",
     "createDraft": "Create draft",
-    "sub": "Monthly PepsiCo rates. Shops always see the live list.",
+    "sub": "Monthly Pepsi rates. Shops always see the live list.",
     "noLive": "No price list is live yet, so shops cannot order. Open the draft and press \"Make live\".",
     "empty": "No price lists yet",
     "matchedLabel": "Packs matched",
@@ -1439,7 +1439,7 @@
       "reach": "Only {{b}} of {{n}} shops ({{p}}%) have bought so far. Every area below has shops waiting.",
       "prospects": "Shops to win next ({{n}})",
       "prospectsHint": "Never bought, but in areas where our truck already sells. One call or visit away.",
-      "wa": "Namaste {{owner}} ji, main K.D. Foods (PepsiCo distributor) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina best rate pe. Order chahiye?"
+      "wa": "Namaste {{owner}} ji, main K.D. Foods (Pepsi cold drinks dealer) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina best rate pe. Order chahiye?"
     }
   },
   "date": {

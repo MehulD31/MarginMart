@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { matchRows, parseSheet, type PackRef } from './priceImport'
 
-// Mirrors the layout of the PepsiCo sheet: a title row, then the header row, then data.
+// Mirrors the layout of the Pepsi rate sheet: a title row, then the header row, then data.
 const grid: unknown[][] = [
   ['01-09-26', 'PEPSI SCHEME'],
   ['PACK', '# Btls', 'MRP', 'Trade Margin', 'Trade Price', 'Scheme Value', 'TS', 'Net Rate After Sch', 'Scheme', 'Remarks'],

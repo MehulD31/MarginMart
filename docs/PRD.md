@@ -9,14 +9,14 @@
 
 ## 1. Background
 
-Shobhit is becoming the PepsiCo dealer for an area. He serves **150 retail stores** on **3 routes**. Each route is visited **twice a week** (Mon/Thu, Tue/Fri, Wed/Sat), so there are about 50 deliveries a day. The team is 4 vehicles, 4 drivers, 4 helpers and 1 manager.
+Shobhit is becoming the Pepsi beverages (cold drinks) dealer for an area. He serves **150 retail stores** on **3 routes**. Each route is visited **twice a week** (Mon/Thu, Tue/Fri, Wed/Sat), so there are about 50 deliveries a day. The team is 4 vehicles, 4 drivers, 4 helpers and 1 manager.
 
 A Telegram bot backed by Google Sheets proved the workflow: ordering, route loading, partial deliveries, cancellations, ledger and inventory. It has problems that make it unfit to run the business on:
 - It has no real access control.
 - Anyone can type free text into the sheet (for example "Mon/Thu", "MON/THU" and "vehical").
 - It has no transactions and no GST invoicing.
 
-MarginMart's original deal-sourcing business is discontinued. MarginMart will be rebuilt as a **generic B2B distribution platform**, with PepsiCo as the first brand.
+MarginMart's original deal-sourcing business is discontinued. MarginMart will be rebuilt as a **generic B2B distribution platform**, with Pepsi beverages as the first brand.
 
 ## 2. Goals
 

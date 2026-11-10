@@ -262,7 +262,7 @@
   },
   "prices": {
     "title": "रेट लिस्ट",
-    "import": "PepsiCo शीट इम्पोर्ट करें",
+    "import": "Pepsi रेट शीट इम्पोर्ट करें",
     "confirmActivate": "\"{{name}}\" को चालू रेट लिस्ट बनाएँ? दुकानों को ये रेट तुरंत दिखेंगे। पुराने ऑर्डर पुराने रेट पर रहेंगे।",
     "activated": "रेट लिस्ट चालू हो गई।",
     "confirmDelete": "ड्राफ़्ट \"{{name}}\" हटाएँ?",
@@ -286,8 +286,8 @@
     "margin": "दुकान का मार्जिन",
     "invalid": "ट्रेड रेट 0 से ज़्यादा और स्कीम से ज़्यादा होना चाहिए।",
     "netRate": "नेट रेट",
-    "badSheet": "यह PepsiCo स्कीम शीट नहीं लगती। इसमें PACK, # Btls, MRP और Trade Price कॉलम होने चाहिए।",
-    "importHint": "PepsiCo की महीने वाली .xlsx फ़ाइल डालें। पहले ड्राफ़्ट बनेगा, जाँचने के बाद चालू करें।",
+    "badSheet": "यह Pepsi रेट शीट नहीं लगती। इसमें PACK, # Btls, MRP और Trade Price कॉलम होने चाहिए।",
+    "importHint": "Pepsi की महीने वाली .xlsx फ़ाइल डालें। पहले ड्राफ़्ट बनेगा, जाँचने के बाद चालू करें।",
     "chooseFile": "फ़ाइल चुनें",
     "matched": "{{n}} पैक मिल गए",
     "unmatchedCount": "{{n}} नहीं मिले",
@@ -299,7 +299,7 @@
     "mapRow": "लाइन {{row}}: \"{{name}}\" — यह कौन सा पैक है?",
     "skip": "यह लाइन छोड़ें",
     "createDraft": "ड्राफ़्ट बनाएँ",
-    "sub": "PepsiCo के महीने के रेट। दुकानों को हमेशा चालू लिस्ट दिखती है।",
+    "sub": "Pepsi के महीने के रेट। दुकानों को हमेशा चालू लिस्ट दिखती है।",
     "noLive": "अभी कोई रेट लिस्ट चालू नहीं, इसलिए दुकानें ऑर्डर नहीं कर सकतीं। ड्राफ़्ट खोलें और \"चालू करें\" दबाएँ।",
     "empty": "अभी कोई रेट लिस्ट नहीं",
     "matchedLabel": "पैक मिल गए",
@@ -1439,7 +1439,7 @@
       "reach": "{{n}} में से अभी सिर्फ़ {{b}} दुकानों ({{p}}%) ने खरीदा है। नीचे हर एरिया में दुकानें बाकी हैं।",
       "prospects": "अगली जीतने वाली दुकानें ({{n}})",
       "prospectsHint": "कभी नहीं खरीदा, पर उन एरिया में जहाँ हमारी गाड़ी पहले से बेचती है। एक कॉल या विज़िट दूर।",
-      "wa": "Namaste {{owner}} ji, main K.D. Foods (PepsiCo distributor) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina best rate pe. Order chahiye?"
+      "wa": "Namaste {{owner}} ji, main K.D. Foods (Pepsi cold drinks dealer) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina best rate pe. Order chahiye?"
     }
   },
   "date": {

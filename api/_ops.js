@@ -144,7 +144,7 @@ async function ask(chat, question, fallback) {
   await typing(chat)
   try {
     const [d, y, w] = await Promise.all([rpc('bot_day', { p_day: todayIST() }), rpc('bot_day', { p_day: todayIST(-1) }), rpc('bot_week', { p_end: todayIST() })])
-    const prompt = `You are the helpful assistant of K.D. Foods, a PepsiCo distributor in Durg-Bhilai, India, talking to the owners on Telegram.\n` +
+    const prompt = `You are the helpful assistant of K.D. Foods, a Pepsi beverages dealer in Durg-Bhilai, India (cold drinks only, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks), talking to the owners on Telegram.\n` +
       `Answer using ONLY this live data. Money is in paise (divide by 100, write as ₹ with Indian commas). "peti" = case. If the data can't answer, say so in one line and say which app page or bot command has it ` +
       `(/due, /stock, /order, /sleeping, /week, or the website pages Orders, Khata, Inventory, Counter sales).\n` +
       `TODAY ${JSON.stringify(d)}\nYESTERDAY ${JSON.stringify(y)}\nLAST 7 DAYS ${JSON.stringify(w.days)}\nDUES NOW ${JSON.stringify(w.today?.dues ?? {})}\n\n` +

@@ -1,10 +1,10 @@
--- Seed: PepsiCo catalogue + price list dated 01-09-2026 (from Shobhit's sheet), routes, vehicles.
+-- Seed: Pepsi beverages catalogue + price list dated 01-09-2026 (from Shobhit's sheet), routes, vehicles.
 -- Idempotent. Ambiguous sheet rows are disambiguated by MRP in the name (PRD Q4).
 -- Variant (flavour) mapping is a first guess from the product photo; admin can edit it.
 
-insert into public.brand (name) values ('PepsiCo') on conflict (name) do nothing;
+insert into public.brand (name) values ('Pepsi') on conflict (name) do nothing;
 
-with b as (select id from public.brand where name = 'PepsiCo'),
+with b as (select id from public.brand where name = 'Pepsi'),
 p(sort, name_en, units, mrp, trade, scheme, stype, returnable) as (values
   (1,  'Slice Tetra 125ml',                40, 10, 315, 0,   'net_rate',    false),
   (2,  'Mix Fruit / Apple / Litchi Tetra 125ml', 40, 10, 300, 100, 'bogo_on_mrp', false),

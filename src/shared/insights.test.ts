@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { analyze, factsForAI } from './insights.js'
 
 const S = (id: string, area = 'Supela', phone = '98' + id.padStart(8, '0')) => ({ id, name: `Shop ${id}`, owner: `Owner ${id}`, phone, area, route: 'R1' })
-const I = (id: string, on_hand: number) => ({ id, label: `Item ${id}`, brand: 'PepsiCo', img: null, on_hand, low: 5, cost: 400 })
+const I = (id: string, on_hand: number) => ({ id, label: `Item ${id}`, brand: 'Pepsi', img: null, on_hand, low: 5, cost: 400 })
 let n = 0
 const B = (shop: string, day: string, lines: [string, number, number][]) => ({ id: `c:${++n}`, at: `${day}T10:00:00Z`, day, shop, src: 'counter',
   lines: lines.map(([item, qty, price]) => [item, qty, qty * price, qty * 400]) })
@@ -10,7 +10,7 @@ const B = (shop: string, day: string, lines: [string, number, number][]) => ({ i
 const data = {
   today: '2026-11-20', admin: true, dues: { s2: [100000, 50000] },
   shops: [S('s1'), S('s2'), S('s3'), S('s4', 'Durg'), S('s5'), S('s6', 'Supela', null as unknown as string)],
-  items: [I('sting', 12), I('nimbooz', 100), I('lays', 0), I('slice', 40)],
+  items: [I('sting', 12), I('nimbooz', 100), I('soda', 0), I('slice', 40)],
   bills: [
     // s1: every 4 days, sting 5 + nimbooz 2; last on the 12th -> 8 days ago, late by 4
     B('s1', '2026-11-04', [['sting', 5, 500], ['nimbooz', 2, 450]]),
@@ -52,6 +52,8 @@ describe('analyze', () => {
     expect(s1.likely[0]).toMatchObject({ item: 'sting', qty: 5, times: 3 })
     expect(a.callToday.map((s) => s.id)).toContain('s1')
     expect(a.callToday.map((s) => s.id)).not.toContain('s2')   // bought today
+    // the call cards read .recommend: every call-today entry must have it (missing = dashboard crash, 9 Nov)
+    for (const c of a.callToday) expect(Array.isArray(c.recommend)).toBe(true)
     const s2 = a.shops.find((s) => s.id === 's2')!
     expect(s2).toMatchObject({ gap: 7, since: 0, overdue: 50000, cases7: 4 })
   })
@@ -61,7 +63,7 @@ describe('analyze', () => {
     expect(a.shops.find((s) => s.id === 's2')!.segment).toBe('loyal')        // regular, but s1 is the top-value shop
     const rec = a.shops.find((s) => s.id === 's3')!.recommend.map((r) => r.item)
     expect(rec).toContain('nimbooz')                          // bought with sting by s1
-    expect(rec).not.toContain('lays')                         // out of stock is never suggested
+    expect(rec).not.toContain('soda')                         // out of stock is never suggested
   })
   it('areas, prospects and alerts', () => {
     const supela = a.areas.find((x) => x.area === 'Supela')!

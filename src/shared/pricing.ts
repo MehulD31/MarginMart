@@ -1,4 +1,4 @@
-// Pricing rules from the PepsiCo sheet (PRD §4). All values in paise, per case.
+// Pricing rules from the Pepsi rate sheet (PRD §4). All values in paise, per case.
 
 export interface PackPrice {
   units_per_case: number

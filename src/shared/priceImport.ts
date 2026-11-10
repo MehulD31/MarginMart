@@ -1,4 +1,4 @@
-// Turns rows from the PepsiCo scheme sheet into price-list items, matched to packs.
+// Turns rows from the Pepsi rate sheet into price-list items, matched to packs.
 // Pure (no Excel/DB) so it is unit-tested; the page reads the file with exceljs.
 import { parseRupees } from './pricing'
 
