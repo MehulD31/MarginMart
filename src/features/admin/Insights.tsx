@@ -248,8 +248,8 @@ function CallList({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void })
         <p data-testid="call-why">{s.gap ? (s.lateBy! > 0 ? t('ins.call.whyLate', { g: Math.round(s.gap), count: s.since }) : t('ins.call.whyDue', { g: Math.round(s.gap), count: s.since })) : t('ins.call.whyOnce', { count: s.since })}</p>
         <p className="cell-sub">{t('ins.call.avg', { v: rs(s.avgBill) })} · {t('ins.call.usualLabel')}</p>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-          {s.likely.slice(0, 3).map((l) => <span key={l.item} className="badge badge-green">{l.label} × {l.qty}</span>)}
-          {s.recommend.slice(0, 1).map((r) => <span key={r.item} className="badge badge-blue">✨ {t('ins.call.try', { item: r.label })}</span>)}
+          {(s.likely ?? []).slice(0, 3).map((l) => <span key={l.item} className="badge badge-green">{l.label} × {l.qty}</span>)}
+          {(s.recommend ?? []).slice(0, 1).map((r) => <span key={r.item} className="badge badge-blue">✨ {t('ins.call.try', { item: r.label })}</span>)}
         </div>
         <ShopActions s={s} />
       </li>))}

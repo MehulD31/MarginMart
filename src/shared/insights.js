@@ -161,6 +161,8 @@ export function analyze(data) {
       .filter((r) => r.onHand > 0).sort((a, b) => b.score - a.score).slice(0, n)
   }
   for (const s of shops) s.recommend = recommendFor(s.id)
+  // callToday holds copies made before this line, so they need their own (crashed the dashboard on 9 Nov when the list filled up)
+  for (const c of callToday) c.recommend = recommendFor(c.id)
 
   // ---------- areas: where we sell, and untapped shops ----------
   const areaAll = new Map()
