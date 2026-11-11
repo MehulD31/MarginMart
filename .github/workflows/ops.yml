@@ -66,3 +66,15 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           GH_TOKEN: ${{ github.token }}
         run: node scripts/ops/ops.mjs
+      # Alarm that works even when the script itself cannot start (8-11 Nov 2026: a missing file broke every run silently).
+      - name: Tell the KD group if this run failed
+        if: failure() && steps.m.outputs.mode != 'events'
+        env:
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          MODE: ${{ steps.m.outputs.mode }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${KD_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${KD_CHAT_ID}" \
+            --data-urlencode "text=⚠️ Autopilot job '${MODE}' fail ho gaya. Report/alert nahi gaya. Details: ${URL}" > /dev/null
