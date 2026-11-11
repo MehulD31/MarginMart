@@ -6,3 +6,5 @@
 - **What it sells:** Pepsi, 7UP, Mirinda, Mountain Dew, Pepsi Black, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade and other Pepsi drinks, plus **Creambell** milk drinks (a separate brand it also stocks).
 - **In the catalogue:** the brand is called "Pepsi". The monthly price file is the "Pepsi rate sheet".
 - **Social pages:** keep "Pepsi" out of page names and handles (brand-impersonation risk). It can go in the bio.
+- **Public brand is MarginMart, "by K.D. Foods" in small.** Instagram @marginmartofficial, Facebook Page "MarginMart".
+- **Don't describe it as "cold drinks" only.** It sells water (Aquafina), milk drinks (Creambell) and more products will be added. In public text, say "wholesale distributor · Durg–Bhilai" and "drinks, water, milk drinks & more".

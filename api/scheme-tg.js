@@ -7,7 +7,8 @@
 //                  GH_DISPATCH_TOKEN (fine-grained token: this repo only, Actions read+write), GH_REPO (owner/name)
 
 import { handleSaleMessage, handleSaleTap, handleSaleVoice } from './_sale.js'
-import { getState, handleOpsCommand, handleOpsTap, handleText, setState } from './_ops.js'
+import { getState, handleOpsCommand, handleOpsTap, handleSocialReply, handleText, setState } from './_ops.js'
+import { mediaOf, tooBig } from '../scripts/ops/media.mjs'
 
 // Values are trimmed so a stray newline in a Vercel variable can never break a token or a comparison.
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
@@ -58,10 +59,23 @@ export default async function handler(req, res) {
 
     const msg = u.message
     if (!msg || !allowed(msg.from, msg.chat?.id)) return res.status(200).end()
+    // Video / photo for the MarginMart page: GitHub job saves it, AI writes the caption, preview comes back with ✅ ⚡ ❌.
+    const media = mediaOf(msg)
+    if (media) {
+      if (tooBig(media)) {
+        await tg('sendMessage', { chat_id: msg.chat.id, reply_to_message_id: msg.message_id, text: '🎬 Video 20 MB se bada hai, bot ise utaar nahi sakta. Telegram me isko normal video ki tarah bhejo (file nahi), ya 1 minute se chhota clip bhejo.' })
+        return res.status(200).end()
+      }
+      await tg('sendMessage', { chat_id: msg.chat.id, reply_to_message_id: msg.message_id, text: `⏳ ${media.type === 'video' ? 'Video' : 'Photo'} mil gaya. Caption bana raha hun, 1-2 minute me preview aayega…` })
+      await dispatch({ mode: 'media', file: media.file_id, mtype: media.type, note: media.note.slice(0, 500), who: msg.from.first_name ?? '' }, 'ops.yml')
+      return res.status(200).end()
+    }
     // Voice note: "maruti kirana sting 50 crate 495" -> heard, parsed, same confirm screen as a typed /sale.
     if (await handleSaleVoice(msg)) return res.status(200).end()
     const text = (msg.text ?? msg.caption ?? '').trim()
     if (!text) return res.status(200).end()
+    // A reply to a post preview = the new caption for that post.
+    if (await handleSocialReply(msg, text)) return res.status(200).end()
     // Counter sales: "/sale" and anything typed while a sale is open.
     if (await handleSaleMessage(msg)) return res.status(200).end()
     const ctx = { dispatch, getState, setState }

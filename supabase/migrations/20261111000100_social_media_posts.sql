@@ -1,0 +1,5 @@
+-- Owner videos/photos for the MarginMart page (applied live as social_media_posts + social_media_staff_upload).
+-- social_post: media_type (image|video), made_by, status 'draft' (waits for ✅ in the KD group).
+-- Bucket social-media (public, 50 MB, mp4/mov/jpg/png/webp). Staff may upload/delete there.
+-- bot_social_approve(key, id): draft -> queued.  bot_social_caption(key, id, caption): new caption before posting.
+-- bot_social_skip(key, id): now also skips drafts.

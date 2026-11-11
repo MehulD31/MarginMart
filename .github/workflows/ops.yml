@@ -5,9 +5,14 @@ name: ops
 on:
   workflow_dispatch:
     inputs:
-      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask", required: true, default: watchdog }
+      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask | media", required: true, default: watchdog }
       question: { description: "for mode=ask", required: false, default: "" }
       force: { description: "1 = send again even if already sent", required: false, default: "" }
+      file: { description: "mode=media: Telegram file_id of the video/photo", required: false, default: "" }
+      mtype: { description: "mode=media: video | image", required: false, default: "" }
+      note: { description: "mode=media: what the owner wrote with it", required: false, default: "" }
+      who: { description: "mode=media: who sent it", required: false, default: "" }
+      post: { description: "mode=social: post this social_post id now", required: false, default: "" }
   schedule:
     - cron: '30 2 * * *'    # 08:00 IST morning
     - cron: '0 16 * * *'    # 21:30 IST night
@@ -17,7 +22,7 @@ on:
     - cron: '30 4 * * *'    # 10:00 IST watchdog
     - cron: '30 17 * * *'   # 23:00 IST watchdog
     - cron: '0 14 * * *'    # 19:30 IST social
-concurrency: { group: "ops-${{ github.event.inputs.mode || github.event.schedule }}", cancel-in-progress: false }
+concurrency: { group: "ops-${{ github.event.inputs.mode || github.event.schedule }}-${{ github.event.inputs.file || github.event.inputs.post }}", cancel-in-progress: false }
 permissions: { contents: read, actions: write }
 jobs:
   run:
@@ -43,6 +48,11 @@ jobs:
           MODE: ${{ steps.m.outputs.mode }}
           QUESTION: ${{ github.event.inputs.question }}
           FORCE: ${{ github.event.inputs.force }}
+          FILE_ID: ${{ github.event.inputs.file }}
+          MTYPE: ${{ github.event.inputs.mtype }}
+          NOTE: ${{ github.event.inputs.note }}
+          WHO: ${{ github.event.inputs.who }}
+          POST_ID: ${{ github.event.inputs.post }}
           KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
           KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
           KD_CHANNEL_ID: ${{ secrets.KD_CHANNEL_ID }}

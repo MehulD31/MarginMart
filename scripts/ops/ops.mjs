@@ -11,6 +11,8 @@
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
+import { captionPrompt, fallbackCaption, finishCaption, previewButtons } from './media.mjs'
+import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
 
@@ -257,52 +259,100 @@ const graph = async (path, params) => {
   const r = await fetch(`${G}/${path}`, { method: 'POST', body: new URLSearchParams({ ...params, access_token: env('META_PAGE_TOKEN') }) })
   const j = await r.json(); if (j.error) throw new Error(`${path}: ${j.error.message}`); return j
 }
-async function social() {
-  const [p] = await db('social_post?status=eq.queued&order=created_at&limit=1&select=*')
-  if (!p) return console.log('nothing queued')
+// One post: Telegram channel (if set), Facebook Page, Instagram. Photos as photos, videos as Reels on both.
+async function postOne(p) {
   const patch = (b) => db(`social_post?id=eq.${p.id}`, { method: 'PATCH', body: JSON.stringify(b) })
-  // auto-made posts go out only after the group has seen them (preview with ❌, see content.mjs)
+  // auto-made and owner posts go out only after the group has seen them (preview, see content.mjs and media())
   if (p.kind !== 'scheme' && !(await db(`ops_log?job=eq.preview&key=eq.${p.id}&select=job`)).length) return console.log('waiting for preview', p.id)
   // an offer that already ended must never go out
   if (p.kind === 'scheme' && p.source_id) {
     const [s] = await db(`scheme?id=eq.${p.source_id}&select=ends_on,active`)
     if (!s || !s.active || s.ends_on < today) { await patch({ status: 'skipped', error: 'scheme ended before posting' }); return console.log('skipped, scheme ended') }
   }
+  const video = p.media_type === 'video'
   const channel = process.env.KD_CHANNEL_ID
   if (channel && !(await done('channel', p.id))) {
-    await tg('sendPhoto', { chat_id: channel, photo: p.image_url, caption: p.caption.slice(0, 1024) })
+    await tg(video ? 'sendVideo' : 'sendPhoto', { chat_id: channel, [video ? 'video' : 'photo']: p.image_url, caption: p.caption.slice(0, 1024) })
     await mark('channel', p.id)
   }
   const page = process.env.FB_PAGE_ID, ig = process.env.IG_USER_ID
   if (!process.env.META_PAGE_TOKEN || (!page && !ig)) {
     if (channel) { await patch({ status: 'posted', posted_at: new Date().toISOString() }); return console.log('posted to channel only') }
     if (!(await done('social-noconnect', today))) {
-      await say('📣 Approved scheme poster post hone ke liye taiyaar hai, par Facebook/Instagram page abhi connect nahi hai. Page banne ke baad GitHub secrets META_PAGE_TOKEN, FB_PAGE_ID, IG_USER_ID daalo; phir ye apne aap post hoga.')
+      await say('📣 Approved post taiyaar hai, par Facebook/Instagram page abhi connect nahi hai. GitHub secrets META_PAGE_TOKEN, FB_PAGE_ID, IG_USER_ID daalo; phir ye apne aap post hoga.')
       await mark('social-noconnect', today)
     }
     return
   }
   const out = { attempts: p.attempts + 1 }
   try {
-    if (page && !p.fb_post_id) out.fb_post_id = (await graph(`${page}/photos`, { url: p.image_url, caption: p.caption })).post_id ?? 'ok'
+    if (page && !p.fb_post_id) {
+      out.fb_post_id = video
+        ? (await graph(`${page}/videos`, { file_url: p.image_url, description: p.caption })).id
+        : (await graph(`${page}/photos`, { url: p.image_url, caption: p.caption })).post_id ?? 'ok'
+    }
     if (ig && !p.ig_media_id) {
-      const c = await graph(`${ig}/media`, { image_url: p.image_url, caption: p.caption })
-      for (let i = 0; i < 10; i++) {
+      const c = await graph(`${ig}/media`, video
+        ? { media_type: 'REELS', video_url: p.image_url, caption: p.caption, share_to_feed: 'true' }
+        : { image_url: p.image_url, caption: p.caption })
+      // videos take a while to process on Instagram's side (up to ~3 minutes)
+      for (let i = 0; i < (video ? 40 : 10); i++) {
         const s = await (await fetch(`${G}/${c.id}?fields=status_code&access_token=${env('META_PAGE_TOKEN')}`)).json()
         if (s.status_code === 'FINISHED') break
-        if (s.status_code === 'ERROR') throw new Error('instagram media error')
+        if (s.status_code === 'ERROR') throw new Error('instagram could not process the media')
         await new Promise((r) => setTimeout(r, 5000))
       }
       out.ig_media_id = (await graph(`${ig}/media_publish`, { creation_id: c.id })).id
     }
     await patch({ ...out, status: 'posted', posted_at: new Date().toISOString(), error: null })
-    await say(`📣 Scheme poster post ho gaya${channel ? ' · Telegram channel' : ''}${out.fb_post_id ? ' · Facebook' : ''}${out.ig_media_id ? ' · Instagram' : ''}.`)
+    const igLink = out.ig_media_id ? (await (await fetch(`${G}/${out.ig_media_id}?fields=permalink&access_token=${env('META_PAGE_TOKEN')}`)).json()).permalink : null
+    const fbLink = out.fb_post_id && out.fb_post_id !== 'ok' ? `https://www.facebook.com/${out.fb_post_id}` : null
+    const what = p.kind === 'scheme' ? 'Scheme poster' : video ? 'Video (Reel)' : 'Photo'
+    await say(`📣 ${what} post ho gaya${channel ? ' · Telegram channel' : ''}.${fbLink ? `\nFacebook: ${fbLink}` : ''}${igLink ? `\nInstagram: ${igLink}` : ''}`)
   } catch (e) {
     await patch({ ...out, error: e.message.slice(0, 300), status: out.attempts >= 3 ? 'failed' : 'queued' })
+    if (out.attempts >= 3) await say(`⚠️ Post nahi ho paya (3 baar try kiya): ${e.message.slice(0, 200)}`)
     throw e
   }
 }
+// 19:30 job: every approved post (max 5). With POST_ID (⚡ in Telegram): just that one, right now.
+async function social() {
+  const id = process.env.POST_ID
+  const list = await db(id ? `social_post?id=eq.${id}&status=eq.queued&select=*` : 'social_post?status=eq.queued&order=created_at&limit=5&select=*')
+  if (!list.length) return console.log('nothing queued')
+  let failed = null
+  for (const p of list) { try { await postOne(p) } catch (e) { console.log('post failed', p.id, e.message); failed = e } }
+  if (failed) throw failed
+}
 
+// Owner video/photo from Telegram (api/scheme-tg.js): save it, AI caption, preview in the group with ✅ ⚡ ❌.
+async function media() {
+  const fileId = env('FILE_ID'), type = process.env.MTYPE === 'image' ? 'image' : 'video'
+  const note = process.env.NOTE ?? '', who = process.env.WHO ?? ''
+  if (await done('media', fileId)) return console.log('media already handled')
+  let f
+  try { f = await tg('getFile', { file_id: fileId }) } catch (e) {
+    await say(/too big/i.test(e.message) ? '🎬 Video 20 MB se bada hai. Telegram me normal video ki tarah bhejo (file nahi), ya chhota clip bhejo.' : `⚠️ File nahi mili: ${e.message.slice(0, 150)}`)
+    return mark('media', fileId, 'download failed', 'failed')
+  }
+  const buf = Buffer.from(await (await fetch(`https://api.telegram.org/file/bot${env('KD_BOT_TOKEN')}/${f.file_path}`)).arrayBuffer())
+  const ext = type === 'video' ? 'mp4' : 'jpg'
+  const path = `${today}/${randomUUID()}.${ext}`
+  const up = await fetch(`${env('SUPABASE_URL')}/storage/v1/object/social-media/${path}`, { method: 'POST',
+    headers: { apikey: env('SUPABASE_SERVICE_KEY'), Authorization: `Bearer ${env('SUPABASE_SERVICE_KEY')}`, 'Content-Type': type === 'video' ? 'video/mp4' : 'image/jpeg', 'x-upsert': 'true' }, body: buf })
+  if (!up.ok) throw new Error(`upload ${up.status}: ${(await up.text()).slice(0, 200)}`)
+  const url = `${env('SUPABASE_URL')}/storage/v1/object/public/social-media/${path}`
+  let caption
+  try { caption = finishCaption((await askJson(captionPrompt(note, type)))?.caption) } catch (e) { console.log('caption ai', e.message); caption = fallbackCaption(note, type) }
+  if (caption.length < 60) caption = fallbackCaption(note, type)
+  const [row] = await db('social_post', { method: 'POST', body: JSON.stringify({ kind: 'media', source_id: randomUUID(), media_type: type, image_url: url, caption, status: 'draft', made_by: who || null }) })
+  const head = `📣 Naya ${type === 'video' ? 'video (Reel)' : 'photo'} post${who ? ` · ${who}` : ''}:\n\n`
+  const tail = '\n\n✏️ Caption badalna ho to is message ka reply karke naya caption likho.'
+  await tg(type === 'video' ? 'sendVideo' : 'sendPhoto', { chat_id: env('KD_CHAT_ID'), [type === 'video' ? 'video' : 'photo']: fileId,
+    caption: (head + caption).slice(0, 1024 - tail.length) + tail, reply_markup: previewButtons(row.id) })
+  await mark('preview', row.id)
+  await mark('media', fileId, row.id)
+}
 async function ask() {
   const q = env('QUESTION').slice(0, 800)
   const [d, y, w, ins] = await Promise.all([rpc('ops_daily', { p_day: today }), rpc('ops_daily', { p_day: addDays(today, -1) }), rpc('ops_weekly', { p_end: today }), smart()])
@@ -340,7 +390,7 @@ async function diag() {
   }
 }
 
-const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag }
+const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)

@@ -2,11 +2,12 @@
 // a second or two straight from Supabase (key-checked bot_* RPCs) and, for questions, the free Gemini key, with no GitHub run.
 //   Slash:   /menu /start /help  /aaj (/report) /kal /week  /due [shop]  /stock [item]  /sleeping  /order  /paisa  /ask <q>
 //   Plain:   "aaj ka hisaab", "sharma ka udhaar", "sting stock", "kya mangana hai", any business question (see _intent.js)
-//   Buttons: m:<menu item>, d:<shop id> (shop card), u:scheme|ask (unsure text), sp:no:<id> (skip a social post)
+//   Buttons: m:<menu item>, d:<shop id> (shop card), u:scheme|ask (unsure text), sp:ok|now|no:<id> (post a social post at 19:30 / now / skip it)
 import { detectIntent } from './_intent.js'
 import { askJson } from './_sale.js'
 import { dayText, weekText } from '../scripts/ops/report.mjs'
 import { item, reorderText, remindText, waLink } from '../scripts/ops/format.mjs'
+import { finishCaption, postIdOf } from '../scripts/ops/media.mjs'
 
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
 const rs = (p) => '₹' + (Number(p ?? 0) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })
@@ -267,6 +268,19 @@ export async function handleOpsTap(q, ctx = {}) {
     else await ask(chat, text, ctx.dispatch && (() => ctx.dispatch({ mode: 'ask', question: text.slice(0, 800) }, 'ops.yml')))
     return true
   }
+  // ✅ = post at 19:30, ⚡ = post right now (starts the social job for this post only).
+  if ((m = /^sp:(ok|now):([0-9a-f-]{36})$/i.exec(data))) {
+    try {
+      const r = await rpc('bot_social_approve', { p_id: m[2] })
+      if (r !== 'queued') { await answer(r === 'posted' ? 'Ye pehle hi post ho chuka' : r === 'skipped' ? 'Ye post cancel ho chuka' : 'Ye pehle se queue me hai'); return true }
+      const now = m[1] === 'now'
+      await answer(now ? 'Abhi post kar raha hun…' : 'Theek hai, aaj 7:30 baje')
+      await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [[{ text: '❌ Mat daalo', callback_data: `sp:no:${m[2]}` }]] } })
+      if (now && ctx.dispatch) await ctx.dispatch({ mode: 'social', post: m[2] }, 'ops.yml')
+      await send(chat, now ? `⚡ ${q.from?.first_name ?? ''}: post ho raha hai, 2-3 minute me link aayega.` : `✅ ${q.from?.first_name ?? ''}: aaj 7:30 baje Facebook + Instagram pe jayega.`)
+    } catch (e) { await answer(`Error: ${String(e.message).slice(0, 150)}`) }
+    return true
+  }
   if ((m = /^sp:no:([0-9a-f-]{36})$/i.exec(data))) {
     try {
       const r = await rpc('bot_social_skip', { p_id: m[1] })
@@ -279,4 +293,17 @@ export async function handleOpsTap(q, ctx = {}) {
     return true
   }
   return false
+}
+
+/** Reply to a post preview with new text = new caption for that post (before it is posted). Returns true when handled. */
+export async function handleSocialReply(msg, text) {
+  const reply = msg.reply_to_message
+  if (!reply?.from?.is_bot) return false
+  const id = postIdOf(reply)
+  if (!id) return false
+  try {
+    const r = await rpc('bot_social_caption', { p_id: id, p_caption: finishCaption(text) })
+    await send(msg.chat.id, r === 'locked' ? 'Ye post ho chuka ya cancel hai, caption ab nahi badlega.' : `✏️ Caption badal diya:\n\n${finishCaption(text)}`)
+  } catch (e) { await send(msg.chat.id, `⚠️ ${String(e.message).slice(0, 200)}`) }
+  return true
 }
