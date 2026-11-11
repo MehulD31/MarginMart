@@ -24,7 +24,7 @@ export const tooBig = (m) => m.size > BOT_MAX
 /** Prompt for the AI caption. Facts from .kiro/steering/business-facts.md: MarginMart by K.D. Foods, wholesale, not "cold drinks only". */
 export function captionPrompt(note, type) {
   return [
-    'Write an Instagram/Facebook caption for MarginMart (by K.D. Foods), a wholesale distributor in Durg-Bhilai, Chhattisgarh, India.',
+    'Write an Instagram/Facebook caption for MarginMart (by K.D. Foods), a wholesale distributor in Bhilai, Chhattisgarh, India.',
     'It sells drinks (Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Gatorade), Aquafina water, Creambell milk drinks and more. Never call it a PepsiCo distributor; never mention snacks.',
     'Readers: kirana and shop owners ("dukandar bhai"), hotels, canteens, wedding and function buyers.',
     `This is a ${type === 'video' ? 'short video (Reel)' : 'photo'}. What the owner said about it: "${String(note || 'godown / stock / delivery clip').slice(0, 400)}".`,
@@ -37,7 +37,7 @@ export function captionPrompt(note, type) {
 /** Caption that always works (AI down): the owner's words + phone + tags. */
 export function fallbackCaption(note, type) {
   const hook = type === 'video' ? 'Dukandar bhai, dekho aaj ka maal! 🚚' : 'Dukandar bhai, MarginMart se taaza maal 🚚'
-  return finishCaption(`${hook}\n${note ? note.slice(0, 300) + '\n' : ''}Durg-Bhilai me wholesale rate pe daily delivery.\n📞 Call/WhatsApp ${PHONE}`)
+  return finishCaption(`${hook}\n${note ? note.slice(0, 300) + '\n' : ''}Bhilai me wholesale rate pe daily delivery.\n📞 Call/WhatsApp ${PHONE}`)
 }
 
 /** Final caption: phone always present, our hashtags added once, no markdown, within Instagram's limit. */

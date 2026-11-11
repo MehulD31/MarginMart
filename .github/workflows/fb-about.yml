@@ -10,7 +10,7 @@ jobs:
           TOKEN: ${{ secrets.META_PAGE_TOKEN }}
           PAGE: ${{ secrets.FB_PAGE_ID }}
         run: |
-          ABOUT="by K.D. Foods · Wholesale distributor · Durg–Bhilai. Drinks, water, milk drinks & more. WhatsApp group: https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm · Call 9630012636"
+          ABOUT="by K.D. Foods · Wholesale distributor · Bhilai. Drinks, water, milk drinks & more. WhatsApp group: https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm · Call 9630012636"
           curl -sS -X POST "https://graph.facebook.com/v21.0/$PAGE" --data-urlencode "about=$ABOUT" --data-urlencode "access_token=$TOKEN" | grep -v access_token
           echo
           curl -sS "https://graph.facebook.com/v21.0/$PAGE?fields=about&access_token=$TOKEN"

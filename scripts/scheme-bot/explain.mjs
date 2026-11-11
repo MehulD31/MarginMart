@@ -24,7 +24,7 @@ try {
   }))
 
   // ---- AI reads the message. It only extracts facts; every number we show is computed below. ----
-  const facts = await askJson(`You help K.D. Foods, a Pepsi beverages dealer in Durg-Bhilai, India (cold drinks only, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks). A Pepsi salesman sent this message (Hindi/Hinglish):
+  const facts = await askJson(`You help K.D. Foods, a Pepsi beverages dealer in Bhilai, India (drinks, water and milk drinks, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks). A Pepsi salesman sent this message (Hindi/Hinglish):
 """${task}"""
 Today is ${today} (IST). "TS" = trade scheme = the shop's total margin per case (MRP value of the case minus price paid).
 "₹80 TS" on a pack whose current TS is ₹70 means ₹10 extra per case. "N din ke liye" = valid N days starting today unless a date is given (last day = today + N - 1).
