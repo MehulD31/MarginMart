@@ -20,7 +20,7 @@ export const waLink = (phone, text) => {
 }
 
 export const remindText = (shop, amountRupees) =>
-  `Namaste ${shop}, K.D. Foods se. Aapka ${amountRupees} baki hai. Kripya jaldi bhej dein. Dhanyavaad.`
+  `Namaste ${shop}, K.D. Foods se. Aapka ${amountRupees} baki hai. Kripya jaldi bhej dein. Dhanyavaad. Rate aur offers ke liye MarginMart WhatsApp group join karein: https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm`
 
 // A message the owner can forward to the Pepsi sales officer as-is.
 export const reorderText = (rows, dateLabel) =>

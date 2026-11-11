@@ -1352,7 +1352,7 @@
       "rhythm": "Buys every ~{{g}} days · last {{d}} days ago · avg {{v}}",
       "once": "First bill {{d}} days ago ({{v}}). Ask for a repeat order.",
       "try": "Try {{item}}",
-      "wa": "Namaste {{owner}} ji, K.D. Foods se. Aapka maal khatam hone wala hoga. Pichhli baar: {{usual}}. Aaj bhej dein?{{rec}}",
+      "wa": "Namaste {{owner}} ji, K.D. Foods se. Aapka maal khatam hone wala hoga. Pichhli baar: {{usual}}. Aaj bhej dein?{{rec}} Rate aur offers ke liye MarginMart WhatsApp group join karein: https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm",
       "waRec": " Naya bhi try karein: {{item}}.",
       "late_one": "{{count}} day late",
       "late_other": "{{count}} days late",
@@ -1439,7 +1439,7 @@
       "reach": "Only {{b}} of {{n}} shops ({{p}}%) have bought so far. Every area below has shops waiting.",
       "prospects": "Shops to win next ({{n}})",
       "prospectsHint": "Never bought, but in areas where our truck already sells. One call or visit away.",
-      "wa": "Namaste {{owner}} ji, main K.D. Foods (Pepsi cold drinks dealer) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina best rate pe. Order chahiye?"
+      "wa": "Namaste {{owner}} ji, main K.D. Foods (Pepsi beverages dealer) se. Hamari gaadi roz {{area}} aati hai. Sting, Nimbooz, Aquafina, Creambell best rate pe. Order chahiye? Rate aur offers ke liye MarginMart WhatsApp group join karein: https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm"
     }
   },
   "date": {
