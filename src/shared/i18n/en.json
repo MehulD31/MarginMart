@@ -492,7 +492,8 @@
       "send": "Send invite",
       "sent": "Sent",
       "done": "Today's 50 are done. More tomorrow.",
-      "msg": "Namaste {{owner}} ji, K.D. Foods (MarginMart) se. Roz ke rate, naye offers aur scheme sabse pehle paane ke liye hamara WhatsApp group join karein: {{link}}"
+      "msgBuyer": "Namaste {{owner}} ji 🙏 Main {{me}}, K.D. Foods se. Aap hamari gaadi se Pepsi, Sting, Aquafina ka maal lete ho, wahi K.D. Foods. Ab hamne MarginMart naam se WhatsApp group banaya hai: roz ke rate, naye offers aur scheme sabse pehle yahin milenge. Join karein: {{link}}\nKoi sawaal ho to call karein: 9630012636",
+      "msgNew": "Namaste {{owner}} ji 🙏 Main {{me}}, K.D. Foods se. Hum Bhilai mein Pepsi, 7UP, Sting, Aquafina aur Creambell ke wholesale dealer hain, dukaan tak daily delivery dete hain. Hamare MarginMart WhatsApp group mein roz ke rate aur offers aate hain. Join karein: {{link}}\nCall: 9630012636"
     }
   },
   "orders": {

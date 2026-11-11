@@ -264,13 +264,15 @@ type Invite = { id: string; name: string; owner_name: string | null; phone: stri
 function InviteShops() {
   const { t } = useTranslation()
   const [sent, setSent] = useState<Set<string>>(new Set())
+  const me = useAuth().profile?.name.split(' ')[0] ?? ''
   const q = useQuery({ queryKey: ['invite-batch'], queryFn: () => must<Invite[]>(supabase.rpc('invite_batch', { p_limit: 50 })) })
   const rows = q.data ?? []
   const pg = usePaged(rows, 10)
   if (q.isLoading) return null
   const left = Math.max(0, (rows[0]?.left_count ?? 0) - sent.size)
   const send = (x: Invite) => {
-    const text = t('dash.invite.msg', { owner: x.owner_name || x.name, link: GROUP_LINK })
+    // say who is writing: a bare "K.D. Foods se" got "kon ho bhai?" replies
+    const text = t(x.bought ? 'dash.invite.msgBuyer' : 'dash.invite.msgNew', { owner: x.owner_name || x.name, me: me || 'Mehul', link: GROUP_LINK })
     window.open(`https://wa.me/91${x.phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`, '_blank')
     setSent((s) => new Set(s).add(x.id))
     void supabase.rpc('mark_invited', { p_shop: x.id })
