@@ -60,3 +60,6 @@ export function postIdOf(message) {
 export const previewButtons = (id) => ({ inline_keyboard: [
   [{ text: '✅ Aaj 7:30 baje post', callback_data: `sp:ok:${id}` }, { text: '⚡ Abhi post', callback_data: `sp:now:${id}` }],
   [{ text: '❌ Mat daalo', callback_data: `sp:no:${id}` }]] })
+
+// WhatsApp forward link for a published post: caption + the post link, ready to paste into the community.
+export const waShare = (caption, link) => `https://wa.me/?text=${encodeURIComponent([String(caption ?? '').slice(0, 600), link].filter(Boolean).join('\n\n'))}`

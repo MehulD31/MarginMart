@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { captionPrompt, fallbackCaption, finishCaption, mediaOf, PHONE, postIdOf, previewButtons, TAGS, tooBig } from './media.mjs'
+import { captionPrompt, fallbackCaption, finishCaption, mediaOf, PHONE, postIdOf, previewButtons, TAGS, tooBig, waShare } from './media.mjs'
 
 const ID = '11111111-2222-3333-4444-555555555555'
 
@@ -50,5 +50,14 @@ describe('preview buttons', () => {
     expect(kb.inline_keyboard.flat().map((b) => b.callback_data)).toEqual([`sp:ok:${ID}`, `sp:now:${ID}`, `sp:no:${ID}`])
     expect(postIdOf({ reply_markup: kb })).toBe(ID)
     expect(postIdOf({ text: 'x' })).toBeNull()
+  })
+})
+
+describe('waShare', () => {
+  it('puts caption and post link in a wa.me forward link', () => {
+    expect(waShare('Naya Sting', 'https://ig/p/1')).toBe('https://wa.me/?text=' + encodeURIComponent('Naya Sting\n\nhttps://ig/p/1'))
+  })
+  it('works without a link', () => {
+    expect(waShare('Hi', null)).toBe('https://wa.me/?text=Hi')
   })
 })

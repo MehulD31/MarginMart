@@ -11,7 +11,7 @@
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
-import { captionPrompt, fallbackCaption, finishCaption, previewButtons } from './media.mjs'
+import { captionPrompt, fallbackCaption, finishCaption, previewButtons, waShare } from './media.mjs'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
@@ -61,6 +61,7 @@ async function morning() {
     }
     L.push('→ Driver aaj inse vasooli kare.')
   } else if (n(d.dues.total_paise) > 0) L.push('', `💰 Udhaar ${rs(n(d.dues.total_paise))} (${d.dues.shops} dukan), koi overdue nahi.`)
+  try { const inv = await rpc('invite_batch', { p_limit: 1000 }); const left = inv?.[0]?.left_count ?? 0; if (left > 0) L.push('', `📣 WhatsApp group: ${left} dukan ko invite bhejna baki. Dashboard > Invite shops (aaj 50).`) } catch (e) { console.log('invite', e.message) }
   await say(L.join('\n'))
   const ins = await smart()
   const st = ins && smartText(ins, waLink)
@@ -75,7 +76,7 @@ async function night() {
   const { text, cases } = dayText(d)
   let tip = ''
   try {
-    const a = await askJson(`You advise the owner of K.D. Foods, a Pepsi beverages dealer in Durg-Bhilai, India (cold drinks only, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks). Today's numbers (paise = rupees x100):\n${JSON.stringify(d)}\n` +
+    const a = await askJson(`You advise the owner of K.D. Foods, a Pepsi beverages dealer in Durg-Bhilai, India (drinks, water and milk drinks, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks). Today's numbers (paise = rupees x100):\n${JSON.stringify(d)}\n` +
       'Give ONE short practical action for tomorrow in Hinglish (max 25 words), based only on these numbers. If the day is empty, suggest following up dues or stock. JSON: {"tip": "..."}')
     if (a?.tip) tip = `\n\n💡 ${String(a.tip).slice(0, 200)}`
   } catch (e) { console.log('tip skipped', e.message) }
@@ -309,6 +310,7 @@ async function postOne(p) {
     const fbLink = out.fb_post_id && out.fb_post_id !== 'ok' ? `https://www.facebook.com/${out.fb_post_id}` : null
     const what = p.kind === 'scheme' ? 'Scheme poster' : video ? 'Video (Reel)' : 'Photo'
     await say(`📣 ${what} post ho gaya${channel ? ' · Telegram channel' : ''}.${fbLink ? `\nFacebook: ${fbLink}` : ''}${igLink ? `\nInstagram: ${igLink}` : ''}`)
+    await say(`📲 WhatsApp group mein forward karo (link dabao, group chuno):\n${waShare(p.caption, igLink || fbLink)}`)
   } catch (e) {
     await patch({ ...out, error: e.message.slice(0, 300), status: out.attempts >= 3 ? 'failed' : 'queued' })
     if (out.attempts >= 3) await say(`⚠️ Post nahi ho paya (3 baar try kiya): ${e.message.slice(0, 200)}`)
@@ -356,7 +358,7 @@ async function media() {
 async function ask() {
   const q = env('QUESTION').slice(0, 800)
   const [d, y, w, ins] = await Promise.all([rpc('ops_daily', { p_day: today }), rpc('ops_daily', { p_day: addDays(today, -1) }), rpc('ops_weekly', { p_end: today }), smart()])
-  const a = await askJson(`You are the operations assistant of K.D. Foods (Pepsi beverages dealer in Durg-Bhilai, India (cold drinks only, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks)). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as ₹). If the data can't answer it, say so and say which app page has it.\n` +
+  const a = await askJson(`You are the operations assistant of K.D. Foods (Pepsi beverages dealer in Durg-Bhilai, India (drinks, water and milk drinks, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks)). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as ₹). If the data can't answer it, say so and say which app page has it.\n` +
     `TODAY ${JSON.stringify(d)}\nYESTERDAY ${JSON.stringify(y)}\nLAST 7 DAYS ${JSON.stringify(w.days)}\nINSIGHTS (who buys what, rhythm, stock cover, areas; rupees already formatted) ${ins ? JSON.stringify(factsForAI(ins)) : 'n/a'}\n\nQuestion: ${q}\n\nReply in short Hinglish (max 120 words). JSON: {"reply": "..."}`)
   await say(`🤖 ${String(a?.reply ?? 'Jawab nahi bana, dobara poochho.').slice(0, 3500)}`)
 }

@@ -485,7 +485,15 @@
     "boughtTodaySub": "आज {{n}} ने खरीदा · इस हफ़्ते {{w}}",
     "week": "पिछले 7 दिन",
     "weekSub": "{{c}} केस · {{b}} बिल",
-    "topShops7": "टॉप दुकानें (7 दिन)"
+    "topShops7": "टॉप दुकानें (7 दिन)",
+    "invite": {
+      "title": "दुकानों को WhatsApp ग्रुप में बुलाएँ ({{n}} बाकी)",
+      "hint": "रोज़ 50 तक। पहले खरीदार (★), फिर एरिया के हिसाब से। Send दबाएँ: मैसेज तैयार के साथ WhatsApp खुलेगा।",
+      "send": "इनवाइट भेजें",
+      "sent": "भेजा",
+      "done": "आज के 50 हो गए। कल और।",
+      "msg": "Namaste {{owner}} ji, K.D. Foods (MarginMart) se. Roz ke rate, naye offers aur scheme sabse pehle paane ke liye hamara WhatsApp group join karein: {{link}}"
+    }
   },
   "orders": {
     "title": "ऑर्डर",

@@ -231,6 +231,7 @@ export default function DashboardPage() {
             <Link to="/admin/orders" className="button btn-sm"><ClipboardList size={16} aria-hidden="true" />{t('orders.new')}</Link></div>
           {missing.length === 0 ? <p className="muted">{t('dash.allOrdered')}</p> : <CallShops shops={missing} />}
         </div>}
+        <InviteShops />
       </>}
     </section>
   )
@@ -252,6 +253,40 @@ function CallShops({ shops }: { shops: Shop[] }) {
           <td className="actions">{x.phone && <a className="button btn-sm" href={`tel:+91${x.phone}`}><Phone size={16} aria-hidden="true" />{t('shops.call')}</a>}</td></tr>))}
         {!list.length && <tr><td className="muted">{t('common.noMatches')}</td></tr>}
       </tbody></table><Pager p={pg} /></div>
+    </div>
+  )
+}
+
+const GROUP_LINK = 'https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm'
+type Invite = { id: string; name: string; owner_name: string | null; phone: string; locality: string | null; bought: boolean; left_count: number }
+
+/** WhatsApp community: up to 50 shops a day to send the group link to. Buyers first, then by area. */
+function InviteShops() {
+  const { t } = useTranslation()
+  const [sent, setSent] = useState<Set<string>>(new Set())
+  const q = useQuery({ queryKey: ['invite-batch'], queryFn: () => must<Invite[]>(supabase.rpc('invite_batch', { p_limit: 50 })) })
+  const rows = q.data ?? []
+  const pg = usePaged(rows, 10)
+  if (q.isLoading) return null
+  const left = Math.max(0, (rows[0]?.left_count ?? 0) - sent.size)
+  const send = (x: Invite) => {
+    const text = t('dash.invite.msg', { owner: x.owner_name || x.name, link: GROUP_LINK })
+    window.open(`https://wa.me/91${x.phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`, '_blank')
+    setSent((s) => new Set(s).add(x.id))
+    void supabase.rpc('mark_invited', { p_shop: x.id })
+  }
+  return (
+    <div className="stack" data-testid="invite-shops">
+      <h2>{t('dash.invite.title', { n: left })}</h2>
+      <p className="muted">{t('dash.invite.hint')}</p>
+      {rows.length === 0 ? <p className="muted">{t('dash.invite.done')}</p> : (
+        <div className="table-wrap"><table className="table-stack"><tbody>{pg.rows.map((x) => (
+          <tr key={x.id}><td className="lead"><div className="row"><span className="avatar-sm" aria-hidden="true">{initials(x.name)}</span>
+            <div><div className="cell-title">{x.name}{x.bought ? ' ★' : ''}</div><div className="cell-sub">{[x.owner_name, x.locality, x.phone].filter(Boolean).join(' · ')}</div></div></div></td>
+            <td className="actions">{sent.has(x.id) ? <span className="muted">{t('dash.invite.sent')}</span>
+              : <button type="button" className="button btn-sm" onClick={() => send(x)}>{t('dash.invite.send')}</button>}</td></tr>))}
+        </tbody></table><Pager p={pg} /></div>
+      )}
     </div>
   )
 }
