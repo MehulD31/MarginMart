@@ -21,6 +21,7 @@ const r = (p: number) => formatPaise(Math.round(p / 100) * 100)
 const C = { buy: '#64748b', sell: '#16a34a', trade: '#2563eb', loss: '#fecaca', ok: '#bbf7d0' }
 
 type Row = { p: { id: string; name_en: string }; cases: number; avgSell: number | null; buy: number | null; breakEven: number | null; trade: number | null
+  lastBuy: number | null; nextEven: number | null
   earn: number | null; earned: number; share: number; series: Record<string, number>; onHand: number | null; cover: number | null }
 
 export default function ProductsPage() {
@@ -42,7 +43,10 @@ export default function ProductsPage() {
       const buy = avgCost ?? s?.last_buy ?? price?.buy ?? null
       const earn = avgSell != null && buy != null ? avgSell - buy - variable : null
       const perDay = cases / days
-      return { p, cases, avgSell, buy, breakEven: buy != null ? buy + variable : null, trade: price?.trade ?? null, earn, earned: (earn ?? 0) * cases, share: 0,
+      // Earnings so far use what the sold cases really cost (avgCost); decisions for the next sale use the latest buy price.
+      const lastBuy = s?.last_buy ?? price?.buy ?? buy
+      return { p, cases, avgSell, buy, breakEven: buy != null ? buy + variable : null, trade: price?.trade ?? null, earn,
+        lastBuy, nextEven: lastBuy != null ? lastBuy + variable : null, earned: (earn ?? 0) * cases, share: 0,
         series: s?.series ?? {}, onHand: s?.on_hand ?? null, cover: perDay > 0 && s?.on_hand != null ? s.on_hand / perDay : null }
     })
     const earned = list.reduce((a, x) => a + x.earned, 0)
@@ -141,24 +145,43 @@ function ProductCard({ x, days, avgEarn }: { x: Row; days: number; avgEarn: numb
       </div>
       <Ladder x={x} />
       <div className="prod-nums">
-        <div><span>{t('prod.l.buy')}</span><b className="num">{x.buy != null ? r(x.buy) : '—'}</b></div>
+        <div><span>{t(x.cases ? 'prod.costSold' : 'prod.l.buy')}</span><b className="num">{x.buy != null ? r(x.buy) : '—'}</b>
+          {x.cases > 0 && x.lastBuy != null && <small className="cell-sub" style={moved(x) ? { color: moved(x)! > 0 ? '#dc2626' : '#16a34a' } : undefined}>
+            {t('prod.lastBuy', { v: r(x.lastBuy) })}{moved(x) ? (moved(x)! > 0 ? ' ▲' : ' ▼') : ''}</small>}</div>
         <div><span>{t('prod.l.sell')}</span><b className="num" style={{ color: C.sell }}>{x.avgSell != null ? r(x.avgSell) : '—'}</b></div>
         <div><span>{t('prod.earn')}</span><b className="num" style={x.earn != null && x.earn < 0 ? { color: '#dc2626' } : undefined}>{x.earn != null ? r(x.earn) : '—'}</b></div>
         <div><span>{t('prod.earned', { n: days })}</span><b className="num">{x.cases ? r(x.earned) : '—'}</b>{x.share > 0 && <small className="cell-sub">{t('prod.share', { n: Math.round(x.share * 100) })}</small>}</div>
       </div>
       <Trend series={x.series} days={days} />
-      {x.cases > 0 && x.avgSell != null && x.breakEven != null && <WhatIf x={x as Row & { avgSell: number; breakEven: number }} />}
+      {x.cases > 0 && <p className="cell-sub prod-advice">{insight(t, x)}</p>}
+      {x.cases > 0 && x.avgSell != null && x.nextEven != null && <WhatIf x={x as Row & { avgSell: number; nextEven: number }} />}
     </article>)
 }
 
 /** Try another price: earn per case at that price and the cases needed to earn the same total as now. */
-function WhatIf({ x }: { x: Row & { avgSell: number; breakEven: number } }) {
+/** Latest buy price minus what the sold cases cost, in whole rupees (null when under ₹1). */
+const moved = (x: Row) => { if (x.lastBuy == null || x.buy == null) return null; const d = Math.round((x.lastBuy - x.buy) / 100); return d ? d * 100 : null }
+
+/** One plain sentence: where the price sits against Pepsi's rate and what the latest stock means for earnings. */
+function insight(t: (k: string, o?: Record<string, unknown>) => string, x: Row) {
+  const parts: string[] = []
+  if (x.avgSell != null && x.trade != null) {
+    const d = Math.round((x.trade - x.avgSell) / 100) * 100
+    parts.push(d > 0 ? t('prod.i.under', { v: r(d) }) : d < 0 ? t('prod.i.over', { v: r(-d) }) : t('prod.i.at'))
+  }
+  const m = moved(x)
+  if (m && x.avgSell != null && x.nextEven != null)
+    parts.push(t(m > 0 ? 'prod.i.costUp' : 'prod.i.costDown', { v: r(Math.abs(m)), e: r(x.avgSell - x.nextEven) }))
+  return parts.join(' ')
+}
+
+function WhatIf({ x }: { x: Row & { avgSell: number; nextEven: number } }) {
   const { t } = useTranslation()
   const base = Math.round(x.avgSell / 100)
   const [rs, setRs] = useState(String(base))
   const price = Math.round(Number(rs) * 100)
   const valid = Number(rs) > 0
-  const earn = price - x.breakEven
+  const earn = price - x.nextEven     // next cases come from the latest stock
   const now = x.earned
   let line: string
   if (!valid) line = ''

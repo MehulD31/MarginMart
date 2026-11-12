@@ -1595,7 +1595,7 @@
       "ok": "Above avg"
     },
     "w": {
-      "try": "Try a price:",
+      "try": "Try a price (uses latest buy price):",
       "aria": "Price per case in rupees",
       "loss": "At {{p}} every case loses {{v}}.",
       "fromLoss": "At {{p}} each case earns {{e}}.",
@@ -1607,6 +1607,15 @@
     "trendAria": "Cases sold per day, last {{n}} days",
     "daysAgo": "{{n}} days ago",
     "avgDay": "avg {{n}}/day",
-    "todayLbl": "today"
+    "todayLbl": "today",
+    "costSold": "Cost of sold cases",
+    "lastBuy": "last bought {{v}}",
+    "i": {
+      "under": "Sold {{v}} a case under the Pepsi rate.",
+      "over": "Sold {{v}} a case over the Pepsi rate.",
+      "at": "Sold at the Pepsi rate.",
+      "costUp": "Latest stock cost {{v}} more, so at the same price each case will earn {{e}}.",
+      "costDown": "Latest stock cost {{v}} less, so at the same price each case will earn {{e}}."
+    }
   }
 }
