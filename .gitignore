@@ -42,3 +42,7 @@ scratch/
 .vercel
 .env*
 .playwright-mcp/
+# Local creative files (posters, reels, source media) and reference repos: not in git
+media/
+refs/
+scripts/reel/work/

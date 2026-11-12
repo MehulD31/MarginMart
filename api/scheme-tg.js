@@ -59,14 +59,14 @@ export default async function handler(req, res) {
 
     const msg = u.message
     if (!msg || !allowed(msg.from, msg.chat?.id)) return res.status(200).end()
-    // Video / photo for the MarginMart page: GitHub job saves it, AI writes the caption, preview comes back with ✅ ⚡ ❌.
+    // Video / photo for the MarginMart page: saved to the media library, then auto-edited into a Reel (reel.yml); preview comes back with ✅ ⚡ 📘 ❌.
     const media = mediaOf(msg)
     if (media) {
       if (tooBig(media)) {
         await tg('sendMessage', { chat_id: msg.chat.id, reply_to_message_id: msg.message_id, text: '🎬 Video 20 MB se bada hai, bot ise utaar nahi sakta. Telegram me isko normal video ki tarah bhejo (file nahi), ya 1 minute se chhota clip bhejo.' })
         return res.status(200).end()
       }
-      await tg('sendMessage', { chat_id: msg.chat.id, reply_to_message_id: msg.message_id, text: `⏳ ${media.type === 'video' ? 'Video' : 'Photo'} mil gaya. Caption bana raha hun, 1-2 minute me preview aayega…` })
+      await tg('sendMessage', { chat_id: msg.chat.id, reply_to_message_id: msg.message_id, text: `📥 ${media.type === 'video' ? 'Video' : 'Photo'} library me save. Aur photo/video bhejne hain to abhi bhej do, sab milake ek Reel banega. Edit hoke ~5 minute me preview aayega.` })
       await dispatch({ mode: 'media', file: media.file_id, mtype: media.type, note: media.note.slice(0, 500), who: msg.from.first_name ?? '' }, 'ops.yml')
       return res.status(200).end()
     }

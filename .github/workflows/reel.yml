@@ -1,0 +1,43 @@
+name: reel
+# Auto-edit a Reel from the Telegram media library (scripts/reel/reel.mjs). Started by ops.yml mode=media after each
+# photo/video, and by the watchdog if something sat unedited. One run at a time; a run that finds nothing new exits.
+on:
+  workflow_dispatch:
+    inputs:
+      quiet: { description: "seconds the batch must be quiet before editing", required: false, default: "90" }
+concurrency: { group: reel, cancel-in-progress: false }
+permissions: { contents: read }
+jobs:
+  edit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "scripts/reel\nscripts/ops/media.mjs\nscripts/scheme-bot/lib.mjs", sparse-checkout-cone-mode: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: Tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          pip install -q numpy
+          npm i --no-save --no-package-lock playwright@1.59.1 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Edit
+        env:
+          QUIET_SECONDS: ${{ github.event.inputs.quiet }}
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_FREE_KEY: ${{ secrets.GEMINI_FREE_KEY }}
+        run: node scripts/reel/reel.mjs
+      - name: Tell the KD group if this run failed
+        if: failure()
+        env:
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${KD_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${KD_CHAT_ID}" \
+            --data-urlencode "text=⚠️ Reel edit job fail ho gaya. Media library me safe hai. Details: ${URL}" > /dev/null

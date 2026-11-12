@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* MarginMart Reel template. Deterministic: everything is computed from t inside window.seek(t), no CSS animations or timers.
+   The plan (shots + text) comes from plan.json next to this file, written by reel.mjs. */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000;font-family:Poppins,sans-serif}
+#v{position:absolute;inset:0;overflow:hidden}
+#img{position:absolute;left:0;top:0;width:1080px;height:1920px;object-fit:cover;transform-origin:50% 50%}
+.grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 55%,rgba(0,0,0,.6) 100%)}
+#cards{position:absolute;inset:0;isolation:isolate}
+/* text lives in Instagram's safe area: below 250 px, above 1520 px, left of 930 px */
+.card{position:absolute;left:70px;right:170px;top:330px}
+#cards .card::before{content:'';position:absolute;left:-200px;top:-260px;width:1100px;height:1000px;z-index:-1;background:radial-gradient(ellipse 50% 45% at 35% 45%,rgba(0,0,0,.62),rgba(0,0,0,0) 72%)}
+.line{overflow:hidden;line-height:1.04}
+.line span{display:inline-block}
+.k{font-size:46px;font-weight:700;color:#fff;letter-spacing:.5px}
+.big{font-size:128px;font-weight:900;color:#fff;letter-spacing:-3px;text-shadow:0 4px 0 rgba(0,0,0,.35),0 6px 30px rgba(0,0,0,.6)}
+.mid{font-size:88px;font-weight:900;color:#fff;letter-spacing:-2px;text-shadow:0 4px 0 rgba(0,0,0,.35),0 6px 30px rgba(0,0,0,.6)}
+.g{color:#3ddc6a}.y{color:#ffd23f}
+.bar{height:10px;background:#3ddc6a;border-radius:6px;margin-top:22px;transform-origin:0 50%}
+.chips{display:flex;flex-wrap:wrap;gap:16px;margin-top:28px}
+.chip{background:#fff;color:#0b3d20;font-weight:800;font-size:40px;padding:10px 26px;border-radius:50px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#flood{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 45%,#22b552,#0b5a2a 60%,#03200e)}
+#end{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;padding:0 80px}
+#end img.logo{width:600px}
+#end .cta{font-size:44px;font-weight:700;margin-top:40px}
+#end .ph{font-size:110px;font-weight:900;color:#ffd23f;letter-spacing:-2px;line-height:1.05}
+#end .sub{font-size:36px;color:#c9d1d9;margin-top:24px}
+#end .qrb{background:#fff;padding:22px;border-radius:30px;border:8px solid #3ddc6a;margin-top:36px}
+#end .qrb img{width:400px;height:400px;display:block;image-rendering:pixelated}
+</style></head><body>
+<div id="v"><img id="img"><div class="grad"></div></div>
+<div id="cards"></div>
+<div id="flood"></div>
+<div id="end"></div>
+<script>
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+const ease = (x) => 1 - Math.pow(1 - clamp(x), 3)            // ease-out, no bounce
+const inout = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2 }
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+let P, END = 'ig', built = -1, cardEl = null
+const img = document.getElementById('img'), cards = document.getElementById('cards'), flood = document.getElementById('flood'), end = document.getElementById('end')
+function cardHtml(s, i) {
+  if (i === 0) return `<div class="line"><span class="k">${esc(s.small)}</span></div><div class="line"><span class="big">${esc(s.a)}</span></div><div class="line"><span class="big g">${esc(s.b)}</span></div>${s.c ? `<div class="line"><span class="mid">${esc(s.c)}</span></div>` : ''}<div class="bar"></div>`
+  const tone = i % 2 ? 'y' : 'g'
+  return `<div class="line"><span class="mid">${esc(s.a)}</span></div><div class="line"><span class="mid ${tone}">${esc(s.b)}</span></div>` +
+    (s.chips?.length ? `<div class="chips">${s.chips.map((c) => `<span class="chip">${esc(c)}</span>`).join('')}</div>` : '<div class="bar"></div>')
+}
+window.init = (plan, which) => {
+  P = plan; END = which
+  end.innerHTML = `<img class="logo" src="assets/logo.png">` + (END === 'wa'
+    ? `<div class="cta">WhatsApp group join karein</div><div class="qrb"><img src="assets/qr.png"></div><div class="sub">Camera se scan karein · roz ke rate &amp; offers</div><div class="cta" style="margin-top:26px">Call / WhatsApp <span class="y" style="font-weight:900">96300 12636</span></div>`
+    : `<div class="cta">Order ke liye Call / WhatsApp</div><div class="ph">96300 12636</div><div class="sub">Wholesale distributor · Bhilai<br>Drinks, water, milk drinks &amp; more</div>`)
+}
+window.seek = async (t) => {
+  const S = P.shots, brandAt = S.length * 2, endAt = brandAt + 2
+  const i = Math.min(S.length - 1, Math.floor(t / 2)), s = S[i], lt = t - i * 2
+  if (t < endAt) {
+    const fi = Math.min(s.n - 1, Math.floor((s.from + lt) * 30))
+    const f = `${s.dir}/${String(fi + 1).padStart(4, '0')}.jpg`
+    if (!img.src.endsWith(f)) { img.src = f; await img.decode().catch(() => {}) }
+    const punch = i > 0 ? 0.04 * (1 - ease(lt / 0.18)) : 0          // small punch-in on every cut
+    img.style.transformOrigin = `${s.ox}% ${s.oy}%`
+    img.style.transform = `scale(${s.z0 + (s.z1 - s.z0) * inout(lt / 2) + punch})`
+  }
+  // text card per shot: masked rise-in, quick fade out before the cut. The hook is on screen from frame 1.
+  const ci = t < brandAt ? i : -1
+  if (ci !== built) { cards.innerHTML = ci < 0 ? '' : `<div class="card">${cardHtml(S[ci].text, ci)}</div>`; built = ci; cardEl = cards.firstChild }
+  if (cardEl) {
+    const c = lt + (ci === 0 ? 0.6 : 0), left = 2 - lt
+    cardEl.querySelectorAll('.line span').forEach((sp, k) => { const q = ease((c - k * 0.12) / 0.38); sp.style.transform = `translateY(${(1 - q) * 105}%)` })
+    cardEl.querySelectorAll('.chip').forEach((ch, k) => { const q = ease((c - 0.45 - k * 0.12) / 0.3); ch.style.opacity = q; ch.style.transform = `translateY(${(1 - q) * 30}px)` })
+    const bar = cardEl.querySelector('.bar'); if (bar) bar.style.transform = `scaleX(${ease((c - 0.35) / 0.5) * 0.45})`
+    cardEl.style.opacity = ci === S.length - 1 ? 1 : clamp(left / 0.15)
+  }
+  // brand card: green wipe up, BHILAI / Daily delivery
+  const fp = inout((t - brandAt) / 0.35)
+  flood.style.clipPath = `inset(${(1 - fp) * 100}% 0 0 0)`
+  if (t >= brandAt && t < endAt) {
+    if (!flood.firstChild) flood.innerHTML = `<div class="card" style="top:640px"><div class="line"><span class="k">${esc(P.brand.small)}</span></div><div class="line"><span class="big">BHILAI</span></div><div class="line"><span class="mid y">${esc(P.brand.b)}</span></div><div class="bar" style="background:#ffd23f"></div></div>`
+    flood.querySelectorAll('.line span').forEach((sp, k) => { const q = ease((t - brandAt - 0.25 - k * 0.12) / 0.38); sp.style.transform = `translateY(${(1 - q) * 105}%)` })
+    flood.querySelector('.bar').style.transform = `scaleX(${ease((t - brandAt - 0.6) / 0.5) * 0.5})`
+  } else flood.innerHTML = ''
+  // end card: circle opens, logo + call to action
+  end.style.clipPath = `circle(${inout((t - endAt) / 0.3) * 120}% at 50% 50%)`
+  ;[...end.children].forEach((k, n) => { const q = ease((t - endAt - 0.15 - n * 0.12) / 0.4); k.style.opacity = q; k.style.transform = `translateY(${(1 - q) * 40}px)` })
+}
+</script></body></html>

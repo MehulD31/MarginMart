@@ -11,7 +11,7 @@
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
-import { captionPrompt, fallbackCaption, finishCaption, previewButtons, waShare } from './media.mjs'
+import { waShare } from './media.mjs'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
@@ -232,6 +232,15 @@ async function watchdog() {
     const stuck = await db('social_post?status=eq.failed&select=id,error&limit=1')
     if (stuck.length && !(await done('social-stuck', today))) { alerts.push(`social post fail: ${String(stuck[0].error).slice(0, 120)}`); await mark('social-stuck', today) }
   } catch (e) { console.log('social check', e.message) }
+  // 5b. media sent on Telegram but never edited into a Reel (editor job failed or never started): restart it once an hour
+  try {
+    const old = await db(`media_library?edited_into=is.null&created_at=lt.${new Date(Date.now() - 20 * 60e3).toISOString()}&select=id&limit=1`)
+    const hr = new Date().toISOString().slice(0, 13)
+    if (old.length && !(await done('reel-retry', hr))) {
+      await gh('actions/workflows/reel.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { quiet: '0' } }) })
+      await mark('reel-retry', hr); alerts.push('Telegram ke photo/video ka Reel nahi bana tha, editor dobara chala diya')
+    }
+  } catch (e) { console.log('reel check', e.message) }
   // 6. free-tier limits: Supabase free = 500 MB database, 1 GB storage (alert at 80%, once a day)
   try {
     const h = await rpc('ops_health')
@@ -292,7 +301,8 @@ async function postOne(p) {
         ? (await graph(`${page}/videos`, { file_url: p.image_url, description: p.caption })).id
         : (await graph(`${page}/photos`, { url: p.image_url, caption: p.caption })).post_id ?? 'ok'
     }
-    if (ig && !p.ig_media_id) {
+    const fbOnly = p.targets === 'fb'      // 📘: owner posts Instagram by hand with Instagram's own music
+    if (ig && !fbOnly && !p.ig_media_id) {
       const c = await graph(`${ig}/media`, video
         ? { media_type: 'REELS', video_url: p.image_url, caption: p.caption, share_to_feed: 'true' }
         : { image_url: p.image_url, caption: p.caption })
@@ -311,6 +321,11 @@ async function postOne(p) {
     const what = p.kind === 'scheme' ? 'Scheme poster' : video ? 'Video (Reel)' : 'Photo'
     await say(`📣 ${what} post ho gaya${channel ? ' · Telegram channel' : ''}.${fbLink ? `\nFacebook: ${fbLink}` : ''}${igLink ? `\nInstagram: ${igLink}` : ''}`)
     await say(`📲 WhatsApp group mein forward karo (link dabao, group chuno):\n${waShare(p.caption, igLink || fbLink)}`)
+    if (fbOnly && p.manual_url && !(await done('manual', p.id))) {
+      await tg('sendDocument', { chat_id: env('KD_CHAT_ID'), document: p.manual_url, caption: `📲 Instagram ke liye (bina music). Download karo -> Instagram -> Reel -> ye video -> Instagram ka trending gaana lagao -> caption neeche wala copy karo.`.slice(0, 1024) })
+      await say(p.caption)
+      await mark('manual', p.id)
+    }
   } catch (e) {
     await patch({ ...out, error: e.message.slice(0, 300), status: out.attempts >= 3 ? 'failed' : 'queued' })
     if (out.attempts >= 3) await say(`⚠️ Post nahi ho paya (3 baar try kiya): ${e.message.slice(0, 200)}`)
@@ -327,7 +342,8 @@ async function social() {
   if (failed) throw failed
 }
 
-// Owner video/photo from Telegram (api/scheme-tg.js): save it, AI caption, preview in the group with ✅ ⚡ ❌.
+// Owner video/photo from Telegram (api/scheme-tg.js): save it to the media library, then start the Reel editor
+// (reel.yml waits ~90 s so a batch of photos + clips sent together becomes ONE Reel; preview comes back with ✅ ⚡ 📘 ❌).
 async function media() {
   const fileId = env('FILE_ID'), type = process.env.MTYPE === 'image' ? 'image' : 'video'
   const note = process.env.NOTE ?? '', who = process.env.WHO ?? ''
@@ -339,23 +355,16 @@ async function media() {
   }
   const buf = Buffer.from(await (await fetch(`https://api.telegram.org/file/bot${env('KD_BOT_TOKEN')}/${f.file_path}`)).arrayBuffer())
   const ext = type === 'video' ? 'mp4' : 'jpg'
-  const path = `${today}/${randomUUID()}.${ext}`
+  const path = `library/${today}/${randomUUID()}.${ext}`
   const up = await fetch(`${env('SUPABASE_URL')}/storage/v1/object/social-media/${path}`, { method: 'POST',
     headers: { apikey: env('SUPABASE_SERVICE_KEY'), Authorization: `Bearer ${env('SUPABASE_SERVICE_KEY')}`, 'Content-Type': type === 'video' ? 'video/mp4' : 'image/jpeg', 'x-upsert': 'true' }, body: buf })
   if (!up.ok) throw new Error(`upload ${up.status}: ${(await up.text()).slice(0, 200)}`)
   const url = `${env('SUPABASE_URL')}/storage/v1/object/public/social-media/${path}`
-  let caption
-  try { caption = finishCaption((await askJson(captionPrompt(note, type)))?.caption) } catch (e) { console.log('caption ai', e.message); caption = fallbackCaption(note, type) }
-  if (caption.length < 60) caption = fallbackCaption(note, type)
-  const [row] = await db('social_post', { method: 'POST', body: JSON.stringify({ kind: 'media', source_id: randomUUID(), media_type: type, image_url: url, caption, status: 'draft', made_by: who || null }) })
-  const head = `📣 Naya ${type === 'video' ? 'video (Reel)' : 'photo'} post${who ? ` · ${who}` : ''}:\n\n`
-  const tail = '\n\n✏️ Caption badalna ho to is message ka reply karke naya caption likho.'
-  await tg(type === 'video' ? 'sendVideo' : 'sendPhoto', { chat_id: env('KD_CHAT_ID'), [type === 'video' ? 'video' : 'photo']: fileId,
-    caption: (head + caption).slice(0, 1024 - tail.length) + tail, reply_markup: previewButtons(row.id) })
-  await mark('preview', row.id)
-  await mark('media', fileId, row.id)
-}
-async function ask() {
+  await db('media_library?on_conflict=tg_file_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify({ kind: type, url, note: note || null, who: who || null, tg_file_id: fileId }) })
+  await gh('actions/workflows/reel.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { quiet: '90' } }) })
+  await mark('media', fileId, url)
+}async function ask() {
   const q = env('QUESTION').slice(0, 800)
   const [d, y, w, ins] = await Promise.all([rpc('ops_daily', { p_day: today }), rpc('ops_daily', { p_day: addDays(today, -1) }), rpc('ops_weekly', { p_end: today }), smart()])
   const a = await askJson(`You are the operations assistant of K.D. Foods (Pepsi beverages dealer in Bhilai, India (drinks, water and milk drinks, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks)). Answer the owner's question using ONLY this live data. Money is in paise (divide by 100 for rupees, write as ₹). If the data can't answer it, say so and say which app page has it.\n` +

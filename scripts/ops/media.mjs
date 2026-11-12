@@ -3,7 +3,7 @@
 // ✅ (post at 19:30) / ⚡ (post now) / ❌, and "reply with new text" to change the caption. Pure helpers here (unit-tested).
 
 export const PHONE = '9630012636'
-export const TAGS = '#MarginMart #KDFoods #Durg #Bhilai #DurgBhilai #Wholesale #Dukandar #Kirana'
+export const TAGS = '#MarginMart #KDFoods #Bhilai #BhilaiBusiness #Wholesale #Dukandar #Kirana'
 const BOT_MAX = 20 * 1024 * 1024        // Telegram bots can only download files up to 20 MB
 
 /** The video or photo in a Telegram message, or null. Photos only count when they are meant for the page:
@@ -29,7 +29,7 @@ export function captionPrompt(note, type) {
     'Readers: kirana and shop owners ("dukandar bhai"), hotels, canteens, wedding and function buyers.',
     `This is a ${type === 'video' ? 'short video (Reel)' : 'photo'}. What the owner said about it: "${String(note || 'godown / stock / delivery clip').slice(0, 400)}".`,
     'Rules: simple Hinglish (Hindi in English letters), 3-5 short lines, first line is a hook (e.g. "Dukandar bhai, maal aa gaya! 🚚").',
-    'Use only facts the owner gave; no prices or offers unless the owner gave them. Name 2-3 areas: Durg, Bhilai, Supela, Bhilai 3, Power House.',
+    'Use only facts the owner gave; no prices or offers unless the owner gave them. Name 2-3 Bhilai areas: Supela, Bhilai 3, Power House, Smriti Nagar. Never mention Durg.',
     `End with: "📞 Call/WhatsApp ${PHONE}" on its own line. Do not add hashtags. Max 450 characters. JSON: {"caption": "..."}`,
   ].join('\n')
 }
