@@ -84,3 +84,24 @@ export function groupRows(rows) {
   }
   return groups
 }
+
+// One group only (owner, 12 Nov 2026): send right away only what needs attention; everything else is collected
+// and sent as one summary every 2 hours. Trips (load / back / close) go right away as one short line, with the
+// item list kept for the summary.
+const NOW = /^(🚫|🗑|📊|↶|🏪)/
+const TRIP = /^(🚚|↩️|🛣|✅|🔁)/
+export function split(lines) {
+  const now = [], later = []
+  for (const l of lines) {
+    if (NOW.test(l)) now.push(l)
+    else if (TRIP.test(l)) { now.push(l.split('\n').slice(0, 2).join('\n')); if (l.includes('\n')) later.push(l) }
+    else later.push(l)
+  }
+  return { now, later }
+}
+/** 2-hour summary windows in IST: 08-10, 10-12, ... A window is sent once it has ended. */
+export function windowOf(iso) {
+  const t = new Date(Date.parse(iso) + 330 * 60e3)
+  const h = t.getUTCHours() - (t.getUTCHours() % 2)
+  return `${t.toISOString().slice(0, 10)} ${String(h).padStart(2, '0')}`
+}

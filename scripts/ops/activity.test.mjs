@@ -1,5 +1,5 @@
 import { describe as suite, expect, it } from 'vitest'
-import { describe, groupRows } from './activity.mjs'
+import { describe, groupRows, split, windowOf } from './activity.mjs'
 
 const L = {
   variant: (id) => ({ v1: 'Sting 250', v2: 'Aquafina 1L', v3: 'Pepsi 600' }[id]), route: () => 'V1 Supela', vehicle: () => 'Vehicle 1',
@@ -53,5 +53,17 @@ suite('website activity', () => {
   it('groups rows saved together by the same person', () => {
     const g = groupRows([{ actor: 'a', at: '1' }, { actor: 'a', at: '1' }, { actor: 'b', at: '1' }, { actor: 'a', at: '2' }])
     expect(g.map((x) => x.rows.length)).toEqual([2, 1, 1])
+  })
+})
+
+suite('one group: now vs 2-hour summary', () => {
+  it('cancels, deletes and hand stock changes go now; bills wait; trips go now as one line, items wait', () => {
+    const r = split(['🧾 Bill KD-1 · ₹100', '🚫 Bill KD-2 cancel kiya', '🗑 dukaan: 1 delete', '📊 Stock -3 · Aquafina', '🚚 <b>Truck load</b>: V1\n   86 peti\n   • Sting — 50'])
+    expect(r.now).toEqual(['🚫 Bill KD-2 cancel kiya', '🗑 dukaan: 1 delete', '📊 Stock -3 · Aquafina', '🚚 <b>Truck load</b>: V1\n   86 peti'])
+    expect(r.later).toEqual(['🧾 Bill KD-1 · ₹100', '🚚 <b>Truck load</b>: V1\n   86 peti\n   • Sting — 50'])
+  })
+  it('2-hour windows in IST', () => {
+    expect(windowOf('2026-11-12T11:53:00Z')).toBe('2026-11-12 16')   // 17:23 IST
+    expect(windowOf('2026-11-12T12:31:00Z')).toBe('2026-11-12 18')   // 18:01 IST
   })
 })

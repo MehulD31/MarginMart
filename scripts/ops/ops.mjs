@@ -12,7 +12,7 @@ import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, dmReply, needsAutoReply, rateDm, wantsRate, waShare } from './media.mjs'
-import { describe, esc, groupRows } from './activity.mjs'
+import { describe, esc, groupRows, split as splitLines, windowOf } from './activity.mjs'
 import * as ADS from './ads.mjs'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
@@ -405,15 +405,36 @@ async function activity() {
     const clock = (iso) => new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })
     const day = (iso) => new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })
     const html = { parse_mode: 'HTML', disable_web_page_preview: true }
-    let msg = '<b>📋 Website update</b>'
-    for (const [i, b] of blocks.entries()) {
-      const part = `${i ? '\n──────────' : ''}\n\n👤 <b>${esc(b.who)}</b>  <i>${clock(b.at)}${day(b.at) !== day(new Date().toISOString()) ? ', ' + day(b.at) : ''}</i>\n${b.lines.join('\n\n')}`
-      if ((msg + part).length > 3800) { await say(msg, html); msg = '<b>📋 Website update (aage)</b>' }
-      msg += part
-    }
-    if (blocks.length) await say(msg, html)
+    const head = (b) => `👤 <b>${esc(b.who)}</b>  <i>${clock(b.at)}${day(b.at) !== day(new Date().toISOString()) ? ', ' + day(b.at) : ''}</i>`
+    // right away: only what needs attention (cancel, delete, hand stock change, trips as one short line)
+    const urgent = blocks.map((b) => ({ b, l: splitLines(b.lines).now })).filter((x) => x.l.length)
+    if (urgent.length) await say(urgent.map((x) => `${head(x.b)}\n${x.l.join('\n')}`).join('\n\n'), html)
+    // the rest waits for the 2-hour summary
+    const [saved] = await db('ops_log?job=eq.activity&key=eq.digest&select=detail')
+    const pend = saved?.detail?.items ?? []
+    for (const b of blocks) { const l = splitLines(b.lines).later; if (l.length) pend.push({ who: b.who, at: b.at, lines: l }) }
+    await mark('activity', 'digest', { items: pend })
   }
   await mark('activity', 'cursor', { id: lastId })
+  await sendDigest()
+}
+// Summary of the normal website work (bills, purchases, orders, load lists...) once per 2-hour window.
+async function sendDigest() {
+  const [saved] = await db('ops_log?job=eq.activity&key=eq.digest&select=detail')
+  const items = saved?.detail?.items ?? []
+  const nowWin = windowOf(new Date().toISOString())
+  const ready = items.filter((x) => windowOf(x.at) < nowWin)
+  if (!ready.length) return
+  const clock = (iso) => new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })
+  const from = clock(ready[0].at), to = clock(ready.at(-1).at)
+  let msg = `<b>📋 Website summary</b> <i>(${from}${from !== to ? '–' + to : ''})</i>`
+  for (const x of ready) {
+    const part = `\n\n👤 <b>${esc(x.who)}</b> <i>${clock(x.at)}</i>\n${x.lines.join('\n')}`
+    if ((msg + part).length > 3800) { await say(msg, { parse_mode: 'HTML', disable_web_page_preview: true }); msg = '<b>📋 Website summary (aage)</b>' }
+    msg += part
+  }
+  await say(msg, { parse_mode: 'HTML', disable_web_page_preview: true })
+  await mark('activity', 'digest', { items: items.filter((x) => !ready.includes(x)) })
 }
 // Daily ads check (runs with the morning report). Only pauses/resumes existing ads; never budgets or money.
 async function ads() {
