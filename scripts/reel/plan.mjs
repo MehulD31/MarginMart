@@ -1,6 +1,6 @@
 // Pure helpers for the Reel editor (unit-tested in plan.test.mjs). No I/O here.
 // A Reel = N shots of 2 s (cut on the 120 BPM grid), then a 2 s BHILAI brand card, then a 3 s end card.
-export const SHOT = 2, BRAND = 2, ENDCARD = 3, FPS = 30
+export const SHOT = 2, BRAND = 2, ENDCARD = 4, FPS = 30      // end card 4 s: room for the spoken phone number
 export const MIN_SHOTS = 3, MAX_SHOTS = 6
 
 /** items: [{ kind: 'video'|'image', duration }] in the order they were sent. Returns shots in story order. */
@@ -65,7 +65,7 @@ export function cleanVo(s) {
   return t.split(' ').slice(0, 9).join(' ')
 }
 // spoken digit by digit so the TTS doesn't read it as one big number
-export const VO_END = 'Order ke liye call karein: 9 6 3 0 0, 1 2 6 3 6.'
+export const VO_END = 'Order karein: 9 6 3 0 0, 1 2 6 3 6.'
 
 /** Voice lines with their start times: one per shot, the brand line, the phone line on the end card. */
 export function voLines(shots, ai) {

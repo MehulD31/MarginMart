@@ -24,7 +24,7 @@ describe('planShots', () => {
     const s = planShots(Array.from({ length: 10 }, () => ({ kind: 'image' })))
     expect(s.length).toBe(MAX_SHOTS)
     expect(s[0].idx).toBe(0); expect(s.at(-1).idx).toBe(9)
-    expect(totalSeconds(s)).toBe(17)
+    expect(totalSeconds(s)).toBe(18)
   })
   it('neighbouring shots move in opposite directions', () => {
     const s = planShots([{ kind: 'video', duration: 12 }])
