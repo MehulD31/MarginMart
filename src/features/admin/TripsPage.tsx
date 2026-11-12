@@ -392,7 +392,9 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
             <li key={i.variant_id} data-testid="unload-row">
               <div className="grow">
                 <div className="cell-title">{i.label}</div>
-                <div className="cell-sub num">{t('trip.unload.rowSub', { l: i.loaded, s: i.delivered + i.billed })}</div>
+                {/* sold = what went out minus what came back (parchis for it are entered in the next step) */}
+                <div className="cell-sub num">{t('trip.unload.rowSub', { l: i.loaded })} · <b>{t('trip.unload.rowSold', { b: n, s: Math.max(0, i.loaded - n) })}</b>
+                  {i.delivered + i.billed > 0 ? t('trip.unload.rowBilled', { p: i.delivered + i.billed }) : ''}</div>
               </div>
               {closed ? <strong className="num">{n}</strong>
                 : <Stepper value={n} max={max} showZero label={`${t('trip.cameBack')}: ${i.label}`} disabled={max === 0} onChange={(v) => setBack((s) => ({ ...s, [i.variant_id]: clamp(v, max) }))} />}

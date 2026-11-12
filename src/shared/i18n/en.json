@@ -1212,7 +1212,7 @@
       "allBack": "Everything came back",
       "clearAll": "Clear all",
       "checkAll": "All of {{item}} came back",
-      "rowSub": "Went out {{l}} · sold {{s}} · came back:",
+      "rowSub": "Went out {{l}}",
       "parchisToEnter": "Sold, parchi still to enter",
       "backCount": "{{n}} cases came back",
       "toGodown": "They go back into the godown",
@@ -1223,7 +1223,9 @@
       "notLoaded": "This truck is not loaded yet.",
       "savedNote": "Unload saved at {{at}}{{who}}: {{n}} cases went back to the godown. If a count was wrong, change it below and press Save correction.",
       "undoHint": "Undo the whole unload (stock goes back onto the truck)",
-      "none": "Nothing came back"
+      "none": "Nothing came back",
+      "rowSold": "came back {{b}} → sold {{s}}",
+      "rowBilled": " · parchi done {{p}}"
     },
     "bills": {
       "leftToBill": "{{n}} cases on the truck have no parchi yet",
