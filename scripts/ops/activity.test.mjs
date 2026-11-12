@@ -19,8 +19,8 @@ suite('website activity', () => {
   })
   it('bills, cancels, purchases and manual stock changes', () => {
     const out = describe({ rows: [
-      row('cash_sale', 'insert', { number: 'KD-00018', shop_id: 's1', total_paise: 495000, payment_mode: 'cash' }),
-      row('cash_sale', 'update', { number: 'KD-00011', voided_at: 'x', total_paise: 10000, void_reason: 'galat' }, { voided_at: null }),
+      row('cash_sale', 'insert', { number: 'KD-00018', shop_id: 's1', total_paise: 495000, payment_mode: 'cash' }, null, 'b18'),
+      row('cash_sale', 'update', { number: 'KD-00011', voided_at: 'x', total_paise: 10000, void_reason: 'galat' }, { voided_at: null }, 'b11'),
       row('purchase', 'insert', { supplier_id: 'x', invoice_no: '77', total_paise: 12000000 }),
       row('stock_move', 'insert', { variant_id: 'v2', qty: -3, reason: 'toota' }),
     ] }, L)
@@ -44,6 +44,11 @@ suite('website activity', () => {
     expect(out[0]).toContain('wapas godown <b>6</b>')
     expect(out[0]).toContain('bika (parchi baaki) <b>80</b>')
     expect(out[0]).not.toContain('nikal')
+  })
+  it('a bill saved with total 0 then filled in shows the final total', () => {
+    const rows = [row('cash_sale', 'insert', { number: 'KD-00018', shop_id: 's1', total_paise: 0, payment_mode: 'cash' }, null, 'b1'),
+      row('cash_sale_line', 'insert', {}), row('cash_sale', 'update', { number: 'KD-00018', shop_id: 's1', total_paise: 264500, payment_mode: 'cash' }, { total_paise: 0 }, 'b1')]
+    expect(describe({ rows }, L)).toEqual(['🧾 Bill <b>KD-00018</b> · Sharma Kirana · <b>₹2,645</b> (cash)'])
   })
   it('groups rows saved together by the same person', () => {
     const g = groupRows([{ actor: 'a', at: '1' }, { actor: 'a', at: '1' }, { actor: 'b', at: '1' }, { actor: 'a', at: '2' }])

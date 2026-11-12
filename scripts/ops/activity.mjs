@@ -38,7 +38,9 @@ export function describe(g, L0) {
   }
   take(cnt(rows, 'load_line')); take(cnt(rows, 'route_day_plan', 'insert'))
   // counter / truck bills
-  const bills = take(cnt(rows, 'cash_sale', 'insert'))
+  // a bill/purchase is inserted with total 0 and its total is filled in by an update in the same save: use the final row
+  const final = (r) => [...cnt(rows, r.table_name, 'update')].reverse().find((u) => u.row_id === r.row_id)?.after ?? r.after
+  const bills = take(cnt(rows, 'cash_sale', 'insert')).map((r) => ({ ...r, after: final(r) }))
   for (const r of bills.slice(0, 6)) out.push(`🧾 Bill <b>${esc(r.after?.number)}</b> · ${L.shop(r.after?.shop_id) ?? 'counter'} · ${rs(r.after?.total_paise)} (${r.after?.payment_mode ?? ''})`)
   if (bills.length > 6) out.push(`🧾 +${bills.length - 6} aur bill`)
   for (const r of take(cnt(rows, 'cash_sale', 'update'))) {
@@ -47,8 +49,8 @@ export function describe(g, L0) {
   take(cnt(rows, 'cash_sale_line'))
   const inv = take(cnt(rows, 'invoice', 'insert'))
   if (inv.length) out.push(`🧾 ${inv.length} delivery bill · ${rs(inv.reduce((s, r) => s + Number(r.after?.total_paise ?? 0), 0))}${inv.length <= 3 ? ` (${inv.map((r) => L.shop(r.after?.shop_id) ?? '?').join(', ')})` : ''}`)
-  for (const r of take(cnt(rows, 'purchase', 'insert'))) out.push(`📦 Purchase · ${L.supplier(r.after?.supplier_id) ?? 'supplier'}${r.after?.invoice_no ? ` #${esc(r.after.invoice_no)}` : ''} · ${rs(r.after?.total_paise)}`)
-  take(cnt(rows, 'purchase_line'))
+  for (const r of take(cnt(rows, 'purchase', 'insert')).map((x) => ({ ...x, after: final(x) }))) out.push(`📦 Purchase · ${L.supplier(r.after?.supplier_id) ?? 'supplier'}${r.after?.invoice_no ? ` #${esc(r.after.invoice_no)}` : ''} · ${rs(r.after?.total_paise)}`)
+  take(cnt(rows, 'purchase_line')); take(cnt(rows, 'purchase', 'update'))
   const ord = take(cnt(rows, 'orders', 'insert')).filter((r) => r.after?.source !== 'shop')    // shop orders are alerted separately
   if (ord.length) out.push(`📝 ${ord.length} order likha${ord.length <= 3 ? ` (${ord.map((r) => L.shop(r.after?.shop_id) ?? '?').join(', ')})` : ''}`)
   for (const r of take(cnt(rows, 'orders', 'update'))) if (r.after?.status === 'cancelled' && r.before?.status !== 'cancelled') out.push(`✖️ Order cancel · ${L.shop(r.after?.shop_id) ?? '?'}`)
