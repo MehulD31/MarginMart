@@ -770,3 +770,7 @@ button.date-field[aria-invalid='true'] { border-color: var(--danger); box-shadow
 .prod-nums b { font-size: 15px; }
 @media (max-width: 420px) { .prod-nums { grid-template-columns: 1fr 1fr; } }
 .prod-advice { margin: 0; }
+.prod-meter { height: 12px; border-radius: 6px; background: var(--line-2, #f1f5f9); overflow: hidden; }
+.prod-meter > i { display: block; height: 100%; border-radius: 6px; transition: width .4s ease; }
+.prod-nums small { font-size: 11px; }
+.prod-whatif { border-top: 1px dashed var(--line, #e2e8f0); padding-top: 8px; }

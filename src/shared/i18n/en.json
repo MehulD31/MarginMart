@@ -1547,48 +1547,63 @@
   },
   "prod": {
     "title": "Products",
-    "sub": "Per product: what it costs us, what we really sell it for, and the price we should get.",
+    "sub": "What each product earns after buying and delivery, and how all of them together cover salaries and other fixed costs.",
     "period": "Period",
     "days": "{{n}} days",
     "sortBy": "Sort",
     "sort": {
-      "profit": "Most margin",
+      "earned": "Most earned",
       "volume": "Most sold",
-      "margin": "Margin / case",
-      "below": "Under no-loss first"
+      "perCase": "Earns / case",
+      "loss": "Losing first"
     },
-    "kMargin": "Margin earned ({{n}} days)",
-    "kCases": "{{n}} cases sold",
-    "kBest": "Best earner",
-    "kBestSub": "{{v}} margin",
-    "kBelow": "Sold under no-loss price",
-    "kBelowSub": "products to re-price",
+    "cover": {
+      "title": "Fixed costs covered (last {{n}} days)",
+      "pct": "{{n}}% covered",
+      "earned": "Products earned {{v}}",
+      "fixed": "Fixed costs {{v}}",
+      "short": "{{v}} still short. At the average {{a}} a case, that is about {{n}} more cases.",
+      "shortNoAvg": "{{v}} still short.",
+      "profit": "All fixed costs paid. {{v}} profit on top."
+    },
+    "kCasesL": "Cases sold",
+    "kDays": "last {{n}} days",
+    "kAvg": "Earns per case",
+    "kAvgSub": "average, all products",
+    "kTop": "Products bringing 80%",
+    "kTopSub": "of the earnings",
+    "kLoss": "Losing money",
+    "kLossSub": "sold under buy + delivery",
     "l": {
       "buy": "Buy price",
-      "target": "No-loss price",
       "sell": "Avg sold",
       "trade": "Pepsi rate",
-      "zones": "loss · thin · healthy"
+      "zones": "loses money · earns"
     },
     "none": "No products with prices or sales yet.",
     "sold": "{{n}} cases in {{d}} days",
     "notSold": "not sold in {{d}} days",
     "stock": "{{n}} in stock",
-    "cover": "~{{n}} days of stock",
-    "perCase": "Margin / case",
+    "coverDays": "~{{n}} days of stock",
+    "earn": "Earns / case",
+    "earned": "Earned ({{n}} days)",
+    "share": "{{n}}% of all",
     "st": {
       "none": "No sales",
-      "loss": "Loss",
-      "low": "Under no-loss",
-      "ok": "Healthy"
+      "loss": "Losing",
+      "low": "Below avg",
+      "ok": "Above avg"
     },
-    "a": {
-      "noSale": "Not sold in this period. When you do, get at least {{v}} a case.",
-      "loss": "Selling {{v}} a case below cost of delivery. Do not go under {{t}}.",
-      "low": "Average is {{v}} under the no-loss price {{t}} (buy + delivery + share of salaries). About {{m}} of salaries not covered this period.",
-      "ok": "Good: {{v}} above the no-loss price on average."
+    "w": {
+      "try": "Try a price:",
+      "aria": "Price per case in rupees",
+      "loss": "At {{p}} every case loses {{v}}.",
+      "fromLoss": "At {{p}} each case earns {{e}}.",
+      "more": "At {{p}} each case earns {{e}}. To earn the same as now you need {{n}} cases (now {{m}}, {{pct}}% more).",
+      "fewer": "At {{p}} each case earns {{e}}. You earn the same as now with {{n}} cases (now {{m}}), even if {{pct}}% fewer sell.",
+      "same": "At {{p}} each case earns {{e}}, same as now."
     },
-    "ladderAria": "Buy {{b}}, sold {{s}}, no-loss price {{t}}",
+    "ladderAria": "Buy {{b}}, sold {{s}}, Pepsi rate {{p}}",
     "trendAria": "Cases sold per day, last {{n}} days",
     "daysAgo": "{{n}} days ago",
     "avgDay": "avg {{n}}/day",
