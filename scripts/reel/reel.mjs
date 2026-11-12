@@ -209,10 +209,13 @@ function mixVo(all, T, which) {
     `;${parts.map((_, i) => `[v${i}]`).join('')}amix=inputs=${parts.length}:normalize=0,apad,atrim=0:${T},volume=1.6,alimiter=limit=0.95[o]`
   sh('ffmpeg', ['-v', 'error', '-y', ...parts.flatMap((x) => ['-i', x.f]), '-filter_complex', fc, '-map', '[o]', out])
   return out
-}async function tts(key, text, file) {
+}// free tier allows 3 TTS requests a minute: keep 21 s between calls, and on 429 wait as long as Google asks
+let lastTts = 0
+async function tts(key, text, file) {
   let last
   for (const model of ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']) {
     for (let attempt = 0; attempt < 3; attempt++) {
+      await sleep(Math.max(0, lastTts + 21000 - Date.now())); lastTts = Date.now()
       const r = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', { method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({ model, response_format: { type: 'audio' }, generation_config: { speech_config: [{ voice: 'Charon' }] },
@@ -222,7 +225,8 @@ function mixVo(all, T, which) {
       for (const s of j.steps ?? []) for (const c of s.content ?? []) if (c.data && /audio/.test(c.mime_type ?? c.type ?? '')) { fs.writeFileSync(file, Buffer.from(c.data, 'base64')); return }
       last = `${model} ${r.status} ${JSON.stringify(j).slice(0, 200)}`; console.log('tts', last)
       if (r.status !== 429 && r.status !== 503 && r.status !== 500) break
-      await sleep(8000 * (attempt + 1))
+      const wait = Number(/retry in (\d+)/i.exec(JSON.stringify(j))?.[1] ?? 10)
+      await sleep((wait + 2) * 1000)
     }
   }
   throw new Error(`tts failed: ${last}`)
