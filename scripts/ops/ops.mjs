@@ -346,6 +346,7 @@ async function activity() {
   const after = cur?.detail?.id
   const q = after != null ? `id=gt.${after}` : `at=gte.${encodeURIComponent(new Date(Date.now() - 24 * 3600e3).toISOString())}`
   const rows = await db(`audit_log?${q}&order=id&limit=1500&select=id,actor,table_name,row_id,action,before,after,at`)
+  console.log('activity rows', rows.length, 'after', after ?? 'start')
   if (!rows.length) return
   const lastId = rows.at(-1).id
   const mine = rows.filter((r) => r.actor)
