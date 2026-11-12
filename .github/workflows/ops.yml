@@ -5,7 +5,7 @@ name: ops
 on:
   workflow_dispatch:
     inputs:
-      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask | media", required: true, default: watchdog }
+      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask | media | ads", required: true, default: watchdog }
       question: { description: "for mode=ask", required: false, default: "" }
       force: { description: "1 = send again even if already sent", required: false, default: "" }
       file: { description: "mode=media: Telegram file_id of the video/photo", required: false, default: "" }
@@ -61,6 +61,7 @@ jobs:
           GEMINI_FREE_KEY: ${{ secrets.GEMINI_FREE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
+          META_ADS_TOKEN: ${{ secrets.META_ADS_TOKEN }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           SITE_URL: ${{ vars.SITE_URL }}

@@ -13,6 +13,7 @@ import { item, monthRange, reorderText, remindText, toCsv, waLink } from './form
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, rateDm, wantsRate, waShare } from './media.mjs'
 import { describe, esc, groupRows } from './activity.mjs'
+import * as ADS from './ads.mjs'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
@@ -68,6 +69,7 @@ async function morning() {
   const st = ins && smartText(ins, waLink)
   if (st) await say(st)
   if (reorder.length) await say(`📝 Pepsi ko ye order bhej do (7 din ka stock, pichhle 30 din ki bikri se):\n\n${reorderText(reorder, hi(today))}`)
+  try { await ads() } catch (e) { console.log('ads check failed', e.message); await say(`⚠️ Ads check nahi hua: ${e.message.slice(0, 150)}`) }
   await mark('morning', today)
 }
 
@@ -390,6 +392,28 @@ async function activity() {
   }
   await mark('activity', 'cursor', { id: lastId })
 }
+// Daily ads check (runs with the morning report). Only pauses/resumes existing ads; never budgets or money.
+async function ads() {
+  const tok = process.env.META_ADS_TOKEN
+  if (!tok) return console.log('ads: no META_ADS_TOKEN yet')
+  const A = ADS.ACCOUNT
+  const get = async (p) => { const j = await (await fetch(`${G}/${p}${p.includes('?') ? '&' : '?'}access_token=${tok}`)).json(); if (j.error) throw new Error(j.error.message); return j }
+  const acct = await get(`${A}?fields=account_status,funding_source_details,is_prepay_account,balance,amount_spent`)
+  const list = (await get(`${A}/ads?fields=id,name,effective_status&limit=100`)).data ?? []
+  const ins = async (preset) => new Map(((await get(`${A}/insights?level=ad&date_preset=${preset}&fields=ad_id,spend,actions&limit=500`)).data ?? []).map((r) => [r.ad_id, r]))
+  const [w7, life] = await Promise.all([ins('last_7d'), ins('maximum')])
+  const ours = new Map((await db('ops_log?job=eq.ads-paused&select=key,detail')).map((r) => [r.key, Date.parse(r.detail?.at ?? 0)]))
+  const rows = list.filter((a) => ['ACTIVE', 'PAUSED'].includes(a.effective_status)).map((a) => ({ id: a.id, name: a.name, status: a.effective_status,
+    spend7: n(w7.get(a.id)?.spend), chats7: ADS.chats(w7.get(a.id)), lifeSpend: n(life.get(a.id)?.spend), lifeChats: ADS.chats(life.get(a.id)), pausedByUsAt: ours.get(a.id) }))
+  if (!rows.length) return console.log('ads: no ads yet')
+  const acted = ADS.decide(rows)
+  for (const p of acted.pause) { await fetch(`${G}/${p.id}`, { method: 'POST', body: new URLSearchParams({ status: 'PAUSED', access_token: tok }) }); await mark('ads-paused', p.id, { at: new Date().toISOString(), why: p.why }) }
+  for (const r of acted.resume) await fetch(`${G}/${r.id}`, { method: 'POST', body: new URLSearchParams({ status: 'ACTIVE', access_token: tok }) })
+  let problem = null
+  if (!acct.funding_source_details) problem = 'Ads account me payment method nahi hai: ads nahi chalenge. Meta Billing me card/UPI jodo.'
+  else if (acct.account_status !== 1) problem = `Ads account status ${acct.account_status} (band/hold). Meta Ads Manager check karo.`
+  await say(ADS.report(rows, acted, { problem }), { parse_mode: 'HTML' })
+}
 // Comments asking for rates on posts from the last 14 days. Each comment allows ONE private reply (Meta rule), sent once
 // (ops_log job=cdm). If Meta refuses (no messaging permission / already replied), the public reply still goes and the
 // group is told once a day so a person can follow up.
@@ -492,7 +516,7 @@ async function diag() {
   }
 }
 
-const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media }
+const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)
