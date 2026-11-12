@@ -65,7 +65,8 @@ export function cleanVo(s) {
   return t.split(' ').slice(0, 9).join(' ')
 }
 // spoken digit by digit so the TTS doesn't read it as one big number
-export const VO_END = 'Order karein: 9 6 3 0 0, 1 2 6 3 6.'
+// end-card call to action. Instagram/Facebook: follow + comment RATE (the bot DMs the rate list). WhatsApp: join the group.
+export const VO_END = { ig: 'Page follow karein, aur comment mein RATE likhiye. Rate list DM mein milegi.', wa: 'QR scan karke WhatsApp group join karein. Roz ke rate wahin milenge.' }
 
 /** Voice lines with their start times: one per shot, the brand line, the phone line on the end card. */
 export function voLines(shots, ai) {
@@ -73,7 +74,7 @@ export function voLines(shots, ai) {
   const out = shots.map((_, i) => ({ at: i * SHOT + 0.15, slot: SHOT - 0.2, text: cleanVo(v[i]) })).filter((x) => x.text)
   const brandAt = shots.length * SHOT
   out.push({ at: brandAt + 0.2, slot: BRAND - 0.3, text: cleanVo(ai?.vo_brand) || 'MarginMart, Bhilai mein daily delivery.' })
-  out.push({ at: brandAt + BRAND + 0.4, slot: ENDCARD - 0.6, text: VO_END })
+  for (const only of ['ig', 'wa']) out.push({ at: brandAt + BRAND + 0.4, slot: ENDCARD - 0.6, text: VO_END[only], only })
   return out
 }
 
@@ -86,7 +87,7 @@ export function reelPrompt(note, n) {
     `Write on-screen text in simple Hinglish (Hindi in English letters). Shot 1 is the hook and must stop the scroll in 1 second: say what is special in THIS footage (new truck, fresh stock, big load, new item...). Lines are very short.`,
     `Return JSON: {"hook":{"small":"2-3 words","a":"1 word, max 8 letters","b":"1 word, max 8 letters","c":"2-3 words"},` +
     `"cards":[${n - 1} items, one per shot 2..${n}: {"a":"1-3 words","b":"1-3 words","chips":["optional, up to 3 product names you can SEE in that image"]}],` +
-    `"brand":{"small":"3-4 words","b":"2 words"},"vo":[{n} voiceover lines, one per shot, each 4-7 words so it fits in 2 seconds, spoken Hinglish like a friendly dealer talking to shopkeepers, together one flowing message about what is shown],"vo_brand":"one line, max 7 words, e.g. MarginMart, Bhilai mein daily delivery","caption":"Instagram/Facebook caption in Hinglish, 2-4 short lines, 1-3 emojis, ends with: 📞 Order: 96300 12636 and 4-6 hashtags incl. #Bhilai #MarginMart"}`,
+    `"brand":{"small":"3-4 words","b":"2 words"},"vo":[{n} voiceover lines, one per shot, each 4-7 words so it fits in 2 seconds, spoken Hinglish like a friendly dealer talking to shopkeepers, together one flowing message about what is shown],"vo_brand":"one line, max 7 words, e.g. MarginMart, Bhilai mein daily delivery","caption":"Instagram/Facebook caption in Hinglish, 2-4 short lines, 1-3 emojis, second-last line exactly: 👉 Follow karein aur comment mein RATE likhein, rate list DM mein bhejenge 📩 ; last line: 📞 Order: 96300 12636 ; then 4-6 hashtags incl. #Bhilai #MarginMart"}`,
     'Only describe what is really in the images. Do not invent offers.',
   ].join('\n')
 }

@@ -26,6 +26,9 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#000;font-family
 #end .cta{font-size:44px;font-weight:700;margin-top:40px}
 #end .ph{font-size:110px;font-weight:900;color:#ffd23f;letter-spacing:-2px;line-height:1.05}
 #end .sub{font-size:36px;color:#c9d1d9;margin-top:24px}
+#end .follow{margin-top:40px;background:#3ddc6a;color:#03200e;font-weight:900;font-size:50px;padding:14px 46px;border-radius:60px}
+#end .cm{margin-top:34px;font-size:64px;font-weight:800;line-height:1.1}
+#end .cm b{color:#ffd23f;font-weight:900;border:5px solid #ffd23f;border-radius:18px;padding:0 18px;margin-left:6px}
 #end .qrb{background:#fff;padding:22px;border-radius:30px;border:8px solid #3ddc6a;margin-top:36px}
 #end .qrb img{width:400px;height:400px;display:block;image-rendering:pixelated}
 </style></head><body>
@@ -50,7 +53,7 @@ window.init = (plan, which) => {
   P = plan; END = which
   end.innerHTML = `<img class="logo" src="assets/logo.png">` + (END === 'wa'
     ? `<div class="cta">WhatsApp group join karein</div><div class="qrb"><img src="assets/qr.png"></div><div class="sub">Camera se scan karein · roz ke rate &amp; offers</div><div class="cta" style="margin-top:26px">Call / WhatsApp <span class="y" style="font-weight:900">96300 12636</span></div>`
-    : `<div class="cta">Order ke liye Call / WhatsApp</div><div class="ph">96300 12636</div><div class="sub">Wholesale distributor · Bhilai<br>Drinks, water, milk drinks &amp; more</div>`)
+    : `<div class="follow">+ Follow karein</div><div class="cm">Comment karein <b>RATE</b></div><div class="sub" style="margin-top:14px">rate list aapke DM mein aayegi</div><div class="cta" style="margin-top:44px">Order: <span class="y" style="font-weight:900">96300 12636</span></div>`)
 }
 window.seek = async (t) => {
   const S = P.shots, brandAt = S.length * 2, endAt = brandAt + 2

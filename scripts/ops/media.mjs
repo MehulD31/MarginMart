@@ -63,3 +63,19 @@ export const previewButtons = (id) => ({ inline_keyboard: [
 
 // WhatsApp forward link for a published post: caption + the post link, ready to paste into the community.
 export const waShare = (caption, link) => `https://wa.me/?text=${encodeURIComponent([String(caption ?? '').slice(0, 600), link].filter(Boolean).join('\n\n'))}`
+
+// ---------- Comment "RATE" -> rate list in DM (Facebook + Instagram), owner 12 Nov 2026 ----------
+/** Does this comment ask for rates? (Reels end with "comment karein RATE".) */
+export const wantsRate = (text) => /\b(rate|rates|ret|reat|price|prices|bhav|bhaav|daam|dam|rate\s*list|ratelist|kitne\s*ka|kitna)\b|रेट|भाव|दाम/i.test(String(text ?? ''))
+export const GROUP = 'https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm'
+/** The private reply (one per comment, Meta's rule). No prices in it: the rates go on WhatsApp, where they stay current. */
+export const rateDm = (name) => [
+  `Namaste${name ? ' ' + String(name).split(' ')[0] : ''} ji 🙏 MarginMart (by K.D. Foods), Bhilai se.`,
+  '',
+  'Aaj ki wholesale rate list ke liye:',
+  `1️⃣ WhatsApp group join karein (roz ke rate + offers): ${GROUP}`,
+  `2️⃣ Ya apni dukaan ka naam aur area WhatsApp karein: wa.me/91${PHONE} , poori rate list bhej denge.`,
+  '',
+  'Drinks, water, milk drinks & more · daily delivery 🚚',
+].join('\n')
+export const RATE_PUBLIC = 'Rate list aapke DM mein bhej di hai 📩 Inbox check karein 🙏'

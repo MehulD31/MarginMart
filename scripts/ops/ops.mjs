@@ -11,7 +11,7 @@
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
-import { waShare } from './media.mjs'
+import { PHONE, RATE_PUBLIC, rateDm, wantsRate, waShare } from './media.mjs'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
@@ -119,6 +119,8 @@ async function events() {
       await mark('order', o.id)
     }
   } catch (e) { console.log('orders skipped', e.message) }
+  // 2b. "RATE" comments on our Facebook/Instagram posts -> rate list in DM + short public reply + lead alert
+  try { await rateComments() } catch (e) { console.log('rate comments skipped', e.message) }
   // 3. items that just ran out (only items with a low-stock level set). Re-armed when stock comes back.
   try {
     const out = await db('stock?low_threshold=gt.0&on_hand=lte.0&select=variant_id,variant(flavour_en,active,pack(name_en,active))')
@@ -333,6 +335,39 @@ async function postOne(p) {
     if (out.attempts >= 3) await say(`⚠️ Post nahi ho paya (3 baar try kiya): ${e.message.slice(0, 200)}`)
     throw e
   }
+}
+// Comments asking for rates on posts from the last 14 days. Each comment allows ONE private reply (Meta rule), sent once
+// (ops_log job=cdm). If Meta refuses (no messaging permission / already replied), the public reply still goes and the
+// group is told once a day so a person can follow up.
+async function rateComments() {
+  const tok = process.env.META_PAGE_TOKEN, page = process.env.FB_PAGE_ID, ig = process.env.IG_USER_ID
+  if (!tok || (!page && !ig)) return
+  const get = async (p) => { const j = await (await fetch(`${G}/${p}${p.includes('?') ? '&' : '?'}access_token=${tok}`)).json(); if (j.error) throw new Error(j.error.message); return j }
+  const since = new Date(Date.now() - 14 * 864e5).toISOString()
+  const posts = await db(`social_post?status=eq.posted&posted_at=gte.${encodeURIComponent(since)}&select=id,fb_post_id,ig_media_id&limit=40`)
+  const found = []
+  for (const p of posts) {
+    if (ig && p.ig_media_id) try {
+      for (const c of (await get(`${p.ig_media_id}/comments?fields=id,text,username,timestamp,from&limit=50`)).data ?? [])
+        found.push({ net: 'ig', id: c.id, text: c.text, who: c.username, mine: c.from?.id === ig })
+    } catch (e) { console.log('ig comments', p.ig_media_id, e.message) }
+    if (page && p.fb_post_id && p.fb_post_id !== 'ok') try {
+      for (const c of (await get(`${p.fb_post_id}/comments?fields=id,message,from,created_time&filter=toplevel&limit=50`)).data ?? [])
+        found.push({ net: 'fb', id: c.id, text: c.message, who: c.from?.name, mine: c.from?.id === page })
+    } catch (e) { console.log('fb comments', p.fb_post_id, e.message) }
+  }
+  const post = async (p, body) => { const r = await fetch(`${G}/${p}?access_token=${tok}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); if (j.error) throw new Error(j.error.message); return j }
+  let failed = null
+  for (const c of found) {
+    if (c.mine || !wantsRate(c.text) || await done('cdm', c.id)) continue
+    let dm = 'ok'
+    try { await post(`${c.net === 'ig' ? ig : page}/messages`, { recipient: { comment_id: c.id }, message: { text: rateDm(c.net === 'fb' ? c.who : '') } }) }
+    catch (e) { dm = e.message.slice(0, 150); failed = dm }
+    try { await post(c.net === 'ig' ? `${c.id}/replies` : `${c.id}/comments`, { message: dm === 'ok' ? RATE_PUBLIC : `Rate list ke liye WhatsApp karein 📲 ${PHONE} 🙏` }) } catch (e) { console.log('public reply', e.message) }
+    await mark('cdm', c.id, { net: c.net, who: c.who, dm })
+    await say(`💬 ${c.net === 'ig' ? 'Instagram' : 'Facebook'}: ${c.who ?? 'koi'} ne "${String(c.text).slice(0, 60)}" comment kiya. ${dm === 'ok' ? 'Rate list wala DM chala gaya ✅' : 'DM nahi gaya (Meta ne roka), unhe reply me number de diya. Ho sake to khud message karo.'}`)
+  }
+  if (failed && !(await done('cdm-fail', today))) { await say(`⚠️ Comment pe DM nahi ja raha: ${failed}. Meta page settings me messaging permission check karni padegi.`); await mark('cdm-fail', today) }
 }
 // 19:30 job: every approved post (max 5). With POST_ID (⚡ in Telegram): just that one, right now.
 async function social() {

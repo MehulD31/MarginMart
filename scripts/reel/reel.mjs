@@ -74,9 +74,15 @@ try {
     console.log('ai', JSON.stringify(ai).slice(0, 600))
   } catch (e) { console.log('ai failed, using defaults:', e.message) }
   const plan = buildText(shots, ai)
-  const T = totalSeconds(shots), brandAt = shots.length * SHOT
+  // voiceover first (Gemini TTS, free key), so the end card can be held until the last spoken word is out
+  let voParts = null
+  try { voParts = await synthVo(voLines(shots, ai)) } catch (e) { console.log('voiceover failed, music only:', e.message) }
+  const lastWord = voParts ? Math.max(...voParts.map((x) => x.at + x.len)) : 0
+  const T = Math.max(totalSeconds(shots), Math.ceil((lastWord + 0.8) * 2) / 2), brandAt = shots.length * SHOT
+  console.log('length', T, 's, last word at', lastWord.toFixed(2))
   let caption = finishCaption(ai?.caption)
   if (!ai?.caption || caption.length < 60) caption = fallbackCaption(note, 'video')
+  if (!/comment/i.test(caption)) caption = caption.replace(/\n\n#/, '\n👉 Follow karein aur comment mein RATE likhein, rate list DM mein bhejenge 📩\n\n#')
   fs.writeFileSync(path.join(WORK, 'plan.json'), JSON.stringify(plan, null, 1))
 
   // ---- 4. render ----
@@ -100,18 +106,19 @@ try {
   const enc = (dir, out, music) => sh('ffmpeg', ['-v', 'error', '-y', '-framerate', String(FPS), '-i', path.join(WORK, dir, '%04d.jpg'),
     ...(music ? ['-i', path.join(WORK, 'music.wav'), '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []),
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-movflags', '+faststart', path.join(WORK, out)])
-  // voiceover (Gemini TTS, free key): one line per shot, placed at the shot start; music ducks under the voice
-  let vo = null
-  try { vo = await voiceover(voLines(shots, ai), T) } catch (e) { console.log('voiceover failed, music only:', e.message) }
+  // voice lines at their shot starts on one track of length T; music ducks under the voice
+  const vo = voParts ? mixVo(voParts, T, 'ig') : null, voWa = voParts ? mixVo(voParts, T, 'wa') : null
   enc('ig', 'silent-ig.mp4', false); enc('wa', 'silent-wa.mp4', false)
   const music = path.join(WORK, 'music.wav')
-  const full = path.join(WORK, 'full.m4a')
-  if (vo) sh('ffmpeg', ['-v', 'error', '-y', '-i', vo, '-i', music, '-filter_complex',
-    '[1:a]volume=0.55[mu];[0:a]asplit[v1][v2];[mu][v1]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=350[duck];[duck][v2]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]',
-    '-map', '[a]', '-c:a', 'aac', '-b:a', '160k', '-t', String(T), full])
-  else sh('ffmpeg', ['-v', 'error', '-y', '-i', music, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '160k', '-t', String(T), full])
+  const bed = (v, out) => v
+    ? sh('ffmpeg', ['-v', 'error', '-y', '-i', v, '-i', music, '-filter_complex',
+      '[1:a]volume=0.55[mu];[0:a]asplit[v1][v2];[mu][v1]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=350[duck];[duck][v2]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]',
+      '-map', '[a]', '-c:a', 'aac', '-b:a', '160k', '-t', String(T), out])
+    : sh('ffmpeg', ['-v', 'error', '-y', '-i', music, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '160k', '-t', String(T), out])
+  const fullIg = path.join(WORK, 'full-ig.m4a'), fullWa = path.join(WORK, 'full-wa.m4a')
+  bed(vo, fullIg); bed(voWa, fullWa)
   const mux = (v, a, out) => sh('ffmpeg', ['-v', 'error', '-y', '-i', path.join(WORK, v), ...(a ? ['-i', a, '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []), '-c:v', 'copy', '-movflags', '+faststart', path.join(WORK, out)])
-  mux('silent-ig.mp4', full, 'final.mp4'); mux('silent-wa.mp4', full, 'wa.mp4')
+  mux('silent-ig.mp4', fullIg, 'final.mp4'); mux('silent-wa.mp4', fullWa, 'wa.mp4')
   mux('silent-ig.mp4', vo, 'manual.mp4')          // for Instagram by hand: voice only, Instagram's music goes under it
 
   if (LOCAL) { console.log('LOCAL done:', WORK, JSON.stringify({ T, caption })); process.exit(0) }
@@ -175,30 +182,34 @@ async function askVision(parts) {
   throw new Error('vision AI unavailable')
 }
 
-// ---- voiceover: Gemini 3.8 Flash TTS (Interactions API, free tier). Each line is synthesized, sped up if it would
-// overrun its slot (max 1.3x), and placed at its start time on one track of length T. Returns the wav path.
-async function voiceover(lines, T) {
+// ---- voiceover: Gemini 3.8 Flash TTS (Interactions API, free tier). Each line is synthesized and sped up only if it
+// would overrun its slot (max 1.3x; the last line max 1.1x because the end card is held until it finishes).
+async function synthVo(lines) {
   const key = env('GEMINI_FREE_KEY', false)
   if (!key || !lines.length) throw new Error('no key or no lines')
-  const files = []
+  const out = []
   for (const [i, l] of lines.entries()) {
     const raw = path.join(WORK, `vo${i}.wav`)
     await tts(key, l.text, raw)
-    const d = Number(sh('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', raw]).trim()) || 0
-    const tempo = Math.min(1.3, Math.max(1, d / l.slot))
     const fit = path.join(WORK, `vo${i}f.wav`)
-    sh('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-af', `silenceremove=start_periods=1:start_threshold=-45dB,atempo=${tempo.toFixed(3)},aresample=48000,aformat=channel_layouts=stereo`, fit])
-    files.push({ f: fit, at: l.at })
+    sh('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-af', 'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse', path.join(WORK, `vo${i}t.wav`)])
+    const d = Number(sh('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', path.join(WORK, `vo${i}t.wav`)]).trim()) || 0
+    const last = !!l.only                                    // end-card line: the card waits for it
+    const tempo = Math.min(last ? 1.1 : 1.3, Math.max(1, d / l.slot))
+    sh('ffmpeg', ['-v', 'error', '-y', '-i', path.join(WORK, `vo${i}t.wav`), '-af', `atempo=${tempo.toFixed(3)},aresample=48000,aformat=channel_layouts=stereo`, fit])
+    out.push({ f: fit, at: l.at, len: d / tempo, only: l.only })
     console.log('vo', i, JSON.stringify(l.text), d.toFixed(2), 's x', tempo.toFixed(2))
   }
-  const out = path.join(WORK, 'vo.wav')
-  const ins = files.flatMap((x) => ['-i', x.f])
-  const fc = files.map((x, i) => `[${i}:a]adelay=${Math.round(x.at * 1000)}|${Math.round(x.at * 1000)}[v${i}]`).join(';') +
-    `;${files.map((_, i) => `[v${i}]`).join('')}amix=inputs=${files.length}:normalize=0,apad,atrim=0:${T},volume=1.6,alimiter=limit=0.95[o]`
-  sh('ffmpeg', ['-v', 'error', '-y', ...ins, '-filter_complex', fc, '-map', '[o]', out])
   return out
 }
-async function tts(key, text, file) {
+function mixVo(all, T, which) {
+  const parts = all.filter((x) => !x.only || x.only === which)
+  const out = path.join(WORK, `vo-${which}.wav`)
+  const fc = parts.map((x, i) => `[${i}:a]adelay=${Math.round(x.at * 1000)}|${Math.round(x.at * 1000)}[v${i}]`).join(';') +
+    `;${parts.map((_, i) => `[v${i}]`).join('')}amix=inputs=${parts.length}:normalize=0,apad,atrim=0:${T},volume=1.6,alimiter=limit=0.95[o]`
+  sh('ffmpeg', ['-v', 'error', '-y', ...parts.flatMap((x) => ['-i', x.f]), '-filter_complex', fc, '-map', '[o]', out])
+  return out
+}async function tts(key, text, file) {
   let last
   for (const model of ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']) {
     for (let attempt = 0; attempt < 3; attempt++) {

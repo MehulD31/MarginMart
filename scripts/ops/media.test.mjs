@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { captionPrompt, fallbackCaption, finishCaption, mediaOf, PHONE, postIdOf, previewButtons, TAGS, tooBig, waShare } from './media.mjs'
+import { captionPrompt, fallbackCaption, finishCaption, mediaOf, PHONE, postIdOf, previewButtons, TAGS, tooBig, waShare, wantsRate, rateDm, GROUP } from './media.mjs'
 
 const ID = '11111111-2222-3333-4444-555555555555'
 
@@ -59,5 +59,19 @@ describe('waShare', () => {
   })
   it('works without a link', () => {
     expect(waShare('Hi', null)).toBe('https://wa.me/?text=Hi')
+  })
+})
+
+describe('rate comments', () => {
+  it('spots rate requests in Hinglish, Hindi and typos', () => {
+    for (const t of ['RATE', 'rate list bhejo', 'Rate?', 'kitne ka hai', 'bhav kya hai', 'रेट', 'price please', 'ret']) expect(wantsRate(t)).toBe(true)
+  })
+  it('ignores other comments', () => {
+    for (const t of ['nice', 'gaadi mast hai 🔥', 'congratulations', 'separate', '']) expect(wantsRate(t)).toBe(false)
+  })
+  it('DM has the group link and WhatsApp number, and no prices', () => {
+    const d = rateDm('Ramesh Kumar')
+    expect(d).toContain('Ramesh ji'); expect(d).toContain(GROUP); expect(d).toContain('wa.me/919630012636')
+    expect(d).not.toMatch(/₹\s*\d/)
   })
 })
