@@ -427,6 +427,19 @@ async function ads() {
   const rows = list.filter((a) => ['ACTIVE', 'PAUSED'].includes(a.effective_status)).map((a) => ({ id: a.id, name: a.name, status: a.effective_status,
     spend7: n(w7.get(a.id)?.spend), chats7: ADS.chats(w7.get(a.id)), lifeSpend: n(life.get(a.id)?.spend), lifeChats: ADS.chats(life.get(a.id)), pausedByUsAt: ours.get(a.id) }))
   if (!rows.length) return console.log('ads: no ads yet')
+  // new-shop ad sets must not pay to reach shops we already supply: add the known-shops list as an exclusion
+  // (Meta ignores it while the list is still being matched, so this re-checks every morning). Targeting only, no money.
+  try {
+    const [aud] = await db('ops_log?job=eq.ads-audience&key=eq.known-shops&select=detail')
+    const audId = aud?.detail?.id
+    if (audId) for (const s of (await get(`${A}/adsets?fields=id,name,targeting,effective_status&limit=50`)).data ?? []) {
+      if (s.effective_status !== 'ACTIVE' || /known/i.test(s.name)) continue
+      const t = s.targeting ?? {}
+      if ((t.excluded_custom_audiences ?? []).some((x) => x.id === audId)) continue
+      const r = await (await fetch(`${G}/${s.id}`, { method: 'POST', body: new URLSearchParams({ targeting: JSON.stringify({ ...t, excluded_custom_audiences: [...(t.excluded_custom_audiences ?? []), { id: audId }] }), access_token: tok }) })).json()
+      console.log('exclude known shops', s.name, JSON.stringify(r).slice(0, 150))
+    }
+  } catch (e) { console.log('exclusion', e.message) }
   const acted = ADS.decide(rows)
   for (const p of acted.pause) { await fetch(`${G}/${p.id}`, { method: 'POST', body: new URLSearchParams({ status: 'PAUSED', access_token: tok }) }); await mark('ads-paused', p.id, { at: new Date().toISOString(), why: p.why }) }
   for (const r of acted.resume) await fetch(`${G}/${r.id}`, { method: 'POST', body: new URLSearchParams({ status: 'ACTIVE', access_token: tok }) })
