@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
 import { db, env, say } from '../scheme-bot/lib.mjs'
-import { buildText, planShots, reelButtons, reelPrompt, totalSeconds, FPS, SHOT } from './plan.mjs'
+import { buildText, planShots, reelButtons, reelPrompt, totalSeconds, voLines, FPS, SHOT } from './plan.mjs'
 import { finishCaption, fallbackCaption } from '../ops/media.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -100,7 +100,19 @@ try {
   const enc = (dir, out, music) => sh('ffmpeg', ['-v', 'error', '-y', '-framerate', String(FPS), '-i', path.join(WORK, dir, '%04d.jpg'),
     ...(music ? ['-i', path.join(WORK, 'music.wav'), '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []),
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-movflags', '+faststart', path.join(WORK, out)])
-  enc('ig', 'final.mp4', true); enc('ig', 'manual.mp4', false); enc('wa', 'wa.mp4', true)
+  // voiceover (Gemini TTS, free key): one line per shot, placed at the shot start; music ducks under the voice
+  let vo = null
+  try { vo = await voiceover(voLines(shots, ai), T) } catch (e) { console.log('voiceover failed, music only:', e.message) }
+  enc('ig', 'silent-ig.mp4', false); enc('wa', 'silent-wa.mp4', false)
+  const music = path.join(WORK, 'music.wav')
+  const full = path.join(WORK, 'full.m4a')
+  if (vo) sh('ffmpeg', ['-v', 'error', '-y', '-i', vo, '-i', music, '-filter_complex',
+    '[1:a]volume=0.55[mu];[0:a]asplit[v1][v2];[mu][v1]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=350[duck];[duck][v2]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]',
+    '-map', '[a]', '-c:a', 'aac', '-b:a', '160k', '-t', String(T), full])
+  else sh('ffmpeg', ['-v', 'error', '-y', '-i', music, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '160k', '-t', String(T), full])
+  const mux = (v, a, out) => sh('ffmpeg', ['-v', 'error', '-y', '-i', path.join(WORK, v), ...(a ? ['-i', a, '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : []), '-c:v', 'copy', '-movflags', '+faststart', path.join(WORK, out)])
+  mux('silent-ig.mp4', full, 'final.mp4'); mux('silent-wa.mp4', full, 'wa.mp4')
+  mux('silent-ig.mp4', vo, 'manual.mp4')          // for Instagram by hand: voice only, Instagram's music goes under it
 
   if (LOCAL) { console.log('LOCAL done:', WORK, JSON.stringify({ T, caption })); process.exit(0) }
   // ---- 5. store, preview ----
@@ -114,7 +126,7 @@ try {
   const url = await put('final.mp4'), manual = await put('manual.mp4')
   await db(`social_post?id=eq.${postId}`, { method: 'PATCH', body: JSON.stringify({ image_url: url, manual_url: manual, caption }) })
   const what = claimed.map((x) => x.kind === 'video' ? 'video' : 'photo')
-  const head = `🎬 Reel taiyaar (${what.length} ${what.length > 1 ? 'cheezein' : 'cheez'}: ${[...new Set(what)].join(' + ')}, ${T} sec)\n\n`
+  const head = `🎬 Reel taiyaar (${what.length} ${what.length > 1 ? 'cheezein' : 'cheez'}: ${[...new Set(what)].join(' + ')}, ${T} sec, ${vo ? '🎙 voiceover + music' : 'sirf music, voiceover nahi ban paya'})\n\n`
   const tail = '\n\n✏️ Caption badalna ho to is message ka reply karke naya likho.\n📘 = Facebook + Telegram abhi, Insta ke liye bina-music video milega.'
   const msg = await tgVideo(path.join(WORK, 'final.mp4'), (head + caption).slice(0, 1024 - tail.length) + tail, reelButtons(postId))
   await tgVideo(path.join(WORK, 'wa.mp4'), '📲 WhatsApp Status / group ke liye (end me group ka QR). Ise seedha forward karo.')
@@ -161,4 +173,46 @@ async function askVision(parts) {
     }
   }
   throw new Error('vision AI unavailable')
+}
+
+// ---- voiceover: Gemini 3.8 Flash TTS (Interactions API, free tier). Each line is synthesized, sped up if it would
+// overrun its slot (max 1.3x), and placed at its start time on one track of length T. Returns the wav path.
+async function voiceover(lines, T) {
+  const key = env('GEMINI_FREE_KEY', false)
+  if (!key || !lines.length) throw new Error('no key or no lines')
+  const files = []
+  for (const [i, l] of lines.entries()) {
+    const raw = path.join(WORK, `vo${i}.wav`)
+    await tts(key, l.text, raw)
+    const d = Number(sh('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', raw]).trim()) || 0
+    const tempo = Math.min(1.3, Math.max(1, d / l.slot))
+    const fit = path.join(WORK, `vo${i}f.wav`)
+    sh('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-af', `silenceremove=start_periods=1:start_threshold=-45dB,atempo=${tempo.toFixed(3)},aresample=48000,aformat=channel_layouts=stereo`, fit])
+    files.push({ f: fit, at: l.at })
+    console.log('vo', i, JSON.stringify(l.text), d.toFixed(2), 's x', tempo.toFixed(2))
+  }
+  const out = path.join(WORK, 'vo.wav')
+  const ins = files.flatMap((x) => ['-i', x.f])
+  const fc = files.map((x, i) => `[${i}:a]adelay=${Math.round(x.at * 1000)}|${Math.round(x.at * 1000)}[v${i}]`).join(';') +
+    `;${files.map((_, i) => `[v${i}]`).join('')}amix=inputs=${files.length}:normalize=0,apad,atrim=0:${T},volume=1.6,alimiter=limit=0.95[o]`
+  sh('ffmpeg', ['-v', 'error', '-y', ...ins, '-filter_complex', fc, '-map', '[o]', out])
+  return out
+}
+async function tts(key, text, file) {
+  let last
+  for (const model of ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', { method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({ model, response_format: { type: 'audio' }, generation_config: { speech_config: [{ voice: 'Charon' }] },
+          input: [{ type: 'user_input', content: [{ type: 'text', text, annotations: [{ type: 'speech_metadata',
+            style: 'confident Indian male, natural Hinglish, warm and energetic, a Bhilai wholesale dealer talking to shopkeepers, quick pace' }] }] }] }) })
+      const j = await r.json().catch(() => ({}))
+      for (const s of j.steps ?? []) for (const c of s.content ?? []) if (c.data && /audio/.test(c.mime_type ?? c.type ?? '')) { fs.writeFileSync(file, Buffer.from(c.data, 'base64')); return }
+      last = `${model} ${r.status} ${JSON.stringify(j).slice(0, 200)}`; console.log('tts', last)
+      if (r.status !== 429 && r.status !== 503 && r.status !== 500) break
+      await sleep(8000 * (attempt + 1))
+    }
+  }
+  throw new Error(`tts failed: ${last}`)
 }
