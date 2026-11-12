@@ -272,10 +272,11 @@ export async function handleOpsTap(q, ctx = {}) {
   if ((m = /^sp:(ok|now):([0-9a-f-]{36})$/i.exec(data))) {
     try {
       const r = await rpc('bot_social_approve', { p_id: m[2] })
-      if (r !== 'queued') { await answer(r === 'posted' ? 'Ye pehle hi post ho chuka' : r === 'skipped' ? 'Ye post cancel ho chuka' : 'Ye pehle se queue me hai'); return true }
+      if (r !== 'queued') { await answer(r === 'posted' ? 'Ye pehle hi post ho chuka' : r === 'skipped' ? 'Ye post cancel ho chuka' : 'Ye pehle se queue me hai'); if (r !== 'draft') await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {}); return true }
       const now = m[1] === 'now'
       await answer(now ? 'Abhi post kar raha hun…' : 'Theek hai, aaj 7:30 baje')
-      await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [[{ text: '❌ Mat daalo', callback_data: `sp:no:${m[2]}` }]] } })
+      // ⚡ = nothing left to choose, so all buttons go; ✅ keeps ❌ so it can still be stopped before 7:30 PM
+      await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: now ? [] : [[{ text: '❌ Mat daalo (7:30 se pehle)', callback_data: `sp:no:${m[2]}` }]] } })
       if (now && ctx.dispatch) await ctx.dispatch({ mode: 'social', post: m[2] }, 'ops.yml')
       await send(chat, now ? `⚡ ${q.from?.first_name ?? ''}: post ho raha hai, 2-3 minute me link aayega.` : `✅ ${q.from?.first_name ?? ''}: aaj 7:30 baje Facebook + Instagram pe jayega.`)
     } catch (e) { await answer(`Error: ${String(e.message).slice(0, 150)}`) }
@@ -285,7 +286,7 @@ export async function handleOpsTap(q, ctx = {}) {
   if ((m = /^sp:fb:([0-9a-f-]{36})$/i.exec(data))) {
     try {
       const r = await rpc('bot_social_approve_fb', { p_id: m[1] })
-      if (r !== 'queued') { await answer(r === 'posted' ? 'Ye pehle hi post ho chuka' : r === 'skipped' ? 'Ye post cancel ho chuka' : 'Ye pehle se queue me hai'); return true }
+      if (r !== 'queued') { await answer(r === 'posted' ? 'Ye pehle hi post ho chuka' : r === 'skipped' ? 'Ye post cancel ho chuka' : 'Ye pehle se queue me hai'); if (r !== 'draft') await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {}); return true }
       await answer('Facebook pe daal raha hun…')
       await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } })
       if (ctx.dispatch) await ctx.dispatch({ mode: 'social', post: m[1] }, 'ops.yml')
@@ -297,6 +298,7 @@ export async function handleOpsTap(q, ctx = {}) {
     try {
       const r = await rpc('bot_social_skip', { p_id: m[1] })
       await answer(r === 'skipped' ? 'Theek hai, post nahi hoga' : r === 'posted' ? 'Ye pehle hi post ho chuka' : 'Ye post ab queue me nahi')
+      if (r !== 'skipped') await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {})
       if (r === 'skipped') {
         await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } })
         await send(chat, `❌ ${q.from?.first_name ?? ''}: ye post nahi jayega.`)

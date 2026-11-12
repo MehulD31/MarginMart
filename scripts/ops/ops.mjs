@@ -316,6 +316,8 @@ async function postOne(p) {
       out.ig_media_id = (await graph(`${ig}/media_publish`, { creation_id: c.id })).id
     }
     await patch({ ...out, status: 'posted', posted_at: new Date().toISOString(), error: null })
+    // the preview's buttons (❌ etc.) mean nothing once it is live: take them off
+    try { const [pv] = await db(`ops_log?job=eq.preview&key=eq.${p.id}&select=detail`); if (pv?.detail?.message_id) await tg('editMessageReplyMarkup', { chat_id: env('KD_CHAT_ID'), message_id: pv.detail.message_id, reply_markup: { inline_keyboard: [] } }) } catch (e) { console.log('clear buttons', e.message) }
     const igLink = out.ig_media_id ? (await (await fetch(`${G}/${out.ig_media_id}?fields=permalink&access_token=${env('META_PAGE_TOKEN')}`)).json()).permalink : null
     const fbLink = out.fb_post_id && out.fb_post_id !== 'ok' ? `https://www.facebook.com/${out.fb_post_id}` : null
     const what = p.kind === 'scheme' ? 'Scheme poster' : video ? 'Video (Reel)' : 'Photo'
