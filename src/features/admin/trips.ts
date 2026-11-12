@@ -54,3 +54,14 @@ export const refreshTrips = (qc: QueryClient) => {
 }
 
 export const sumBy = <T,>(xs: T[], f: (x: T) => number) => xs.reduce((a, x) => a + f(x), 0)
+
+/** Loading history row (trip_history RPC): one loaded trip, with who loaded it and when. */
+export interface TripHistoryRow {
+  id: string; date: string; status: PlanStatus; route: string; vehicle: string | null; driver: string | null
+  loaded: number; returned: number; items: number; loaded_at: string | null; loaded_by: string | null
+  unloaded_at: string | null; closed_at: string | null; short_cases: number | null
+}
+export const useTripHistory = (from: string, to: string) => useQuery({
+  queryKey: ['trip-history', from, to],
+  queryFn: () => must<TripHistoryRow[]>(supabase.rpc('trip_history', { p_from: from, p_to: to })),
+})

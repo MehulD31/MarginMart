@@ -12,6 +12,7 @@ import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, rateDm, wantsRate, waShare } from './media.mjs'
+import { describe, groupRows } from './activity.mjs'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
@@ -119,6 +120,8 @@ async function events() {
       await mark('order', o.id)
     }
   } catch (e) { console.log('orders skipped', e.message) }
+  // 2a. what people did on the website (loading, bills, purchases, stock, deletes...) -> one Telegram update
+  try { await activity() } catch (e) { console.log('activity skipped', e.message) }
   // 2b. "RATE" comments on our Facebook/Instagram posts -> rate list in DM + short public reply + lead alert
   try { await rateComments() } catch (e) { console.log('rate comments skipped', e.message) }
   // 3. items that just ran out (only items with a low-stock level set). Re-armed when stock comes back.
@@ -335,6 +338,52 @@ async function postOne(p) {
     if (out.attempts >= 3) await say(`⚠️ Post nahi ho paya (3 baar try kiya): ${e.message.slice(0, 200)}`)
     throw e
   }
+}
+// Everything people saved on the website since the last run (audit_log), as one Telegram update per run.
+// Cursor = last audit_log id sent (ops_log activity/cursor). Bot/system changes (no actor) are not repeated here.
+async function activity() {
+  const [cur] = await db('ops_log?job=eq.activity&key=eq.cursor&select=detail')
+  const after = cur?.detail?.id
+  const q = after != null ? `id=gt.${after}` : `at=gte.${encodeURIComponent(new Date(Date.now() - 24 * 3600e3).toISOString())}`
+  const rows = await db(`audit_log?${q}&order=id&limit=1500&select=id,actor,table_name,row_id,action,before,after,at`)
+  if (!rows.length) return
+  const lastId = rows.at(-1).id
+  const mine = rows.filter((r) => r.actor)
+  if (mine.length) {
+    const ids = (k, f) => [...new Set(mine.flatMap((r) => [r.after?.[k], r.before?.[k]]).filter(Boolean).concat(f ?? []))]
+    const inList = (a) => `in.(${a.map((x) => `"${x}"`).join(',')})`
+    const fetchMap = async (table, key, sel, list) => list.length ? new Map((await db(`${table}?${key}=${inList(list)}&select=${sel}`)).map((x) => [x[key], x])) : new Map()
+    const plans = [...new Set(mine.filter((r) => r.table_name === 'route_day_plan').map((r) => r.row_id))]
+    const loads = plans.length ? await db(`load_line?route_day_plan_id=${inList(plans)}&select=route_day_plan_id,variant_id,qty_ordered_total,qty_spare`) : []
+    const people = await fetchMap('profiles', 'user_id', 'user_id,name', [...new Set(mine.map((r) => r.actor))])
+    const variants = await fetchMap('variant', 'id', 'id,flavour_en,pack(name_en)', ids('variant_id', loads.map((l) => l.variant_id)))
+    const routes = await fetchMap('route', 'id', 'id,name', ids('route_id'))
+    const vehicles = await fetchMap('vehicle', 'id', 'id,name', ids('vehicle_id'))
+    const shops = await fetchMap('shop', 'id', 'id,name', ids('shop_id'))
+    const suppliers = await fetchMap('supplier', 'id', 'id,name', ids('supplier_id'))
+    const L = {
+      variant: (id) => { const v = variants.get(id); return v ? item(`${v.pack?.name_en ?? ''} ${v.flavour_en ?? ''}`.trim()) : null },
+      route: (id) => routes.get(id)?.name, vehicle: (id) => vehicles.get(id)?.name, shop: (id) => shops.get(id)?.name, supplier: (id) => suppliers.get(id)?.name,
+      load: (pid) => loads.filter((l) => l.route_day_plan_id === pid).map((l) => ({ variant_id: l.variant_id, qty: n(l.qty_ordered_total) + n(l.qty_spare) })).filter((l) => l.qty > 0),
+    }
+    const blocks = []
+    for (const g of groupRows(mine)) {
+      const lines = describe(g, L)
+      if (!lines.length) continue
+      const who = people.get(g.actor)?.name ?? 'Koi'
+      const prev = blocks.at(-1)
+      if (prev && prev.who === who && Date.parse(g.at) - prev.last < 10 * 60e3) { prev.lines.push(...lines); prev.last = Date.parse(g.at) }
+      else blocks.push({ who, at: g.at, last: Date.parse(g.at), lines })
+    }
+    let msg = '📋 Website pe kya hua:'
+    for (const b of blocks) {
+      const part = `\n\n👤 ${b.who} · ${istTime(b.at)}\n${b.lines.join('\n')}`
+      if ((msg + part).length > 3800) { await say(msg); msg = '📋 (aage)' }
+      msg += part
+    }
+    if (blocks.length) await say(msg)
+  }
+  await mark('activity', 'cursor', { id: lastId })
 }
 // Comments asking for rates on posts from the last 14 days. Each comment allows ONE private reply (Meta rule), sent once
 // (ops_log job=cdm). If Meta refuses (no messaging permission / already replied), the public reply still goes and the

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Check, CheckCheck, ClipboardCheck, PackageCheck, PackageOpen, Plus, Printer, Receipt, Truck, Undo2, X } from 'lucide-react'
+import { ArrowLeft, Check, History, CheckCheck, ClipboardCheck, PackageCheck, PackageOpen, Plus, Printer, Receipt, Truck, Undo2, X } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
@@ -14,7 +14,7 @@ import { Stepper } from '../../shared/ui/Stepper'
 import { useConfirm } from '../../shared/ui/confirm'
 import { addDays, todayIST, useDrivers, useLocaleDate } from './opsData'
 import { CounterSaleForm } from './CounterSaleForm'
-import { refreshTrips, stageOf, sumBy, useTripBoard, useTripDetail, type Stage, type TripCard, type TripDetail, type TripOrder } from './trips'
+import { refreshTrips, stageOf, useTripHistory, sumBy, useTripBoard, useTripDetail, type Stage, type TripCard, type TripDetail, type TripOrder } from './trips'
 
 type Step = 'load' | 'unload' | 'bills' | 'close'
 const STEPS: Step[] = ['load', 'unload', 'bills', 'close']
@@ -40,6 +40,7 @@ export default function TripsPage() {
   const today = todayIST()
   const date = params.get('date') ?? today
   const planId = params.get('trip')
+  const history = params.get('view') === 'history'
   const [flash, setFlash] = useState<Msg>(null)
   const go = (next: Record<string, string | null>) => setParams((p) => {
     const q = new URLSearchParams(p)
@@ -54,12 +55,52 @@ export default function TripsPage() {
       <PageHeader title={t('trip.title')} sub={t('trip.sub')} />
       <div className="segmented" role="tablist" aria-label={t('trip.day')}>
         {[-1, 0, 1].map((n) => { const d = addDays(today, n); return (
-          <button key={d} type="button" role="tab" className="btn-sm" aria-selected={date === d} onClick={() => { setFlash(null); go({ date: d === today ? null : d }) }}>
+          <button key={d} type="button" role="tab" className="btn-sm" aria-selected={!history && date === d} onClick={() => { setFlash(null); go({ date: d === today ? null : d, view: null }) }}>
             {t(n < 0 ? 'trip.yesterday' : n > 0 ? 'trip.tomorrow' : 'trip.today')}</button>) })}
+        <button type="button" role="tab" className="btn-sm" aria-selected={history} data-testid="trip-history-tab" onClick={() => { setFlash(null); go({ view: 'history', date: null }) }}>
+          <History size={16} aria-hidden="true" />{t('trip.history.tab')}</button>
       </div>
       <Alert msg={flash} />
-      <Board date={date} onOpen={(id, step) => { setFlash(null); go({ trip: id, step }) }} />
+      {history ? <TripHistory onOpen={(id, d) => go({ trip: id, date: d, view: null, step: 'load' })} />
+        : <Board date={date} onOpen={(id, step) => { setFlash(null); go({ trip: id, step }) }} />}
     </section>
+  )
+}
+
+/** Loading history: every trip that was loaded, newest first, with who loaded it and when. Tap one to see its items. */
+function TripHistory({ onOpen }: { onOpen: (planId: string, date: string) => void }) {
+  const { t, i18n } = useTranslation()
+  const fmt = useLocaleDate()
+  const today = todayIST()
+  const [from, setFrom] = useState(addDays(today, -30))
+  const [to, setTo] = useState(today)
+  const q = useTripHistory(from, to)
+  const pg = usePaged(q.data ?? [], 15)
+  const time = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString(i18n.language === 'hi' ? 'hi-IN' : 'en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : ''
+  return (
+    <div className="stack" data-testid="trip-history">
+      <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
+        <label className="field"><span>{t('trip.history.from')}</span><input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></label>
+        <label className="field"><span>{t('trip.history.to')}</span><input type="date" value={to} min={from} max={today} onChange={(e) => e.target.value && setTo(e.target.value)} /></label>
+      </div>
+      {q.isLoading ? <Skeleton rows={5} /> : q.error ? <Alert msg={{ kind: 'error', text: errorMessage(t, q.error) }} />
+        : !q.data?.length ? <Empty icon={<Truck size={24} />} title={t('trip.history.none')} /> : (
+        <div className="table-wrap"><table className="table-stack"><tbody>{pg.rows.map((h) => {
+          const stage = stageOf(h.status, h.unloaded_at)
+          return (
+            <tr key={h.id} className="clickable" onClick={() => onOpen(h.id, h.date)}>
+              <td className="lead"><div className="row"><span className="avatar-sm" aria-hidden="true"><Truck size={16} /></span>
+                <div><div className="cell-title">{h.vehicle ?? '—'} · {h.route}</div>
+                  <div className="cell-sub">{fmt(h.date, true)}{h.loaded_by ? ` · ${t('trip.history.loadedBy', { who: h.loaded_by, at: time(h.loaded_at) })}` : ''}{h.driver ? ` · ${t('loading.driver')}: ${h.driver}` : ''}</div></div></div></td>
+              <td><strong className="num">{h.loaded}</strong> <span className="cell-sub">{t('trip.history.cases', { n: h.items })}</span>
+                {h.returned > 0 && <div className="cell-sub">{t('trip.history.back', { n: h.returned })}</div>}</td>
+              <td><span className={`badge ${STAGE_LOOK[stage].badge}`}>{t(`trip.stage.${stage}`)}</span>
+                {(h.short_cases ?? 0) > 0 && <div className="cell-sub" style={{ color: 'var(--danger, #dc2626)' }}>{t('trip.history.short', { n: h.short_cases })}</div>}</td>
+              <td className="actions"><button type="button" className="btn-sm" onClick={(e) => { e.stopPropagation(); onOpen(h.id, h.date) }}>{t('trip.history.open')}</button></td>
+            </tr>)
+        })}</tbody></table><Pager p={pg} /></div>
+      )}
+    </div>
   )
 }
 

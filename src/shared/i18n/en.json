@@ -1280,6 +1280,17 @@
       "reopen": "Reopen trip",
       "reopenBody": "Reopen {{v}}? The shortage and reason are cleared and orders closed as not delivered open again. Stock stays as it is.",
       "reopenDone": "{{v}} is open again. Fix what you need, then close it."
+    },
+    "history": {
+      "tab": "History",
+      "from": "From",
+      "to": "To",
+      "none": "No loading in these days.",
+      "loadedBy": "loaded by {{who}} at {{at}}",
+      "cases": "cases · {{n}} items",
+      "back": "{{n}} came back",
+      "short": "{{n}} short",
+      "open": "See load"
     }
   },
   "ins": {
