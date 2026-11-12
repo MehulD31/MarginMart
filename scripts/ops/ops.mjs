@@ -98,6 +98,7 @@ async function weekly() {
   const [w, sleeping] = await Promise.all([rpc('ops_weekly', { p_end: addDays(today, -1) }), rpc('ops_sleeping', { p_days: 10 })])
   const { text, cases } = weekText(w, sleeping, waLink)
   await say(text)
+  try { await audience() } catch (e) { console.log('audience failed', e.message) }
   await mark('weekly', today, { cases })
 }
 // New events, checked every ~10 minutes. Each one is alerted exactly once (ops_log) so a re-run never repeats it.
@@ -414,6 +415,26 @@ async function ads() {
   else if (acct.account_status !== 1) problem = `Ads account status ${acct.account_status} (band/hold). Meta Ads Manager check karo.`
   await say(ADS.report(rows, acted, { problem }), { parse_mode: 'HTML' })
 }
+// Known-shops Custom Audience (owner OK 12 Nov 2026): active shops' phones, SHA-256 hashed here before upload
+// (Meta only ever receives hashes). Re-run any time: new shops are added, Meta de-duplicates. Run weekly with the report.
+async function audience() {
+  const tok = process.env.META_ADS_TOKEN
+  if (!tok) return console.log('audience: no META_ADS_TOKEN yet')
+  const { createHash } = await import('node:crypto')
+  const shops = await db('shop?active=eq.true&phone=not.is.null&name=not.like.QA*&select=phone,alt_phone')
+  const hashes = [...new Set(shops.flatMap((s) => [s.phone, s.alt_phone]).map(ADS.phoneKey).filter(Boolean))].map((p) => createHash('sha256').update(p).digest('hex'))
+  const post = async (p, body) => { const j = await (await fetch(`${G}/${p}`, { method: 'POST', body: new URLSearchParams({ ...body, access_token: tok }) })).json(); if (j.error) throw new Error(j.error.error_user_msg || j.error.message); return j }
+  const [saved] = await db('ops_log?job=eq.ads-audience&key=eq.known-shops&select=detail')
+  let id = saved?.detail?.id
+  if (!id) {
+    id = (await post(`${ADS.ACCOUNT}/customaudiences`, { name: 'MarginMart known shops (phone)', subtype: 'CUSTOM', customer_file_source: 'USER_PROVIDED_ONLY', description: 'Active shops from the MarginMart app' })).id
+    await mark('ads-audience', 'known-shops', { id })
+  }
+  for (let i = 0; i < hashes.length; i += 5000)
+    await post(`${id}/users`, { payload: JSON.stringify({ schema: 'PHONE_SHA256', data: hashes.slice(i, i + 5000) }) })
+  await mark('ads-audience', 'known-shops', { id, uploaded: hashes.length, at: new Date().toISOString() })
+  await say(`👥 Ads ke liye apni dukaanon ki list Meta pe update: ${hashes.length} number (sirf scrambled code gaya, number nahi). Meta 1-2 din me match karega.`)
+}
 // Comments asking for rates on posts from the last 14 days. Each comment allows ONE private reply (Meta rule), sent once
 // (ops_log job=cdm). If Meta refuses (no messaging permission / already replied), the public reply still goes and the
 // group is told once a day so a person can follow up.
@@ -516,7 +537,7 @@ async function diag() {
   }
 }
 
-const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads }
+const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads, audience }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)

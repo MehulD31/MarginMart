@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chats, decide, report } from './ads.mjs'
+import { chats, decide, phoneKey, report } from './ads.mjs'
 
 const ad = (id, o) => ({ id, name: id, status: 'ACTIVE', spend7: 0, chats7: 0, lifeSpend: 0, lifeChats: 0, ...o })
 
@@ -27,5 +27,15 @@ describe('ads rules (never touch budgets, only pause/resume)', () => {
   it('report shows spend, chats, cost per chat and money problems', () => {
     const t = report([ad('Nayi Gaadi', { spend7: 300, chats7: 60 })], { pause: [], resume: [] }, { problem: 'Payment method nahi hai' })
     expect(t).toContain('₹300'); expect(t).toContain('<b>60</b> WhatsApp chat'); expect(t).toContain('₹5/chat'); expect(t).toContain('Payment method')
+  })
+})
+
+describe('phoneKey', () => {
+  it('normalises Indian mobiles for hashing and drops junk', () => {
+    expect(phoneKey('98765 43210')).toBe('919876543210')
+    expect(phoneKey('+91-98765-43210')).toBe('919876543210')
+    expect(phoneKey('09876543210')).toBe('919876543210')
+    expect(phoneKey('0788 222333')).toBe(null)
+    expect(phoneKey('')).toBe(null)
   })
 })

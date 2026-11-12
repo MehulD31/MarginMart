@@ -48,3 +48,10 @@ export function report(ads, acted, money) {
   if (money?.problem) L.push(`⚠️ ${money.problem}`)
   return L.join('\n')
 }
+
+/** Phone as Meta wants it before hashing: digits only, with country code (India 91). null if not a mobile number. */
+export function phoneKey(raw) {
+  const d = String(raw ?? '').replace(/\D/g, '').replace(/^0+/, '')
+  const ten = d.length === 12 && d.startsWith('91') ? d.slice(2) : d
+  return /^[6-9]\d{9}$/.test(ten) ? '91' + ten : null
+}
