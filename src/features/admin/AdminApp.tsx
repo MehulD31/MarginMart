@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Boxes, Calculator, Coins, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BarChart3, BookOpen, Boxes, Calculator, Coins, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { useStockWatch } from '../../shared/api/db'
 import { useMoneyHoldings } from './money'
@@ -30,6 +30,7 @@ import LivePage from './LivePage'
 import CounterSalesPage from './CounterSalesPage'
 import MoneyPage from './MoneyPage'
 import KharchaPage from './KharchaPage'
+import ProductsPage from './ProductsPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -63,6 +64,7 @@ export default function AdminApp() {
     { to: 'khata', label: t('nav.khata'), icon: BookOpen },
     ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'money', label: t('nav.money'), icon: Wallet, badge: moneyLate }] : []),
     ...(profile?.role === 'admin' ? [{ to: 'kharcha', label: t('nav.kharcha'), icon: Coins }] : []),
+    ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'products', label: t('nav.products'), icon: BarChart3 }] : []),
     { to: 'closing', label: t('nav.closing'), icon: ClipboardCheck, badge: attention },
   ]
   const setup: Item[] = [
@@ -128,7 +130,9 @@ export default function AdminApp() {
           <Route path="live" element={<LivePage />} />
           <Route path="sales" element={<CounterSalesPage />} />
           <Route path="khata" element={<KhataPage />} />
-          <Route path="money" element={<MoneyPage />} />`n          <Route path="kharcha" element={<KharchaPage />} />
+          <Route path="money" element={<MoneyPage />} />
+          <Route path="kharcha" element={<KharchaPage />} />
+          <Route path="products" element={<ProductsPage />} />
           <Route path="closing" element={<ClosingPage />} />
           <Route path="audit" element={<AuditPage />} />
           <Route path="inventory" element={<InventoryPage />} />

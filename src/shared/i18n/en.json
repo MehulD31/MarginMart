@@ -33,7 +33,8 @@
     "schemes": "Schemes",
     "sales": "Counter sales",
     "money": "Money with partners",
-    "kharcha": "Kharcha"
+    "kharcha": "Kharcha",
+    "products": "Products"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -1543,5 +1544,54 @@
       "bank": "Bank",
       "partner": "Partner"
     }
+  },
+  "prod": {
+    "title": "Products",
+    "sub": "Per product: what it costs us, what we really sell it for, and the price we should get.",
+    "period": "Period",
+    "days": "{{n}} days",
+    "sortBy": "Sort",
+    "sort": {
+      "profit": "Most margin",
+      "volume": "Most sold",
+      "margin": "Margin / case",
+      "below": "Below target first"
+    },
+    "kMargin": "Margin earned ({{n}} days)",
+    "kCases": "{{n}} cases sold",
+    "kBest": "Best earner",
+    "kBestSub": "{{v}} margin",
+    "kBelow": "Sold below target",
+    "kBelowSub": "products to re-price",
+    "l": {
+      "buy": "Buy price",
+      "target": "Target (min)",
+      "sell": "Avg sold",
+      "trade": "Pepsi rate",
+      "zones": "loss · thin · healthy"
+    },
+    "none": "No products with prices or sales yet.",
+    "sold": "{{n}} cases in {{d}} days",
+    "notSold": "not sold in {{d}} days",
+    "stock": "{{n}} in stock",
+    "cover": "~{{n}} days of stock",
+    "perCase": "Margin / case",
+    "st": {
+      "none": "No sales",
+      "loss": "Loss",
+      "low": "Below target",
+      "ok": "Healthy"
+    },
+    "a": {
+      "noSale": "Not sold in this period. When you do, get at least {{v}} a case.",
+      "loss": "Selling {{v}} a case below cost of delivery. Do not go under {{t}}.",
+      "low": "Average is {{v}} below target {{t}}. That is about {{m}} less margin in this period.",
+      "ok": "Good: {{v}} above target on average."
+    },
+    "ladderAria": "Buy {{b}}, sold {{s}}, target {{t}}",
+    "trendAria": "Cases sold per day, last {{n}} days",
+    "daysAgo": "{{n}} days ago",
+    "avgDay": "avg {{n}}/day",
+    "todayLbl": "today"
   }
 }

@@ -757,3 +757,16 @@ button.date-field[aria-invalid='true'] { border-color: var(--danger); box-shadow
 .trip-bar-compact { flex-wrap: nowrap; padding: 8px 8px 8px 14px; }
 .trip-bar-compact .grow { min-width: 0; }
 @media (max-width: 719px) { .trip-bar-compact > button { flex: 0 0 auto; } .trip-bar-compact .cell-sub { display: none; } }
+
+/* Products page (price ladder cards) */
+.prod-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .prod-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1400px) { .prod-grid { grid-template-columns: 1fr 1fr 1fr; } }
+.prod-card { gap: 10px; }
+.prod-ladder, .prod-trend { width: 100%; height: auto; display: block; overflow: visible; }
+.prod-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.prod-nums > div { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 10px; background: var(--line-2, #f1f5f9); }
+.prod-nums span { font-size: 11px; color: var(--muted, #64748b); }
+.prod-nums b { font-size: 15px; }
+@media (max-width: 420px) { .prod-nums { grid-template-columns: 1fr 1fr; } }
+.prod-advice { margin: 0; }

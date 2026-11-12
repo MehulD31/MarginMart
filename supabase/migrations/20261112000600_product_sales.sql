@@ -1,0 +1,2 @@
+﻿-- Products page (12 Nov 2026): product_sales(p_days) returns per pack: cases, revenue, cost, selling days, daily series,
+-- last purchase price/date and stock on hand. Applied through the Supabase MCP as migration 'product_sales'.
