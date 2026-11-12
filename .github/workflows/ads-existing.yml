@@ -1,0 +1,34 @@
+name: ads-existing
+# One-off helper: find the organic Facebook post id of a Reel and try to build "use existing post" ad creatives
+# (Facebook: object_story_id, Instagram: source_instagram_media_id) so likes/comments stay on the organic post.
+on:
+  workflow_dispatch:
+    inputs:
+      fb_video: { description: "Facebook video id of the Reel", required: true }
+      ig_media: { description: "Instagram media id of the Reel", required: true }
+permissions: { contents: read }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TOKEN: ${{ secrets.META_ADS_TOKEN || secrets.META_PAGE_TOKEN }}
+      PAGE: ${{ secrets.FB_PAGE_ID }}
+      IG: ${{ secrets.IG_USER_ID }}
+      V: ${{ github.event.inputs.fb_video }}
+      M: ${{ github.event.inputs.ig_media }}
+    steps:
+      - name: Look up ids
+        run: |
+          G=https://graph.facebook.com/v23.0
+          echo "== video"; curl -sS "$G/$V?fields=post_id,permalink_url,is_crossposting_eligible&access_token=$TOKEN" | sed 's/access_token=[^"&]*//g'; echo
+          echo "== ig media"; curl -sS "$G/$M?fields=id,permalink,media_product_type,boost_eligibility_info&access_token=$TOKEN" | sed 's/access_token=[^"&]*//g'; echo
+          echo "== page posts"; curl -sS "$G/$PAGE/posts?fields=id,created_time,status_type,attachments{media_type,target}&limit=5&access_token=$TOKEN" | sed 's/access_token=[^"&]*//g'; echo
+          echo "== try IG existing-post creative"
+          curl -sS -X POST "$G/act_993539680466090/adcreatives" \
+            --data-urlencode "name=Nayi Gaadi Reel · IG existing post" \
+            --data-urlencode "object_id=$PAGE" \
+            --data-urlencode "instagram_user_id=$IG" \
+            --data-urlencode "source_instagram_media_id=$M" \
+            --data-urlencode 'call_to_action={"type":"INSTAGRAM_MESSAGE","value":{"link":"https://www.instagram.com/marginmartofficial/"}}' \
+            --data-urlencode "access_token=$TOKEN" | sed 's/access_token=[^"&]*//g'; echo
