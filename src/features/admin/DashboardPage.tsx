@@ -257,7 +257,7 @@ function CallShops({ shops }: { shops: Shop[] }) {
   )
 }
 
-const GROUP_LINK = 'https://chat.whatsapp.com/DrCMzkTTp4Q8ozaXZ4KIXm'
+const GROUP_LINK = 'https://chat.whatsapp.com/L2oweV0q01131uUae2RpLu'
 type Invite = { id: string; name: string; owner_name: string | null; phone: string; locality: string | null; bought: boolean; left_count: number }
 
 /** WhatsApp community: up to 50 shops a day to send the group link to. Buyers first, then by area. */
