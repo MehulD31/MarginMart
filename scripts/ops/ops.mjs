@@ -447,6 +447,11 @@ async function ads() {
   if (!acct.funding_source_details) problem = 'Ads account me payment method nahi hai: ads nahi chalenge. Meta Billing me card/UPI jodo.'
   else if (acct.account_status !== 1) problem = `Ads account status ${acct.account_status} (band/hold). Meta Ads Manager check karo.`
   await say(ADS.report(rows, acted, { problem }), { parse_mode: 'HTML' })
+  // owner, 12 Nov: decide the own-shops ad after the new-shop ad has run ~5 days (no new spend without a yes)
+  if (today >= '2026-11-17' && !(await done('ads-known-decision', 'ask'))) {
+    await say('🤔 New-shop ad ko 5 din ho gaye (upar numbers). Apni 708 dukaanon ke liye alag ad (group join + reorder, ~₹96/din) chalana hai? Haan bolo to new-shop ad se paisa shift karke chalu kar denge, total budget nahi badhega.')
+    await mark('ads-known-decision', 'ask')
+  }
 }
 // Known-shops Custom Audience (owner OK 12 Nov 2026): active shops' phones, SHA-256 hashed here before upload
 // (Meta only ever receives hashes). Re-run any time: new shops are added, Meta de-duplicates. Run weekly with the report.

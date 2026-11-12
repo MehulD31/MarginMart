@@ -36,3 +36,7 @@ Rules: no prices, MarginMart brand (Pepsi only as a product name), Bhilai only i
 - Meta's minimum campaign spend cap is Rs5,000, so the end date is the safety limit instead.
 - Multi-destination (Messenger + Instagram DM) needs a DOF creative that the API kept turning into a plain link ad; switch to it in Ads Manager later if Instagram DM is wanted.
 - When a WhatsApp Business number exists: new CTWA ad set in the same campaign, same targeting.
+
+## 12 Nov: known shops
+- Custom Audience 120247070940520540 'MarginMart known shops (phone)': 708 hashed numbers, refreshed every Monday; excluded from the new-shop ad set (re-checked daily).
+- Own-shops ad: owner chose to wait. On 17 Nov the morning ads report asks in Telegram; if yes, shift money from the new-shop ad (total stays Rs150/day).
