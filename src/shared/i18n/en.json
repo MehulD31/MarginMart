@@ -1296,7 +1296,10 @@
       "back": "{{n}} came back",
       "short": "{{n}} short",
       "open": "See load"
-    }
+    },
+    "onTruckNow": "On truck now",
+    "parchiDue": "Sold, parchi not entered",
+    "parchiDueSub": "Enter these in Parchis"
   },
   "ins": {
     "title": "Business insights",

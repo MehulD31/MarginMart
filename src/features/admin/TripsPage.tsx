@@ -221,7 +221,10 @@ function TruckCounts({ d }: { d: TripDetail }) {
       <div className="stat"><div className="label">{t('trip.loaded')}</div><div className="value num">{n((i) => i.loaded)}</div></div>
       <div className="stat"><div className="label">{t('trip.billedDelivered')}</div><div className="value num">{n((i) => i.billed + i.delivered)}</div></div>
       <div className="stat"><div className="label">{t('trip.cameBack')}</div><div className="value num">{n((i) => i.returned)}</div></div>
-      <div className="stat"><div className="label">{t('trip.left')}</div><div className="value num" style={left > 0 ? { color: 'var(--warn)' } : undefined} data-testid="left-total">{left}</div></div>
+      {/* before unload it is stock still on the truck; after unload nothing is on the truck, it is sold with the parchi not entered yet */}
+      <div className="stat"><div className="label">{t(d.plan.unloaded_at ? 'trip.parchiDue' : 'trip.onTruckNow')}</div>
+        <div className="value num" style={left > 0 ? { color: 'var(--warn)' } : undefined} data-testid="left-total">{left}</div>
+        {d.plan.unloaded_at && left > 0 && <div className="cell-sub">{t('trip.parchiDueSub')}</div>}</div>
     </div>
   )
 }
