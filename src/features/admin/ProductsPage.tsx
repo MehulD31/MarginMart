@@ -179,7 +179,8 @@ function WhatIf({ x }: { x: Row & { avgSell: number; nextEven: number } }) {
   const { t } = useTranslation()
   const base = Math.round(x.avgSell / 100)
   const [rs, setRs] = useState(String(base))
-  const price = Math.round(Number(rs) * 100)
+  // At the shown average, use the exact average (not the rounded rupee) so "same price" reads as "same as now".
+  const price = rs === String(base) ? x.avgSell : Math.round(Number(rs) * 100)
   const valid = Number(rs) > 0
   const earn = price - x.nextEven     // next cases come from the latest stock
   const now = x.earned
