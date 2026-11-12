@@ -34,6 +34,17 @@ suite('website activity', () => {
     const out = describe({ rows: [row('shop', 'insert', { name: 'A<b>&B' })] }, L)
     expect(out[0]).toBe('🏪 Nayi dukaan: <b>A&lt;b&gt;&amp;B</b>')
   })
+  it('an unload says what came back and what was sold, not that the truck left', () => {
+    const rows = [row('route_day_plan', 'update', { status: 'out', unloaded_at: 'x' }, { status: 'loaded', unloaded_at: null }),
+      row('load_line', 'update', { variant_id: 'v1', qty_returned: 6, qty_spare: 10, qty_ordered_total: 0 }), row('load_line', 'update', { variant_id: 'v2', qty_returned: 0, qty_spare: 5, qty_ordered_total: 0 }),
+      row('stock_move', 'insert', { route_day_plan_id: 'p1', qty: 6, reason: 'Unloaded' })]
+    const out = describe({ rows }, L)
+    expect(out).toHaveLength(1)
+    expect(out[0]).toContain('Truck wapas (unload)')
+    expect(out[0]).toContain('wapas godown <b>6</b>')
+    expect(out[0]).toContain('bika (parchi baaki) <b>80</b>')
+    expect(out[0]).not.toContain('nikal')
+  })
   it('groups rows saved together by the same person', () => {
     const g = groupRows([{ actor: 'a', at: '1' }, { actor: 'a', at: '1' }, { actor: 'b', at: '1' }, { actor: 'a', at: '2' }])
     expect(g.map((x) => x.rows.length)).toEqual([2, 1, 1])

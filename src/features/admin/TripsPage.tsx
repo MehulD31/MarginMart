@@ -350,7 +350,7 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
 
 // ---------------------------------------------------------------- unload
 function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const items = d.items.filter((i) => i.loaded > 0)
   const maxBack = (i: TripDetail['items'][number]) => Math.max(0, i.loaded - i.delivered - i.billed)
@@ -376,25 +376,26 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
     } catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
   }
 
+  const savedBack = d.items.reduce((a, i) => a + i.returned, 0)
+  const at = d.plan.unloaded_at ? new Date(d.plan.unloaded_at).toLocaleTimeString(i18n.language === 'hi' ? 'hi-IN' : 'en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : ''
   return (
     <div className="stack-lg">
-      <p className="muted">{t('trip.unload.hint')}</p>
+      {d.plan.unloaded_at
+        ? <Alert msg={{ kind: 'success', text: t('trip.unload.savedNote', { at, who: '', n: savedBack }) }} />
+        : <p className="muted">{t('trip.unload.hint')}</p>}
       {!closed && <button type="button" style={{ alignSelf: 'flex-start' }} onClick={() => setBack(Object.fromEntries(items.map((i) => [i.variant_id, allBack ? 0 : maxBack(i)])))}>
-        <CheckCheck size={18} aria-hidden="true" />{allBack ? t('trip.unload.clearAll') : t('trip.unload.allBack')}</button>}
+        <CheckCheck size={18} aria-hidden="true" />{allBack ? t('trip.unload.none') : t('trip.unload.allBack')}</button>}
       <div className="card card-flush">
         <ul className="plain-list trip-list">{items.map((i) => {
-          const max = maxBack(i), n = back[i.variant_id] ?? 0, id = `back-${i.variant_id}`
+          const max = maxBack(i), n = back[i.variant_id] ?? 0
           return (
             <li key={i.variant_id} data-testid="unload-row">
-              <input id={id} type="checkbox" className="trip-check" checked={n > 0 && n === max} disabled={closed || max === 0}
-                ref={(el) => { if (el) el.indeterminate = n > 0 && n < max }}
-                onChange={(e) => setBack((s) => ({ ...s, [i.variant_id]: e.target.checked ? max : 0 }))} aria-label={t('trip.unload.checkAll', { item: i.label })} />
-              <label htmlFor={id} className="grow">
+              <div className="grow">
                 <div className="cell-title">{i.label}</div>
                 <div className="cell-sub num">{t('trip.unload.rowSub', { l: i.loaded, s: i.delivered + i.billed })}</div>
-              </label>
+              </div>
               {closed ? <strong className="num">{n}</strong>
-                : <Stepper value={n} max={max} label={`${t('trip.cameBack')}: ${i.label}`} disabled={max === 0} onChange={(v) => setBack((s) => ({ ...s, [i.variant_id]: clamp(v, max) }))} />}
+                : <Stepper value={n} max={max} showZero label={`${t('trip.cameBack')}: ${i.label}`} disabled={max === 0} onChange={(v) => setBack((s) => ({ ...s, [i.variant_id]: clamp(v, max) }))} />}
             </li>)
         })}</ul>
       </div>
@@ -405,10 +406,10 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
         <div className="row-between total-row"><span>{t('trip.unload.parchisToEnter')}</span><strong className={`num ${toBill > 0 ? 'text-warn' : 'text-ok'}`}>{toBill}</strong></div>
       </div>
       <Alert msg={msg} />
-      {!closed && <div className="trip-bar">
+      {!closed && d.plan.unloaded_at && <button type="button" className="danger btn-sm" style={{ alignSelf: 'flex-start' }} disabled={revert.busy || busy} data-testid="undo-unload" title={t('trip.unload.undoHint')}
+        onClick={() => void revert.run('trip_undo_unload', d.plan.id, t('trip.revert.unload'), t('trip.revert.unloadBody', { n: savedBack }), t('trip.revert.unloadDone'), setMsg)}>{t('trip.revert.unload')}</button>}
+      {!closed && <div className="trip-bar trip-bar-compact">
         <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: totalBack })}</strong><span className="cell-sub">{t('trip.unload.toGodown')}</span></div>
-        {d.plan.unloaded_at && <button type="button" className="danger" disabled={revert.busy || busy} data-testid="undo-unload"
-          onClick={() => void revert.run('trip_undo_unload', d.plan.id, t('trip.revert.unload'), t('trip.revert.unloadBody', { n: d.items.reduce((a, i) => a + i.returned, 0) }), t('trip.revert.unloadDone'), setMsg)}>{t('trip.revert.unload')}</button>}
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}><Undo2 size={18} aria-hidden="true" />
           {busy ? t('common.loading') : d.plan.unloaded_at ? t('trip.unload.saveFix') : t('trip.unload.btn', { n: totalBack })}</button>
       </div>}

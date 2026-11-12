@@ -1208,11 +1208,11 @@
       "lockedHint": "Selling or unloading has started, so the load can no longer change."
     },
     "unload": {
-      "hint": "Tick what came back. Use − / + when only part of an item came back.",
+      "hint": "Evening: count what came back on the truck and enter it for each item. Everything not back is treated as sold, and its parchi is entered next.",
       "allBack": "Everything came back",
       "clearAll": "Clear all",
       "checkAll": "All of {{item}} came back",
-      "rowSub": "Loaded {{l}} · sold {{s}}",
+      "rowSub": "Went out {{l}} · sold {{s}} · came back:",
       "parchisToEnter": "Sold, parchi still to enter",
       "backCount": "{{n}} cases came back",
       "toGodown": "They go back into the godown",
@@ -1220,7 +1220,10 @@
       "saveFix": "Save correction",
       "done": "{{n}} cases are back in the godown.",
       "doneBill": "{{n}} cases are back in the godown. Now enter the parchis for {{b}} sold cases.",
-      "notLoaded": "This truck is not loaded yet."
+      "notLoaded": "This truck is not loaded yet.",
+      "savedNote": "Unload saved at {{at}}{{who}}: {{n}} cases went back to the godown. If a count was wrong, change it below and press Save correction.",
+      "undoHint": "Undo the whole unload (stock goes back onto the truck)",
+      "none": "Nothing came back"
     },
     "bills": {
       "leftToBill": "{{n}} cases on the truck have no parchi yet",

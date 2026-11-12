@@ -17,13 +17,20 @@ export function describe(g, L0) {
   for (const r of take(cnt(rows, 'route_day_plan', 'update'))) {
     const a = r.after ?? {}, b = r.before ?? {}
     const trip = `<b>${L.vehicle(a.vehicle_id) ?? 'Gaadi'}</b>${L.route(a.route_id) ? ' · ' + L.route(a.route_id) : ''}`
-    if (b.status === 'planning' && a.status === 'loaded') {
+    if (!b.unloaded_at && a.unloaded_at) {
+      // evening unload (status also moves loaded -> out in the same save): what came back, what was sold
+      const lines = cnt(rows, 'load_line', 'update').map((x) => ({ v: x.after?.variant_id, back: Number(x.after?.qty_returned ?? 0), out: Number(x.after?.qty_ordered_total ?? 0) + Number(x.after?.qty_spare ?? 0) }))
+      const all = L.load(r.row_id) ?? []
+      const went = all.reduce((s, x) => s + x.qty, 0) || lines.reduce((s, x) => s + x.out, 0)
+      const back = lines.reduce((s, x) => s + x.back, 0)
+      const top = lines.filter((x) => x.back > 0).sort((x, y) => y.back - x.back).slice(0, 15).map((x) => `   • ${L.variant(x.v) ?? '?'} — <b>${x.back}</b>`)
+      out.push(`↩️ <b>Truck wapas (unload)</b>: ${trip}\n   Gaya <b>${went}</b> · wapas godown <b>${back}</b> · bika (parchi baaki) <b>${Math.max(0, went - back)}</b>${top.length ? `\n${top.join('\n')}` : ''}`)
+    } else if (b.status === 'planning' && a.status === 'loaded') {
       const lines = L.load(r.row_id) ?? []
       const total = lines.reduce((s, x) => s + x.qty, 0)
       const top = [...lines].sort((x, y) => y.qty - x.qty).slice(0, 15).map((x) => `   • ${L.variant(x.variant_id) ?? '?'} — <b>${x.qty}</b>`)
       out.push(`🚚 <b>Truck load</b>: ${trip}\n   <b>${total} peti</b> · ${lines.length} item${top.length ? `\n${top.join('\n')}${lines.length > 15 ? `\n   … +${lines.length - 15} aur` : ''}` : ''}`)
     } else if (b.status === 'loaded' && a.status === 'out') out.push(`🛣 ${trip} nikal gayi`)
-    else if (!b.unloaded_at && a.unloaded_at) out.push(`↩️ ${trip} wapas aayi (maal utaara)`)
     else if (a.status === 'closed' && b.status !== 'closed') out.push(`✅ ${trip} ka hisaab close${a.short_cases ? ` · ${a.short_cases} peti kam` : ''}${a.close_note ? ` · "${esc(String(a.close_note).slice(0, 60))}"` : ''}`)
     else if (a.status === 'planning' && b.status && b.status !== 'planning') out.push(`↶ ${trip}: load wapas khola (${b.status} → planning)`)
     else if (a.vehicle_id !== b.vehicle_id) out.push(`🔁 ${L.route(a.route_id) ?? 'trip'}: gaadi badli → ${L.vehicle(a.vehicle_id) ?? '-'}`)
