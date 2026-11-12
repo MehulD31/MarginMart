@@ -3,6 +3,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
+// Owner rule: tests never move real stock or bill real shops. Stock and bills use the hidden QA Test Drink / QA Test Shop.
+// @ts-expect-error plain JS helper
+import { qaFixture } from '../db/lib.mjs'
 
 const env = Object.fromEntries(readFileSync('.env.local', 'utf8').split(/\r?\n/).filter((l) => l.includes('='))
   .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).replace(/^"|"$/g, '')]))
@@ -41,8 +44,12 @@ test.describe.configure({ mode: 'serial' })
 test('Counter sale: Cancel keeps it, Delete removes it and puts stock back', async ({ page }) => {
   const errors = watchErrors(page)
   const cat = await rpc('counter_catalog', {}) as { variant_id: string; label: string; on_hand: number }[]
-  const sting = cat.find((c) => c.label === 'Sting PET 250ml (Red)')!
-  const shop = (await rest('shop?select=id&active=eq.true&locality=eq.Kumhari&limit=1'))[0]
+  void cat
+  const direct = (await rest('route?select=id&name=eq.Direct%20sales'))[0]
+  const qa = await qaFixture(rest, direct.id)
+  const stockOf = async () => (await rest(`stock?select=on_hand&variant_id=eq.${qa.variantId}`))[0]?.on_hand ?? 0
+  const sting = { variant_id: qa.variantId as string, on_hand: await stockOf() }
+  const shop = qa.shop
   const bill = await rpc('counter_sale_save', { p_id: null, p_action: randomUUID(), p_shop: shop.id, p_mode: 'cash', p_lines: [{ variant_id: sting.variant_id, qty: 2, price_paise: 50000 }] })
   await login(page)
   await page.goto('/admin/sales')
@@ -52,15 +59,16 @@ test('Counter sale: Cancel keeps it, Delete removes it and puts stock back', asy
   await deleteVia(page, bill.number)
   await expect(page.getByText(`Deleted ${bill.number}.`)).toBeVisible({ timeout: 15_000 })
   await expect(page.getByTestId('sale-card').filter({ hasText: bill.number })).toHaveCount(0)
-  const after = (await rpc('counter_catalog', {}) as typeof cat).find((c) => c.variant_id === sting.variant_id)!
-  expect(after.on_hand).toBe(sting.on_hand)
+  expect(await stockOf()).toBe(sting.on_hand)
+  await qa.hide()
   expect(errors).toEqual([])
 })
 
 test('Scheme, supplier and join request delete; Direct sales route refuses with a reason', async ({ page }) => {
   const errors = watchErrors(page)
   const JOIN = 'QA DEL Join ' + String(Date.now()).slice(-5)
-  const pack = (await rest('pack?select=id,name_en&active=eq.true&order=name_en&limit=1'))[0]
+  const qa = await qaFixture(rest)
+  const pack = { id: qa.packId, name_en: 'QA Test Drink' }
   await rest('scheme', { method: 'POST', body: JSON.stringify({ pack_id: pack.id, kind: 'pass_through', amount_paise: 1000, starts_on: TODAY, ends_on: TODAY, note: 'QA DEL' }) })
   await rest('supplier', { method: 'POST', body: JSON.stringify({ name: 'QA DEL Supplier' }) })
   await fetch(`${U}/rest/v1/rpc/submit_join_request`, { method: 'POST', headers: H(), body: JSON.stringify({ p_phone: '6' + String(Date.now()).slice(-9), p_shop_name: JOIN, p_owner_name: 'QA', p_address: 'x' }) })
@@ -87,6 +95,7 @@ test('Scheme, supplier and join request delete; Direct sales route refuses with 
   await page.getByRole('button', { name: /Direct sales/ }).click()
   await deleteVia(page, 'Direct sales')
   await expect(page.getByText('This route is used by the Telegram bot for new shops, so it cannot be deleted.')).toBeVisible({ timeout: 15_000 })
+  await qa.hide()
   expect(errors.filter((e) => !/400/.test(e))).toEqual([])
 })
 
@@ -127,10 +136,11 @@ test('Order, purchase (stock goes back) and empty route delete', async ({ page }
   const errors = watchErrors(page)
   const tag = String(Date.now()).slice(-5)
   const cat = await rpc('counter_catalog', {}) as { variant_id: string; label: string; on_hand: number }[]
-  const sting = cat.find((c) => c.label === 'Sting PET 250ml (Red)')!
-  // order on the nearest planning trip
+  // order on the nearest planning trip, for the QA shop on that route, of the QA item (never a real shop or real stock)
   const plan = (await rest(`route_day_plan?select=id,route_id&status=eq.planning&date=gte.${TODAY}&order=date&limit=1`))[0]
-  const shop = (await rest(`shop?select=id,name&active=eq.true&route_id=eq.${plan.route_id}&limit=1`))[0]
+  const qa = await qaFixture(rest, plan.route_id)
+  const sting = (await rpc('counter_catalog', {}) as typeof cat).find((c) => c.variant_id === qa.variantId)!
+  const shop = qa.shop as { id: string; name: string }
   await rpc('save_order', { p_lines: [{ variant_id: sting.variant_id, qty: 1, price_paise: 50000 }], p_shop_id: shop.id, p_plan_id: plan.id })
   const order = (await rest(`orders?select=id&shop_id=eq.${shop.id}&route_day_plan_id=eq.${plan.id}`))[0]
   expect(order?.id).toBeTruthy()
@@ -163,5 +173,6 @@ test('Order, purchase (stock goes back) and empty route delete', async ({ page }
   await deleteVia(page, `QA DEL Route ${tag}`)
   await expect(page.getByRole('button', { name: new RegExp(`QA DEL Route ${tag}`) })).toHaveCount(0, { timeout: 15_000 })
   expect((await rest(`route?select=id&name=eq.QA DEL Route ${tag}`)).length).toBe(0)
+  await qa.hide()
   expect(errors).toEqual([])
 })

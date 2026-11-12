@@ -1,7 +1,7 @@
 // DB test of admin_delete for every kind: allowed deletes, refusals with the right code, stock put back, permissions.
 // Runs against the live database with real logins; makes its own "QA DEL" records and removes them again.
 // Usage: node tests/db/admin-delete.mjs   (needs .env.local with VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, KD_SHEET_KEY)
-import { env, call, rest, fnc, login, today, check, done } from './lib.mjs'
+import { env, call, rest, fnc, login, today, check, done, qaFixture } from './lib.mjs'
 import { randomUUID } from 'node:crypto'
 
 const admin = await login('8871565551', '1234'), driverTok = await login('1111111111', '1111')
@@ -11,10 +11,12 @@ const code = (r) => (typeof r.body === 'object' && r.body?.message) || String(r.
 const refused = async (kind, id, c, label) => { const r = await del(kind, id); check(r.status >= 400 && code(r) === c, `${label} -> ${c}`, r) }
 const stockOf = async (vid) => (await rest(`stock?select=on_hand&variant_id=eq.${vid}`, admin))[0]?.on_hand ?? 0
 const cat = (await call('counter_catalog', {}, admin)).body
-const STING = cat.find((c) => c.label === 'Sting PET 250ml (Red)').variant_id
-const ZERO = cat.find((c) => c.on_hand === 0).variant_id
-const anyShop = (await rest('shop?select=id&active=eq.true&locality=eq.Kumhari&limit=1', admin))[0].id
-const s0 = await stockOf(STING), z0 = await stockOf(ZERO)
+// Real Sting is only used for read-only refusals; everything that moves stock or bills a shop uses the QA fixture.
+const REAL_STING = cat.find((c) => c.label === 'Sting PET 250ml (Red)').variant_id
+const direct0 = (await rest('route?select=id&name=eq.Direct%20sales', admin))[0]
+const qa = await qaFixture((p, i) => rest(p, admin, i), direct0.id)
+const STING = qa.variantId, ZERO = qa.variantId, anyShop = qa.shop.id
+const s0 = await stockOf(STING), z0 = s0, realS0 = await stockOf(REAL_STING)
 
 console.log('[permissions]')
 check(code(await del('scheme', randomUUID(), driverTok)) === 'FORBIDDEN', 'driver cannot delete')
@@ -86,11 +88,11 @@ check((await del('user', made.user_id)).status === 204 && !(await rest(`profiles
 check(!!(await fnc('pin-login', { phone: qaPhone, pin: made.pin })).error, 'deleted login can no longer sign in')
 
 console.log('[scheme, catalogue, join request]')
-const anyPack = (await rest('pack?select=id&limit=1', admin))[0]
+const anyPack = { id: qa.packId }
 const sch = (await rest('scheme', admin, { method: 'POST', body: JSON.stringify({ pack_id: anyPack.id, kind: 'pass_through', amount_paise: 1000, starts_on: today, ends_on: today, note: 'QA DEL' }) }))[0]
 check((await del('scheme', sch.id)).status === 204, 'delete a scheme')
-await refused('variant', STING, 'ITEM_IN_USE', 'Sting (has stock and history)')
-const stingPack = (await rest(`variant?select=pack_id&id=eq.${STING}`, admin))[0].pack_id
+await refused('variant', REAL_STING, 'ITEM_IN_USE', 'Sting (has stock and history)')
+const stingPack = (await rest(`variant?select=pack_id&id=eq.${REAL_STING}`, admin))[0].pack_id
 await refused('pack', stingPack, 'ITEM_IN_USE', 'Sting pack')
 const brand = (await rest('brand?select=id&limit=1', admin))[0]
 const pk = (await rest('pack', admin, { method: 'POST', body: JSON.stringify({ brand_id: brand.id, name_en: 'QA DEL Pack', units_per_case: 24, mrp_paise: 2000 }) }))[0]
@@ -105,5 +107,7 @@ check(jr && (await del('join_request', jr.id)).status === 204, 'delete a join re
 console.log('[change history + stock]')
 const log = await rest('audit_log?select=table_name,action&action=eq.delete&order=id.desc&limit=40', admin)
 check(['counter_sale', 'purchase', 'supplier', 'order', 'route', 'vehicle', 'user', 'scheme', 'variant', 'pack', 'join_request'].every((k) => log.some((x) => x.table_name === k)), 'every delete is in Change history')
-check((await stockOf(STING)) === s0 && (await stockOf(ZERO)) === z0, 'stock exactly as before the test')
+check((await stockOf(STING)) === s0, 'QA stock exactly as before the test')
+check((await stockOf(REAL_STING)) === realS0, 'real Sting stock never touched')
+await qa.hide()
 done()

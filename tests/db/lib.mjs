@@ -30,3 +30,34 @@ export function check(cond, label, extra) {
   if (cond) { pass++; console.log('  ok  ', label) } else { fail++; console.log('  FAIL', label, extra === undefined ? '' : JSON.stringify(extra)) }
 }
 export function done() { console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0) }
+
+/**
+ * Test-only product and shop (owner rule: tests never write to real stock or real shops).
+ * "QA Test Drink" is a hidden pack (active = false, so no catalogue, shop app or Products page shows it) with one
+ * flavour and a price on the active price list. "QA Test Shop" is inactive. Both are kept between runs and reused;
+ * only QA records ever touch them. `req(path, init)` is a REST call that returns parsed JSON.
+ */
+export async function qaFixture(req, routeId) {
+  let pack = (await req('pack?select=id&name_en=eq.QA%20Test%20Drink'))[0]
+  if (!pack) {
+    const brand = (await req('brand?select=id&limit=1'))[0]
+    pack = (await req('pack', { method: 'POST', body: JSON.stringify({ brand_id: brand.id, name_en: 'QA Test Drink', units_per_case: 24, mrp_paise: 2000, active: false }) }))[0]
+  }
+  let variant = (await req(`variant?select=id&pack_id=eq.${pack.id}`))[0]
+  if (!variant) variant = (await req('variant', { method: 'POST', body: JSON.stringify({ pack_id: pack.id, flavour_en: 'QA Test Drink' }) }))[0]
+  const list = (await req('price_list?select=id&status=eq.active'))[0]
+  if (list && !(await req(`price_list_item?select=pack_id&pack_id=eq.${pack.id}&price_list_id=eq.${list.id}`)).length)
+    await req('price_list_item', { method: 'POST', body: JSON.stringify({ price_list_id: list.id, pack_id: pack.id, trade_price_paise: 50000 }) })
+  let shop = null
+  if (routeId) {
+    shop = (await req(`shop?select=id,name&name=eq.QA%20Test%20Shop&route_id=eq.${routeId}`))[0]
+    if (!shop) shop = (await req('shop', { method: 'POST', body: JSON.stringify({ name: 'QA Test Shop', route_id: routeId, active: false }) }))[0]
+  }
+  // Sales and orders only accept active items/shops, so switch them on for the run; hide() switches them off again.
+  const flip = async (on) => {
+    await req(`pack?id=eq.${pack.id}`, { method: 'PATCH', body: JSON.stringify({ active: on }) })
+    if (shop) await req(`shop?id=eq.${shop.id}`, { method: 'PATCH', body: JSON.stringify({ active: on }) })
+  }
+  await flip(true)
+  return { packId: pack.id, variantId: variant.id, shop, hide: () => flip(false) }
+}
