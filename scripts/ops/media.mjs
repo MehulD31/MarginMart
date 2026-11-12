@@ -43,7 +43,7 @@ export function fallbackCaption(note, type) {
 /** Final caption: phone always present, our hashtags added once, no markdown, within Instagram's limit. */
 export function finishCaption(text) {
   let c = String(text ?? '').replace(/\*\*/g, '').replace(/#\w+/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
-  if (!c.includes(PHONE)) c += `\n📞 Call/WhatsApp ${PHONE}`
+  if (!c.replace(/\D/g, '').includes(PHONE)) c += `\n📞 Call/WhatsApp ${PHONE}`      // '96300 12636' counts too
   return `${c.slice(0, 1800)}\n\n${TAGS}`
 }
 
