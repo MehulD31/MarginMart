@@ -5,6 +5,7 @@
 //   Buttons: m:<menu item>, d:<shop id> (shop card), u:scheme|ask (unsure text), sp:ok|now|fb|no:<id> (post a social post at 19:30 / now / Facebook only + Insta by hand / skip it)
 import { detectIntent } from './_intent.js'
 import { askJson } from './_sale.js'
+import { parseKharcha } from '../src/shared/kharcha.js'
 import { dayText, weekText } from '../scripts/ops/report.mjs'
 import { item, reorderText, remindText, waLink } from '../scripts/ops/format.mjs'
 import { finishCaption, postIdOf } from '../scripts/ops/media.mjs'
@@ -282,6 +283,16 @@ export async function handleOpsTap(q, ctx = {}) {
     } catch (e) { await answer(`Error: ${String(e.message).slice(0, 150)}`) }
     return true
   }
+  // ❌ under a saved kharcha: remove it (stays in the audit log)
+  if ((m = /^kx:([0-9a-f-]{36})$/i.exec(data))) {
+    try {
+      const r = await rpc('bot_void_expense', { p_id: m[1] })
+      await answer(r === 'voided' ? 'Kharcha hata diya' : 'Ye pehle hi hat chuka')
+      await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {})
+      if (r === 'voided') await send(chat, `🗑 ${q.from?.first_name ?? ''}: ye kharcha hata diya.`)
+    } catch (e) { await answer(`Error: ${String(e.message).slice(0, 150)}`) }
+    return true
+  }
   // 📘 = Facebook + Telegram channel now; Instagram by hand: the bot sends the same edit without music to download.
   if ((m = /^sp:fb:([0-9a-f-]{36})$/i.exec(data))) {
     try {
@@ -307,6 +318,21 @@ export async function handleOpsTap(q, ctx = {}) {
     return true
   }
   return false
+}
+
+/** "kharcha petrol 800" (or /kharcha ...) -> saved as today's kharcha, with an undo button. Returns true when handled. */
+export async function handleKharcha(msg, text) {
+  const m = /^\/?(kharcha|kharch|khrcha|expense|kharcha:)\s+(.+)$/i.exec(String(text ?? '').trim())
+  if (!m) return false
+  const k = parseKharcha(m[2])
+  if (!k) { await send(msg.chat.id, 'Rakam samajh nahi aayi. Aise likho: kharcha petrol 800  (ya: kharcha gaadi kiraya 1500)'); return true }
+  try {
+    const id = await rpc('bot_add_expense', { p_amount_paise: k.amount_paise, p_category: k.category, p_note: k.note, p_who: msg.from?.first_name ?? '' })
+    await tg('sendMessage', { chat_id: msg.chat.id, reply_to_message_id: msg.message_id,
+      text: `💸 Kharcha save: ₹${(k.amount_paise / 100).toLocaleString('en-IN')} · ${k.category}${k.note ? ` · ${k.note}` : ''}\nWebsite → Kharcha me dikhega, aur aaj ke profit me jud gaya.`,
+      reply_markup: { inline_keyboard: [[{ text: '❌ Galat hai, hatao', callback_data: `kx:${id}` }]] } })
+  } catch (e) { await send(msg.chat.id, `⚠️ Kharcha save nahi hua: ${String(e.message).slice(0, 150)}`) }
+  return true
 }
 
 /** Reply to a post preview with new text = new caption for that post (before it is posted). Returns true when handled. */

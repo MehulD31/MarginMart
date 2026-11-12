@@ -14,6 +14,7 @@ import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, dmReply, needsAutoReply, rateDm, wantsRate, waShare } from './media.mjs'
 import { describe, esc, groupRows, split as splitLines, windowOf } from './activity.mjs'
 import * as ADS from './ads.mjs'
+import * as K from '../../src/shared/kharcha.js'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
@@ -99,7 +100,21 @@ async function night() {
     const held = (await rpc('_money_holdings')).filter((h) => n(h.holding_paise) > 0)
     if (held.length) money = '\n\n👤 Company ka paisa abhi: ' + held.map((h) => `${h.name} ${rs(n(h.holding_paise))}`).join(', ') + '. Bank me daal ke website pe "Moved to company" dabao.'
   } catch (e) { console.log('money skipped', e.message) }
-  await say(text + money + tip)
+  // Aaj ka profit with real kharcha (same maths as the dashboard card, src/shared/kharcha.js)
+  let pl = ''
+  try {
+    const ms = today.slice(0, 8) + '01'
+    const [[s], [pd], [pm], ed, em] = await Promise.all([db('business_settings?id=eq.1&select=*'), rpc('pnl_range', { p_from: today, p_to: today }), rpc('pnl_range', { p_from: ms, p_to: today }),
+      db(`expense?voided_at=is.null&spent_on=eq.${today}&select=amount_paise,category`), db(`expense?voided_at=is.null&spent_on=gte.${ms}&spent_on=lte.${today}&select=amount_paise,category`)])
+    const dd = K.pnl(pd, ed, s, n(pd?.cases) > 0 || ed.length ? 1 : 0), mm = K.pnl(pm, em, s, n(pm?.active_days))
+    const b = K.spendBudget(s, em)
+    const cats = Object.entries(dd.byCat).map(([c, p]) => `${c} ${rs(p)}`).join(', ')
+    pl = `\n\n📊 Aaj ka hisaab\nBikri ${rs(dd.sales)} (${dd.cases} peti) − maal ${rs(dd.cost)} = margin ${rs(dd.margin)}` +
+      `\n− loading ${rs(dd.variable)} − kharcha ${rs(dd.kharcha)}${cats ? ` (${cats})` : ''} − fixed ${rs(dd.fixed)}` +
+      `\n${dd.profit >= 0 ? '🟢' : '🔴'} Aaj ka profit ${rs(dd.profit)}${dd.need ? ` · break-even ke liye ~${dd.need} peti aur` : ''}` +
+      `\nMahina ab tak: profit ${rs(mm.profit)} (${n(pm?.active_days)} din) · ${b.line} ${rs(b.spent)}/${rs(b.budget)}${b.over ? ' ⚠️ budget se upar' : ''}`
+  } catch (e) { console.log('pnl skipped', e.message) }
+  await say(text + pl + money + tip)
   await mark('night', today, { cases })
 }
 

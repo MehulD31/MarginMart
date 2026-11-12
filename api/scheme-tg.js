@@ -7,7 +7,7 @@
 //                  GH_DISPATCH_TOKEN (fine-grained token: this repo only, Actions read+write), GH_REPO (owner/name)
 
 import { handleSaleMessage, handleSaleTap, handleSaleVoice } from './_sale.js'
-import { getState, handleOpsCommand, handleOpsTap, handleSocialReply, handleText, setState } from './_ops.js'
+import { getState, handleKharcha, handleOpsCommand, handleOpsTap, handleSocialReply, handleText, setState } from './_ops.js'
 import { mediaOf, tooBig } from '../scripts/ops/media.mjs'
 
 // Values are trimmed so a stray newline in a Vercel variable can never break a token or a comparison.
@@ -76,6 +76,8 @@ export default async function handler(req, res) {
     if (!text) return res.status(200).end()
     // A reply to a post preview = the new caption for that post.
     if (await handleSocialReply(msg, text)) return res.status(200).end()
+    // "kharcha petrol 800": today's kharcha (Kharcha page + day profit)
+    if (await handleKharcha(msg, text)) return res.status(200).end()
     // Counter sales: "/sale" and anything typed while a sale is open.
     if (await handleSaleMessage(msg)) return res.status(200).end()
     const ctx = { dispatch, getState, setState }

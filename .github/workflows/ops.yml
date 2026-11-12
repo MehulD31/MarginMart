@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-        with: { sparse-checkout: "scripts/ops\nscripts/scheme-bot/lib.mjs\nsrc/shared/insights.js", sparse-checkout-cone-mode: false }
+        with: { sparse-checkout: "scripts/ops\nscripts/scheme-bot/lib.mjs\nsrc/shared/insights.js\nsrc/shared/kharcha.js", sparse-checkout-cone-mode: false }
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
       - name: Pick mode

@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Copy, MapPin, MessageCircle, Phone, Search, Send, Sparkles, Store, TrendingUp, Users, Package } from 'lucide-react'
-import { supabase } from '../../shared/api/supabase'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Copy, MapPin, MessageCircle, Phone, Search, Sparkles, Store, TrendingUp, Users, Package } from 'lucide-react'
 import { formatPaise } from '../../shared/money'
 import { useInsights } from './useInsights'
-import { factsForAI, type Alert, type Analysis, type ShopStat, type Segment } from '../../shared/insights.js'
+import { type Alert, type Analysis, type ShopStat, type Segment } from '../../shared/insights.js'
 import { Alert as Note, Empty, Sheet, Skeleton } from '../../shared/ui/kit'
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
@@ -30,7 +28,6 @@ export function Insights() {
     <div className="card"><Empty icon={<Sparkles size={26} />} title={t('ins.emptyTitle')}><p>{t('ins.emptyHint')}</p></Empty></div>)
   return (
     <section className="stack-lg" aria-label={t('ins.title')}>
-      <Advisor a={a} />
       <Kpis a={a} />
       <Alerts a={a} onShop={(name) => setShop(a.shops.find((s) => s.name === name) ?? null)} />
       <Trend a={a} />
@@ -49,70 +46,6 @@ export function Insights() {
         {shop && <ShopCard s={shop} a={a} />}
       </Sheet>
     </section>
-  )
-}
-
-// ---------------------------------------------------------------- AI advisor
-/** Shown while Gemini works (10-30 s): what was asked, what the AI is doing, and a seconds counter. */
-function Thinking({ q, bills }: { q: string; bills: number }) {
-  const { t } = useTranslation()
-  const [sec, setSec] = useState(0)
-  useEffect(() => { const id = setInterval(() => setSec((s) => s + 1), 1000); return () => clearInterval(id) }, [])
-  const steps = [t('ins.ai.step1', { n: bills }), t('ins.ai.step2'), t('ins.ai.step3')]
-  return (
-    <div className="ai-thinking" role="status" aria-live="polite" data-testid="ai-thinking">
-      {q && <p className="cell-sub">“{q}”</p>}
-      <div className="row" style={{ gap: 10 }}><span className="spinner" aria-hidden="true" /><strong>{steps[Math.min(steps.length - 1, Math.floor(sec / 5))]}</strong></div>
-      <div className="bar"><i style={{ width: `${Math.min(95, sec * 3.5)}%` }} /></div>
-      <p className="cell-sub num">{t('ins.ai.wait', { s: sec })}</p>
-    </div>
-  )
-}
-
-function Advisor({ a }: { a: Analysis }) {
-  const { t, i18n } = useTranslation()
-  const [question, setQuestion] = useState('')
-  const cacheKey = `kd-ai-plan:${a.today}:${i18n.language}:${a.kpi.all.bills}`
-  const [answer, setAnswer] = useState<{ q: string; text: string } | null>(() => {
-    const c = localStorage.getItem(cacheKey); return c ? { q: '', text: c } : null
-  })
-  const run = useMutation({
-    mutationFn: async (qq: string) => {
-      const { data } = await supabase.auth.getSession()
-      const r = await fetch('/api/insights-ai', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
-        body: JSON.stringify({ facts: factsForAI(a), question: qq, lang: i18n.language }) })
-      const j = await r.json().catch(() => ({}))
-      if (!r.ok || !j.text) throw new Error(j.error ?? t('ins.ai.failed'))
-      return { q: qq, text: String(j.text) }
-    },
-    onSuccess: (r) => { setAnswer(r); if (!r.q) localStorage.setItem(cacheKey, r.text) },
-  })
-  const ask = (qq: string) => { setQuestion(qq); run.mutate(qq) }
-  const chips = ['ins.ai.q1', 'ins.ai.q2', 'ins.ai.q3', 'ins.ai.q4'] as const
-  return (
-    <div className="card stack ai-card" data-testid="ai-card">
-      <div className="row-between">
-        <h2 className="row"><Sparkles size={20} aria-hidden="true" />{t('ins.ai.title')}</h2>
-        <button type="button" className="btn-sm primary" disabled={run.isPending} onClick={() => ask('')}>
-          <Sparkles size={16} aria-hidden="true" />{run.isPending && !question ? t('ins.ai.thinking') : answer && !answer.q ? t('ins.ai.refresh') : t('ins.ai.plan')}</button>
-      </div>
-      {run.isPending ? <Thinking q={run.variables ?? ''} bills={a.kpi.all.bills} /> : answer ? (
-        <div className="ai-answer" aria-live="polite" data-testid="ai-answer">
-          {answer.q && <p className="cell-sub">“{answer.q}”</p>}
-          {answer.text.split('\n').filter((l) => l.trim()).map((l, i) => <p key={i}>{l}</p>)}
-        </div>
-      ) : <p className="muted">{t('ins.ai.intro')}</p>}
-      {run.isError && <Note msg={{ kind: 'error', text: (run.error as Error).message }} />}
-      <form className="row" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); if (question.trim()) ask(question.trim()) }}>
-        <label className="field grow" style={{ margin: 0 }}><span className="sr-only">{t('ins.ai.ask')}</span>
-          <input value={question} maxLength={300} onChange={(e) => setQuestion(e.target.value)} placeholder={t('ins.ai.ask')} aria-label={t('ins.ai.ask')} /></label>
-        <button type="submit" className="icon-btn" disabled={run.isPending || !question.trim()} aria-label={t('ins.ai.send')}><Send size={18} aria-hidden="true" /></button>
-      </form>
-      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-        {chips.map((c) => <button key={c} type="button" className="btn-sm chip-btn" disabled={run.isPending} onClick={() => ask(t(c))}>{t(c)}</button>)}
-      </div>
-      <p className="cell-sub">{a.spanDays < 14 ? t('ins.ai.early', { n: a.spanDays }) : t('ins.ai.basis', { n: a.kpi.all.bills })}</p>
-    </div>
   )
 }
 

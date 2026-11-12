@@ -14,9 +14,8 @@ import { ProductImage } from '../../shared/ui/ProductImage'
 import { initials } from '../../shared/ui/util'
 import { lowIds, useStockWatch } from '../../shared/api/db'
 import { useStockRows } from './stockRows'
-import { useMargin } from './marginData'
-import { fixedTotal } from '../../shared/margin'
 import { Insights } from './Insights'
+import { DayPnlCard } from './KharchaPage'
 import { useInsights } from './useInsights'
 import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
 
@@ -76,7 +75,6 @@ export default function DashboardPage() {
   })
   const hi = i18n.language === 'hi'
   const stockRows = useStockRows()
-  const mg = useMargin()
   const watch = useStockWatch().data
   const low = lowIds(watch)
   const daysLeft = new Map((watch ?? []).map((w) => [w.variant_id, w.days_left]))
@@ -127,6 +125,8 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <DayPnlCard link />
+
       <Insights />
 
 
@@ -141,27 +141,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      {mg && (() => {
-        const { cases, sales_paise, cost_paise } = mg.stats
-        const perCase = cases ? (sales_paise - cost_paise) / cases : mg.s.default_margin_paise
-        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
-        const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-        const fixedMonth = fixedTotal(mg.s)
-        const fixed = Math.round(fixedMonth * now.getDate() / dim)          // rent, salaries… of the days gone, not the whole month
-        const profit = sales_paise - cost_paise - mg.cost.variable * cases - fixed
-        const breakEven = perCase > mg.cost.variable ? Math.ceil(fixed / (perCase - mg.cost.variable)) : 0
-        const breakEvenMonth = perCase > mg.cost.variable ? Math.ceil(fixedMonth / (perCase - mg.cost.variable)) : 0
-        return (
-          <div className="stack">
-            <div className="row-between"><h2>{t('pricing.dashTitle')}</h2><Link to="/admin/pricing" className="button btn-sm">{t('nav.pricing')}</Link></div>
-            <div className="stats">
-              <Kpi icon={<Package size={18} />} tone="blue" label={t('pricing.dashCases')} value={cases.toLocaleString('en-IN')} sub={breakEvenMonth ? t('pricing.dashBreakEven', { n: breakEvenMonth.toLocaleString('en-IN') }) : '—'} />
-              <Kpi icon={<TrendingUp size={18} />} tone="violet" label={t('pricing.dashMargin')} value={formatPaise(Math.round(perCase))} sub={t('pricing.dashCost', { v: formatPaise(mg.cost.total) })} />
-              <Kpi icon={<IndianRupee size={18} />} tone={profit >= 0 ? 'green' : 'amber'} label={t('pricing.dashProfitDays', { d: now.getDate() })} value={formatPaise(Math.round(profit / 100) * 100)} sub={breakEven > cases ? t('pricing.dashNeed', { n: (breakEven - cases).toLocaleString('en-IN') }) : t('pricing.dashCovered')} />
-            </div>
-          </div>)
-      })()}
 
       {lowStock.length > 0 && (
         <div className="card stack">
