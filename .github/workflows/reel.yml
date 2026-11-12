@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       quiet: { description: "seconds the batch must be quiet before editing", required: false, default: "90" }
+      release: { description: "optional: add the files of this GitHub release to the media library first (media handed over outside Telegram)", required: false, default: "" }
+      who: { description: "with release: who shot it", required: false, default: "" }
+      note: { description: "with release: what it shows", required: false, default: "" }
 concurrency: { group: reel, cancel-in-progress: false }
 permissions: { contents: read }
 jobs:
@@ -22,6 +25,26 @@ jobs:
           pip install -q numpy
           npm i --no-save --no-package-lock playwright@1.59.1 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
+      - name: Add release media to the library
+        if: github.event.inputs.release != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.release }}
+          WHO: ${{ github.event.inputs.who }}
+          NOTE: ${{ github.event.inputs.note }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          mkdir -p in && gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir in
+          for f in in/*; do
+            case "${f,,}" in *.mp4|*.mov) kind=video; ct=video/mp4; ext=mp4 ;; *.jpg|*.jpeg|*.png|*.webp) kind=image; ct=image/jpeg; ext=jpg ;; *) continue ;; esac
+            key="library/$(TZ=Asia/Kolkata date +%F)/$(cat /proc/sys/kernel/random/uuid).$ext"
+            curl -sf -X POST "$SUPABASE_URL/storage/v1/object/social-media/$key" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: $ct" --data-binary "@$f" > /dev/null
+            jq -n --arg k "$kind" --arg u "$SUPABASE_URL/storage/v1/object/public/social-media/$key" --arg w "$WHO" --arg n "$NOTE" \
+              '{kind:$k,url:$u,who:($w|select(.!="")),note:($n|select(.!=""))}' > row.json
+            curl -sf -X POST "$SUPABASE_URL/rest/v1/media_library" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" --data @row.json > /dev/null
+            echo "added $f as $kind"
+          done
       - name: Edit
         env:
           QUIET_SECONDS: ${{ github.event.inputs.quiet }}
