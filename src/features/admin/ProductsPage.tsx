@@ -50,11 +50,14 @@ export default function ProductsPage() {
     const cases = list.reduce((a, x) => a + x.cases, 0)
     list.sort((a, b) => sort === 'volume' ? b.cases - a.cases : sort === 'perCase' ? (b.earn ?? -1e9) - (a.earn ?? -1e9)
       : sort === 'loss' ? (a.earn ?? 1e9) - (b.earn ?? 1e9) : b.earned - a.earned)
-    const fixed = Math.round((fixedTotal(mg.s) * days) / 30)
+    // Fixed costs only for the days we actually sold (same rule as Kharcha: monthly ÷ working days, per day with sales),
+    // so a new business or a short period isn't compared against a full month of salaries.
+    const active = new Set(list.flatMap((x) => Object.keys(x.series).filter((k) => Number(x.series[k]) > 0))).size
+    const fixed = Math.round((fixedTotal(mg.s) * active) / (mg.s.working_days || 26))
     const top = [...list].sort((a, b) => b.earned - a.earned)
     let acc = 0, topN = 0
     for (const x of top) { if (acc >= 0.8 * earned || x.earned <= 0) break; acc += x.earned; topN++ }
-    return { list, earned, cases, fixed, avgEarn: cases ? earned / cases : 0, losing: list.filter((x) => x.cases && (x.earn ?? 0) < 0).length, topN }
+    return { list, earned, cases, fixed, active, avgEarn: cases ? earned / cases : 0, losing: list.filter((x) => x.cases && (x.earn ?? 0) < 0).length, topN }
   }, [mg, sales.data, sort, days])
 
   if (!data) return <Skeleton rows={8} />
@@ -70,7 +73,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <CoverCard earned={data.earned} fixed={data.fixed} avgEarn={data.avgEarn} days={days} />
+      <CoverCard earned={data.earned} fixed={data.fixed} active={data.active} avgEarn={data.avgEarn} days={days} />
 
       <div className="stats">
         <div className="stat"><div className="label">{t('prod.kCasesL')}</div><div className="value num">{data.cases}</div><div className="cell-sub">{t('prod.kDays', { n: days })}</div></div>
@@ -89,7 +92,7 @@ export default function ProductsPage() {
 }
 
 /** All products together vs the fixed costs (salaries etc.) for the same days. */
-function CoverCard({ earned, fixed, avgEarn, days }: { earned: number; fixed: number; avgEarn: number; days: number }) {
+function CoverCard({ earned, fixed, active, avgEarn, days }: { earned: number; fixed: number; active: number; avgEarn: number; days: number }) {
   const { t } = useTranslation()
   const pct = fixed > 0 ? Math.max(0, earned / fixed) : 1
   const short = fixed - earned
@@ -101,7 +104,7 @@ function CoverCard({ earned, fixed, avgEarn, days }: { earned: number; fixed: nu
       </div>
       <div className="prod-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, pct * 100)}%`, background: pct >= 1 ? '#22c55e' : '#f59e0b' }} /></div>
       <div className="row-between cell-sub" style={{ flexWrap: 'wrap', gap: 6 }}>
-        <span>{t('prod.cover.earned', { v: r(earned) })}</span><span>{t('prod.cover.fixed', { v: r(fixed) })}</span>
+        <span>{t('prod.cover.earned', { v: r(earned) })}</span><span>{t('prod.cover.fixed', { v: r(fixed), d: active })}</span>
       </div>
       <p style={{ margin: 0 }}>{short > 0
         ? (avgEarn > 0 ? t('prod.cover.short', { v: r(short), n: Math.ceil(short / avgEarn), a: r(avgEarn) }) : t('prod.cover.shortNoAvg', { v: r(short) }))
