@@ -35,7 +35,7 @@ export default function ProductsPage() {
       const buy = s?.last_buy ?? avgCost ?? price?.buy ?? null
       const target = price?.min ?? null, floor = price?.floor ?? null, trade = price?.trade ?? null
       const perCase = avgSell != null && avgCost != null ? avgSell - avgCost : null
-      const profit = perCase != null ? perCase * cases - (mg.cost.total * cases) : null     // after loading + share of fixed per case
+      const profit = perCase != null ? perCase * cases : null     // margin earned, same basis as the summary cards
       const gap = avgSell != null && target != null ? avgSell - target : null
       const perDay = s?.days ? cases / days : 0
       return { p, cases, avgSell, buy, target, floor, trade, perCase, profit, gap, series: s?.series ?? {}, onHand: s?.on_hand ?? null, cover: perDay > 0 && s?.on_hand != null ? s.on_hand / perDay : null, lastBuyOn: s?.last_buy_on }
