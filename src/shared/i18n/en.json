@@ -1555,17 +1555,17 @@
       "profit": "Most margin",
       "volume": "Most sold",
       "margin": "Margin / case",
-      "below": "Below target first"
+      "below": "Under no-loss first"
     },
     "kMargin": "Margin earned ({{n}} days)",
     "kCases": "{{n}} cases sold",
     "kBest": "Best earner",
     "kBestSub": "{{v}} margin",
-    "kBelow": "Sold below target",
+    "kBelow": "Sold under no-loss price",
     "kBelowSub": "products to re-price",
     "l": {
       "buy": "Buy price",
-      "target": "Target (min)",
+      "target": "No-loss price",
       "sell": "Avg sold",
       "trade": "Pepsi rate",
       "zones": "loss · thin · healthy"
@@ -1579,16 +1579,16 @@
     "st": {
       "none": "No sales",
       "loss": "Loss",
-      "low": "Below target",
+      "low": "Under no-loss",
       "ok": "Healthy"
     },
     "a": {
       "noSale": "Not sold in this period. When you do, get at least {{v}} a case.",
       "loss": "Selling {{v}} a case below cost of delivery. Do not go under {{t}}.",
-      "low": "Average is {{v}} below target {{t}}. That is about {{m}} less margin in this period.",
-      "ok": "Good: {{v}} above target on average."
+      "low": "Average is {{v}} under the no-loss price {{t}} (buy + delivery + share of salaries). About {{m}} of salaries not covered this period.",
+      "ok": "Good: {{v}} above the no-loss price on average."
     },
-    "ladderAria": "Buy {{b}}, sold {{s}}, target {{t}}",
+    "ladderAria": "Buy {{b}}, sold {{s}}, no-loss price {{t}}",
     "trendAria": "Cases sold per day, last {{n}} days",
     "daysAgo": "{{n}} days ago",
     "avgDay": "avg {{n}}/day",
