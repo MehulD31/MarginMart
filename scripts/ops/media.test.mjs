@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { captionPrompt, fallbackCaption, finishCaption, mediaOf, PHONE, postIdOf, previewButtons, TAGS, tooBig, waShare, wantsRate, rateDm, GROUP } from './media.mjs'
+import { captionPrompt, fallbackCaption, finishCaption, mediaOf, PHONE, postIdOf, previewButtons, TAGS, tooBig, waShare, wantsRate, rateDm, GROUP, dmReply, needsAutoReply } from './media.mjs'
 
 const ID = '11111111-2222-3333-4444-555555555555'
 
@@ -73,5 +73,22 @@ describe('rate comments', () => {
     const d = rateDm('Ramesh Kumar')
     expect(d).toContain('Ramesh ji'); expect(d).toContain(GROUP); expect(d).toContain('wa.me/919630012636')
     expect(d).not.toMatch(/₹\s*\d/)
+  })
+})
+describe('DM auto-reply', () => {
+  const P = ['page']
+  const m = (from, h) => ({ from: { id: from }, created_time: new Date(Date.now() - h * 3600e3).toISOString() })
+  it('replies when the customer wrote last and the Page has not answered', () => {
+    expect(needsAutoReply([m('u', 0.1)], P)).toBe(true)
+  })
+  it('stays quiet when the Page wrote last or answered in the last 24 h', () => {
+    expect(needsAutoReply([m('page', 0.1), m('u', 1)], P)).toBe(false)
+    expect(needsAutoReply([m('u', 0.1), m('page', 2)], P)).toBe(false)
+    expect(needsAutoReply([m('u', 0.1), m('page', 30)], P)).toBe(true)
+  })
+  it('rate question gets the rate message, anything else a greeting asking shop and area', () => {
+    expect(dmReply('Ravi', 'rate batao')).toContain(GROUP)
+    expect(dmReply('Ravi Kumar', 'hello')).toContain('Ravi ji')
+    expect(dmReply('', 'hello')).toContain('Dukaan ka naam')
   })
 })

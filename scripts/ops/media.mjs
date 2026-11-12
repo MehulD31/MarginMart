@@ -79,3 +79,25 @@ export const rateDm = (name) => [
   'Drinks, water, milk drinks & more · daily delivery 🚚',
 ].join('\n')
 export const RATE_PUBLIC = 'Rate list aapke DM mein bhej di hai 📩 Inbox check karein 🙏'
+
+// ---------- Messenger / Instagram DM auto-reply (owner, 12 Nov 2026) ----------
+/** First reply to a new DM: the rate-list message for rate questions, otherwise a short greeting that asks for shop + area. */
+export function dmReply(name, text) {
+  if (wantsRate(text)) return rateDm(name)
+  const first = name ? ' ' + String(name).split(' ')[0] : ''
+  return [
+    `Namaste${first} ji 🙏 MarginMart (by K.D. Foods), Bhilai.`,
+    'Hum dukaanon tak daily delivery karte hain: drinks, water, milk drinks & more, wholesale rate pe.',
+    '',
+    'Jaldi help ke liye bataiye: 1) Dukaan ka naam 2) Area 3) Kya maal chahiye.',
+    `Rate list ke liye "RATE" likhiye, ya WhatsApp group join karein: ${GROUP}`,
+    `📞 ${PHONE}`,
+  ].join('\n')
+}
+/** Should we auto-reply now? Only when the customer wrote last and the Page hasn't answered in the last 24 h. */
+export function needsAutoReply(messages, pageIds, now = Date.now()) {
+  const list = [...(messages ?? [])].sort((a, b) => Date.parse(b.created_time) - Date.parse(a.created_time))
+  if (!list.length || pageIds.includes(list[0].from?.id)) return false
+  const lastPage = list.find((m) => pageIds.includes(m.from?.id))
+  return !lastPage || now - Date.parse(lastPage.created_time) > 24 * 3600e3
+}

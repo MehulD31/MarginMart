@@ -11,7 +11,7 @@
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
-import { PHONE, RATE_PUBLIC, rateDm, wantsRate, waShare } from './media.mjs'
+import { PHONE, RATE_PUBLIC, dmReply, needsAutoReply, rateDm, wantsRate, waShare } from './media.mjs'
 import { describe, esc, groupRows } from './activity.mjs'
 import * as ADS from './ads.mjs'
 import { randomUUID } from 'node:crypto'
@@ -135,6 +135,8 @@ async function events() {
   } catch (e) { console.log('orders skipped', e.message) }
   // 2a. what people did on the website (loading, bills, purchases, stock, deletes...) -> one Telegram update
   try { await activity() } catch (e) { console.log('activity skipped', e.message) }
+  // 2c. new Messenger / Instagram DMs (ad chats): alert + one automatic first reply
+  try { await dms() } catch (e) { console.log('dms skipped', e.message) }
   // 2b. "RATE" comments on our Facebook/Instagram posts -> rate list in DM + short public reply + lead alert
   try { await rateComments() } catch (e) { console.log('rate comments skipped', e.message) }
   // 3. items that just ran out (only items with a low-stock level set). Re-armed when stock comes back.
@@ -472,6 +474,46 @@ async function audience() {
     await post(`${id}/users`, { payload: JSON.stringify({ schema: 'PHONE_SHA256', data: hashes.slice(i, i + 5000) }) })
   await mark('ads-audience', 'known-shops', { id, uploaded: hashes.length, at: new Date().toISOString() })
   await say(`👥 Ads ke liye apni dukaanon ki list Meta pe update: ${hashes.length} number (sirf scrambled code gaya, number nahi). Meta 1-2 din me match karega.`)
+}
+// New Messenger / Instagram DMs (ad chats): alert the KD group for each new customer message, and send ONE automatic
+// first reply when the Page hasn't answered in 24 h (rate-list message for "rate", else a greeting asking shop + area).
+async function dms() {
+  const tok = process.env.META_PAGE_TOKEN, page = process.env.FB_PAGE_ID, ig = process.env.IG_USER_ID
+  if (!tok || !page) return
+  const since = Date.now() - 2 * 864e5
+  let failed = null
+  for (const platform of ['messenger', 'instagram']) {
+    let convs = []
+    try {
+      const j = await (await fetch(`${G}/${page}/conversations?platform=${platform}&fields=id,updated_time,participants,messages.limit(6){id,message,from,created_time}&limit=25&access_token=${tok}`)).json()
+      if (j.error) throw new Error(j.error.message)
+      convs = j.data ?? []
+    } catch (e) { failed = `${platform}: ${e.message.slice(0, 120)}`; continue }
+    const mine = [page, ig].filter(Boolean)
+    for (const c of convs) {
+      if (Date.parse(c.updated_time) < since) continue
+      const msgs = c.messages?.data ?? []
+      const them = (c.participants?.data ?? []).find((p) => !mine.includes(p.id))
+      const net = platform === 'instagram' ? 'Instagram' : 'Messenger'
+      // alert every new customer message once
+      for (const m of [...msgs].reverse()) {
+        if (mine.includes(m.from?.id) || !m.message || Date.parse(m.created_time) < since || await done('dm', m.id)) continue
+        await say(`💬 <b>${net}</b> · ${esc(m.from?.name ?? m.from?.username ?? them?.name ?? 'koi')}\n"${esc(String(m.message).slice(0, 300))}"\n→ Meta Business Suite inbox me reply karo.`, { parse_mode: 'HTML' })
+        await mark('dm', m.id, { conv: c.id, net })
+      }
+      // one automatic first reply per conversation per day
+      if (them && needsAutoReply(msgs, mine) && !(await done('dm-auto', `${c.id}:${today}`))) {
+        const last = msgs.find((m) => !mine.includes(m.from?.id))
+        try {
+          const r = await (await fetch(`${G}/${page}/messages?access_token=${tok}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipient: { id: them.id }, messaging_type: 'RESPONSE', message: { text: dmReply(platform === 'messenger' ? them.name : '', last?.message) } }) })).json()
+          if (r.error) throw new Error(r.error.message)
+          await mark('dm-auto', `${c.id}:${today}`, { net, rate: wantsRate(last?.message) })
+        } catch (e) { failed = `${net} reply: ${e.message.slice(0, 120)}` }
+      }
+    }
+  }
+  if (failed && !(await done('dm-fail', today))) { await say(`⚠️ DM check me dikkat: ${failed}`); await mark('dm-fail', today) }
 }
 // Comments asking for rates on posts from the last 14 days. Each comment allows ONE private reply (Meta rule), sent once
 // (ops_log job=cdm). If Meta refuses (no messaging permission / already replied), the public reply still goes and the
