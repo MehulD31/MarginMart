@@ -18,6 +18,16 @@ import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
 
+// Posting key (owner, 12 Nov 2026): like Vajra, get the MarginMart Page key from Mehul's "Ads MCP" user login
+// (META_USER_TOKEN). Posts made this way can be promoted as ads on the existing post (the old system-user key's
+// app is in development mode, so Meta refuses to promote its posts). Falls back to the old META_PAGE_TOKEN.
+if (process.env.META_USER_TOKEN) {
+  try {
+    const p = await (await fetch(`https://graph.facebook.com/v23.0/${process.env.FB_PAGE_ID}?fields=access_token&access_token=${process.env.META_USER_TOKEN}`)).json()
+    if (p.access_token) process.env.META_PAGE_TOKEN = p.access_token
+    else console.log('user token: no page key', p.error?.message)
+  } catch (e) { console.log('user token', e.message) }
+}
 const MODE = env('MODE'); const FORCE = process.env.FORCE === '1' || process.env.FORCE === 'true'
 const today = todayIST()
 const rpc = (fn, args = {}) => db(`rpc/${fn}`, { method: 'POST', body: JSON.stringify(args) })
@@ -249,6 +259,16 @@ async function watchdog() {
       await mark('reel-retry', hr); alerts.push('Telegram ke photo/video ka Reel nahi bana tha, editor dobara chala diya')
     }
   } catch (e) { console.log('reel check', e.message) }
+  // 5c. Mehul's Meta login (posting + ads): warn daily from 21 days before data access ends
+  try {
+    const t = process.env.META_USER_TOKEN
+    if (t) {
+      const d = (await (await fetch(`${G}/debug_token?input_token=${t}&access_token=${t}`)).json()).data ?? {}
+      const left = d.data_access_expires_at ? Math.floor((d.data_access_expires_at * 1000 - Date.now()) / 864e5) : null
+      if (!d.is_valid) alerts.push('⚠️ Meta login band ho gaya: posting aur ads ruk jayenge. Mehul Meta Business Suite me dobara login kare.')
+      else if (left != null && left < 21) alerts.push(`⚠️ Meta login ${left} din me expire: Mehul Meta Business Suite / Ads Manager me ek baar login kare, warna posting aur ads ruk jayenge.`)
+    }
+  } catch (e) { console.log('token check', e.message) }
   // 6. free-tier limits: Supabase free = 500 MB database, 1 GB storage (alert at 80%, once a day)
   try {
     const h = await rpc('ops_health')
