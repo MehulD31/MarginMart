@@ -13,8 +13,9 @@ suite('website activity', () => {
       ...Array.from({ length: 13 }, () => row('load_line', 'insert', {})), ...Array.from({ length: 13 }, () => row('stock_move', 'insert', { route_day_plan_id: 'p1', qty: -5 }))]
     const out = describe({ rows }, L)
     expect(out).toHaveLength(1)
-    expect(out[0]).toContain('Vehicle 1 · V1 Supela load ki: 86 peti')
-    expect(out[0]).toContain('Sting 250 50')
+    expect(out[0]).toContain('<b>Vehicle 1</b> · V1 Supela')
+    expect(out[0]).toContain('<b>86 peti</b> · 3 item')
+    expect(out[0]).toContain('• Sting 250 — <b>50</b>')
   })
   it('bills, cancels, purchases and manual stock changes', () => {
     const out = describe({ rows: [
@@ -23,11 +24,15 @@ suite('website activity', () => {
       row('purchase', 'insert', { supplier_id: 'x', invoice_no: '77', total_paise: 12000000 }),
       row('stock_move', 'insert', { variant_id: 'v2', qty: -3, reason: 'toota' }),
     ] }, L)
-    expect(out).toEqual(['🧾 Bill KD-00018 · Sharma Kirana · ₹4,950 (cash)', '🚫 Bill KD-00011 cancel kiya (₹100): galat', '📦 Purchase · Pepsi #77 · ₹1,20,000', '📊 Stock -3 · Aquafina 1L · "toota"'])
+    expect(out).toEqual(['🧾 Bill <b>KD-00018</b> · Sharma Kirana · <b>₹4,950</b> (cash)', '🚫 Bill KD-00011 cancel kiya (<b>₹100</b>): galat', '📦 Purchase · Pepsi #77 · <b>₹1,20,000</b>', '📊 Stock <b>-3</b> · Aquafina 1L · "toota"'])
   })
   it('deletes and unknown changes are never hidden', () => {
     const out = describe({ rows: [row('shop', 'delete', null, { name: 'X' }), row('price_list_item', 'update', {}), row('price_list_item', 'update', {})] }, L)
     expect(out).toEqual(['🗑 dukaan: 1 delete', '✏️ rate: 2 badlav'])
+  })
+  it('escapes names so Telegram HTML never breaks', () => {
+    const out = describe({ rows: [row('shop', 'insert', { name: 'A<b>&B' })] }, L)
+    expect(out[0]).toBe('🏪 Nayi dukaan: <b>A&lt;b&gt;&amp;B</b>')
   })
   it('groups rows saved together by the same person', () => {
     const g = groupRows([{ actor: 'a', at: '1' }, { actor: 'a', at: '1' }, { actor: 'b', at: '1' }, { actor: 'a', at: '2' }])

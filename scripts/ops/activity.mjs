@@ -1,26 +1,30 @@
 // "What happened on the website" -> Telegram (owner, 12 Nov 2026). Pure formatting; ops.mjs fetches audit_log and names.
 // One group = everything one person saved in one go (same actor + same transaction time in audit_log).
-const rs = (p) => '₹' + Math.round(Number(p ?? 0) / 100).toLocaleString('en-IN')
+// Output is Telegram HTML (parse_mode HTML): names and notes are escaped, key facts are bold.
+export const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const rs = (p) => '<b>₹' + Math.round(Number(p ?? 0) / 100).toLocaleString('en-IN') + '</b>'
 const cnt = (rows, table, action) => rows.filter((r) => r.table_name === table && (!action || r.action === action))
 const NICE = { shop: 'dukaan', pack: 'item', variant: 'item flavour', price_list: 'rate list', price_list_item: 'rate', scheme: 'scheme', settings: 'settings',
   business_settings: 'business settings', vehicle: 'gaadi', route: 'route', profiles: 'login', supplier: 'supplier', join_requests: 'join request', stock: 'stock' }
 
 /** Lines for one group. L = { variant(id), route(id), vehicle(id), shop(id), supplier(id), load(planId) -> [{variant_id, qty}] } */
-export function describe(g, L) {
+export function describe(g, L0) {
+  const E = (f) => (id) => { const v = f(id); return v == null ? v : esc(v) }
+  const L = { ...L0, variant: E(L0.variant), route: E(L0.route), vehicle: E(L0.vehicle), shop: E(L0.shop), supplier: E(L0.supplier) }
   const out = [], rows = g.rows, used = new Set()
   const take = (list) => { list.forEach((r) => used.add(r)); return list }
   // trips: load / leave / back / close
   for (const r of take(cnt(rows, 'route_day_plan', 'update'))) {
     const a = r.after ?? {}, b = r.before ?? {}
-    const trip = `${L.vehicle(a.vehicle_id) ?? 'gaadi'} · ${L.route(a.route_id) ?? ''}`.replace(/ · $/, '')
+    const trip = `<b>${L.vehicle(a.vehicle_id) ?? 'Gaadi'}</b>${L.route(a.route_id) ? ' · ' + L.route(a.route_id) : ''}`
     if (b.status === 'planning' && a.status === 'loaded') {
       const lines = L.load(r.row_id) ?? []
       const total = lines.reduce((s, x) => s + x.qty, 0)
-      const top = [...lines].sort((x, y) => y.qty - x.qty).slice(0, 8).map((x) => `${L.variant(x.variant_id) ?? '?'} ${x.qty}`)
-      out.push(`🚚 ${trip} load ki: ${total} peti${top.length ? `\n   ${top.join(', ')}${lines.length > 8 ? ` +${lines.length - 8} aur` : ''}` : ''}`)
+      const top = [...lines].sort((x, y) => y.qty - x.qty).slice(0, 15).map((x) => `   • ${L.variant(x.variant_id) ?? '?'} — <b>${x.qty}</b>`)
+      out.push(`🚚 <b>Truck load</b>: ${trip}\n   <b>${total} peti</b> · ${lines.length} item${top.length ? `\n${top.join('\n')}${lines.length > 15 ? `\n   … +${lines.length - 15} aur` : ''}` : ''}`)
     } else if (b.status === 'loaded' && a.status === 'out') out.push(`🛣 ${trip} nikal gayi`)
     else if (!b.unloaded_at && a.unloaded_at) out.push(`↩️ ${trip} wapas aayi (maal utaara)`)
-    else if (a.status === 'closed' && b.status !== 'closed') out.push(`✅ ${trip} ka hisaab close${a.short_cases ? ` · ${a.short_cases} peti kam` : ''}${a.close_note ? ` · "${String(a.close_note).slice(0, 60)}"` : ''}`)
+    else if (a.status === 'closed' && b.status !== 'closed') out.push(`✅ ${trip} ka hisaab close${a.short_cases ? ` · ${a.short_cases} peti kam` : ''}${a.close_note ? ` · "${esc(String(a.close_note).slice(0, 60))}"` : ''}`)
     else if (a.status === 'planning' && b.status && b.status !== 'planning') out.push(`↶ ${trip}: load wapas khola (${b.status} → planning)`)
     else if (a.vehicle_id !== b.vehicle_id) out.push(`🔁 ${L.route(a.route_id) ?? 'trip'}: gaadi badli → ${L.vehicle(a.vehicle_id) ?? '-'}`)
     else used.delete(r)
@@ -28,15 +32,15 @@ export function describe(g, L) {
   take(cnt(rows, 'load_line')); take(cnt(rows, 'route_day_plan', 'insert'))
   // counter / truck bills
   const bills = take(cnt(rows, 'cash_sale', 'insert'))
-  for (const r of bills.slice(0, 6)) out.push(`🧾 Bill ${r.after?.number ?? ''} · ${L.shop(r.after?.shop_id) ?? 'counter'} · ${rs(r.after?.total_paise)} (${r.after?.payment_mode ?? ''})`)
+  for (const r of bills.slice(0, 6)) out.push(`🧾 Bill <b>${esc(r.after?.number)}</b> · ${L.shop(r.after?.shop_id) ?? 'counter'} · ${rs(r.after?.total_paise)} (${r.after?.payment_mode ?? ''})`)
   if (bills.length > 6) out.push(`🧾 +${bills.length - 6} aur bill`)
   for (const r of take(cnt(rows, 'cash_sale', 'update'))) {
-    if (!r.before?.voided_at && r.after?.voided_at) out.push(`🚫 Bill ${r.after?.number ?? ''} cancel kiya (${rs(r.after?.total_paise)})${r.after?.void_reason ? `: ${String(r.after.void_reason).slice(0, 60)}` : ''}`)
+    if (!r.before?.voided_at && r.after?.voided_at) out.push(`🚫 Bill ${r.after?.number ?? ''} cancel kiya (${rs(r.after?.total_paise)})${r.after?.void_reason ? `: ${esc(String(r.after.void_reason).slice(0, 60))}` : ''}`)
   }
   take(cnt(rows, 'cash_sale_line'))
   const inv = take(cnt(rows, 'invoice', 'insert'))
   if (inv.length) out.push(`🧾 ${inv.length} delivery bill · ${rs(inv.reduce((s, r) => s + Number(r.after?.total_paise ?? 0), 0))}${inv.length <= 3 ? ` (${inv.map((r) => L.shop(r.after?.shop_id) ?? '?').join(', ')})` : ''}`)
-  for (const r of take(cnt(rows, 'purchase', 'insert'))) out.push(`📦 Purchase · ${L.supplier(r.after?.supplier_id) ?? 'supplier'}${r.after?.invoice_no ? ` #${r.after.invoice_no}` : ''} · ${rs(r.after?.total_paise)}`)
+  for (const r of take(cnt(rows, 'purchase', 'insert'))) out.push(`📦 Purchase · ${L.supplier(r.after?.supplier_id) ?? 'supplier'}${r.after?.invoice_no ? ` #${esc(r.after.invoice_no)}` : ''} · ${rs(r.after?.total_paise)}`)
   take(cnt(rows, 'purchase_line'))
   const ord = take(cnt(rows, 'orders', 'insert')).filter((r) => r.after?.source !== 'shop')    // shop orders are alerted separately
   if (ord.length) out.push(`📝 ${ord.length} order likha${ord.length <= 3 ? ` (${ord.map((r) => L.shop(r.after?.shop_id) ?? '?').join(', ')})` : ''}`)
@@ -45,11 +49,11 @@ export function describe(g, L) {
     if (r.after?.received_at && !r.before?.received_at) out.push(`💵 Cash liya: ${rs(r.after.received_paise)}`)
     else if (r.action === 'insert') out.push(`💵 Driver ne cash jama kiya: ${rs(r.after?.handed_cash_paise)} (hona tha ${rs(r.after?.expected_cash_paise)})`)
   }
-  for (const r of take(cnt(rows, 'shop', 'insert'))) out.push(`🏪 Nayi dukaan: ${r.after?.name ?? ''}${r.after?.locality ? ' · ' + r.after.locality : ''}`)
+  for (const r of take(cnt(rows, 'shop', 'insert'))) out.push(`🏪 Nayi dukaan: <b>${esc(r.after?.name)}</b>${r.after?.locality ? ' · ' + esc(r.after.locality) : ''}`)
   // manual stock changes (not part of a bill/load/purchase)
   const moves = take(cnt(rows, 'stock_move', 'insert'))
   const manual = moves.filter((r) => !r.after?.cash_sale_id && !r.after?.route_day_plan_id && !r.after?.purchase_id)
-  for (const r of manual.slice(0, 6)) out.push(`📊 Stock ${Number(r.after?.qty) > 0 ? '+' : ''}${r.after?.qty} · ${L.variant(r.after?.variant_id) ?? '?'}${r.after?.reason ? ` · "${String(r.after.reason).slice(0, 50)}"` : ''}`)
+  for (const r of manual.slice(0, 6)) out.push(`📊 Stock <b>${Number(r.after?.qty) > 0 ? '+' : ''}${r.after?.qty}</b> · ${L.variant(r.after?.variant_id) ?? '?'}${r.after?.reason ? ` · "${esc(String(r.after.reason).slice(0, 50))}"` : ''}`)
   take(cnt(rows, 'stock'))
   // deletes always show
   const dels = rows.filter((r) => r.action === 'delete' && !used.has(r))

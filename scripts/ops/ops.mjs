@@ -12,7 +12,7 @@ import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/
 import { item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, rateDm, wantsRate, waShare } from './media.mjs'
-import { describe, groupRows } from './activity.mjs'
+import { describe, esc, groupRows } from './activity.mjs'
 import { randomUUID } from 'node:crypto'
 import { analyze, factsForAI } from '../../src/shared/insights.js'
 const smart = async () => { try { return analyze(await rpc('ops_insights', { p_days: 90 })) } catch (e) { console.log('insights', e.message); return null } }
@@ -376,13 +376,17 @@ async function activity() {
       if (prev && prev.who === who && Date.parse(g.at) - prev.last < 10 * 60e3) { prev.lines.push(...lines); prev.last = Date.parse(g.at) }
       else blocks.push({ who, at: g.at, last: Date.parse(g.at), lines })
     }
-    let msg = '📋 Website pe kya hua:'
-    for (const b of blocks) {
-      const part = `\n\n👤 ${b.who} · ${istTime(b.at)}\n${b.lines.join('\n')}`
-      if ((msg + part).length > 3800) { await say(msg); msg = '📋 (aage)' }
+    // one card per person: name + time on top, each action on its own line, a thin rule between people
+    const clock = (iso) => new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })
+    const day = (iso) => new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })
+    const html = { parse_mode: 'HTML', disable_web_page_preview: true }
+    let msg = '<b>📋 Website update</b>'
+    for (const [i, b] of blocks.entries()) {
+      const part = `${i ? '\n──────────' : ''}\n\n👤 <b>${esc(b.who)}</b>  <i>${clock(b.at)}${day(b.at) !== day(new Date().toISOString()) ? ', ' + day(b.at) : ''}</i>\n${b.lines.join('\n\n')}`
+      if ((msg + part).length > 3800) { await say(msg, html); msg = '<b>📋 Website update (aage)</b>' }
       msg += part
     }
-    if (blocks.length) await say(msg)
+    if (blocks.length) await say(msg, html)
   }
   await mark('activity', 'cursor', { id: lastId })
 }
