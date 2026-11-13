@@ -35,7 +35,8 @@
     "money": "Money with partners",
     "kharcha": "Kharcha",
     "products": "Products",
-    "pepsi": "Pepsi portal"
+    "pepsi": "Pepsi portal",
+    "salesReport": "Sales report"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -1666,5 +1667,70 @@
     "cases": "cases",
     "invHow": "Values are before GST, as shown on the portal. Tap an invoice for its items.",
     "unbooked": "{{n}} Pepsi invoice(s) are not entered as purchases yet: {{list}}. Enter them in Purchases so stock and costs are right."
+  },
+  "srep": {
+    "title": "Sales report",
+    "sub": "Everything sold: items, cases, amount, shops and days. Live, any period. Download as PDF to share.",
+    "pdf": "Download PDF",
+    "period": "Period",
+    "from": "From",
+    "to": "To",
+    "badRange": "Pick a From date on or before the To date.",
+    "error": "Could not load the report. Try again.",
+    "none": "No sales in this period.",
+    "k": {
+      "till": "Till date",
+      "month": "This month",
+      "lastmonth": "Last month",
+      "week": "Last 7 days",
+      "today": "Today",
+      "custom": "Pick dates"
+    },
+    "sales": "Total sales",
+    "afterDisc": "after {{v}} discount",
+    "allBills": "all bills",
+    "cases": "Cases",
+    "units": "{{n}} bottles / packs",
+    "bills": "Bills",
+    "days": "{{n}} selling days",
+    "shops": "Shops served",
+    "items": "{{n}} different items",
+    "avgBill": "Average bill",
+    "casesBill": "{{n}} cases a bill",
+    "perCase": "Average per case",
+    "rate": "selling rate",
+    "perDay": "Per selling day",
+    "casesDay": "{{n}} cases a day",
+    "margin": "Margin",
+    "marginSub": "{{p}}% of sales · {{c}}/case, before running costs",
+    "itemsSold": "Items sold",
+    "search": "Search item",
+    "item": "Item",
+    "bottles": "Bottles",
+    "amount": "Amount",
+    "avgRate": "Avg rate",
+    "marginCol": "Margin",
+    "shopsCol": "Shops",
+    "lastSold": "Last sold",
+    "total": "Total",
+    "byBrand": "By brand",
+    "howSold": "How it was sold",
+    "payment": "Payment",
+    "billsShort": "bills",
+    "casesShort": "cases",
+    "byDay": "Day by day",
+    "topShops": "Top shops",
+    "shop": "Shop",
+    "ch": {
+      "counter": "Counter / godown",
+      "truck": "Truck (on the route)",
+      "route": "Route orders (delivered)"
+    },
+    "mode": {
+      "cash": "Cash",
+      "upi": "UPI",
+      "credit": "Credit (khata)"
+    },
+    "note": "Counter bills, truck bills and delivered route orders; cancelled bills left out. Amounts include GST as billed. Item amounts are before bill discounts. Margin = selling price − our buy price, before salaries, fuel and other costs (see Kharcha). The same PDF goes to the Telegram group every Monday (last week) and on the 1st (last month); type \"sales report\" in the group for one any time."
   }
 }

@@ -219,6 +219,11 @@ export async function handleText(msg, text, ctx = {}) {
       case 'stock': await stock(chat, it.q); break
       case 'sleeping': await sleeping(chat); break
       case 'reorder': await order(chat); break
+      case 'salesreport':
+        if (!ctx.dispatch) { await send(chat, 'Website pe Sales report page kholo: https://kdfoods.vercel.app/admin/report', [back]); break }
+        await ctx.dispatch({ period: it.period, force: '1' }, 'report.yml')
+        await send(chat, `📊 Sales report PDF bana raha hun (${{ till: 'ab tak', month: 'is mahine', lastmonth: 'pichhle mahine', week: 'pichhle 7 din', lastweek: 'pichhla hafta', today: 'aaj' }[it.period] ?? it.period}), ~2 minute me yahin aayega.\nLive dekhna ho to: https://kdfoods.vercel.app/admin/report`, [back])
+        break
       case 'money': await paisa(chat); break
       case 'sale_help': await saleHelp(chat); break
       case 'ask': await ask(chat, text, ctx.dispatch && (() => ctx.dispatch({ mode: 'ask', question: text.slice(0, 800) }, 'ops.yml'))); break

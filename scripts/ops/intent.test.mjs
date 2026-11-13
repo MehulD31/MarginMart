@@ -36,6 +36,12 @@ describe('detectIntent: quick answers', () => {
   it('sleeping', () => expect(k('kaunsi dukan order nahi kar rahi')).toBe('sleeping'))
   it('menu', () => expect(k('menu')).toBe('menu'))
   it('sale help', () => expect(k('sale kaise likhu')).toBe('sale_help'))
+  it('sales report pdf, with the period', () => {
+    expect(detectIntent('sales report bhejo')).toEqual({ kind: 'salesreport', period: 'till' })
+    expect(detectIntent('is mahine ki sales report')).toEqual({ kind: 'salesreport', period: 'month' })
+    expect(detectIntent('pichhle mahine ki bikri report pdf')).toEqual({ kind: 'salesreport', period: 'lastmonth' })
+    expect(detectIntent('pdf bhejo hafte ka')).toEqual({ kind: 'salesreport', period: 'week' })
+  })
 })
 
 describe('detectIntent: questions go to AI, but only business ones', () => {

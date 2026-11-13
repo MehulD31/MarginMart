@@ -2,6 +2,7 @@
 // Owners chat in the same group, so most messages are for each other: we answer only when the text clearly asks the bot
 // something, and send only real Pepsi scheme messages to the (slow) scheme reader.
 //   { kind: 'today' | 'yesterday' | 'week' | 'due' | 'stock' | 'sleeping' | 'reorder' | 'money' | 'menu' | 'sale_help', q? }
+//   { kind: 'salesreport', period }   sales report PDF (period: till | month | lastmonth | week | lastweek | today)
 //   { kind: 'scheme' }   looks like a Pepsi scheme/offer message (or was forwarded)
 //   { kind: 'ask' }      a question for the bot -> AI answer from live numbers
 //   { kind: 'unsure' }   long text, can't tell -> ask with two buttons
@@ -40,6 +41,12 @@ export function detectIntent(text, { forwarded = false, replyToBot = false } = {
   if (/\b(stock|maal kitna|kitna maal|bacha|bachi|khatam)\b/.test(body)) {
     const q = clean(body.replace(/\b(stock|maal|kitna|bacha|bachi|khatam|hua|ho gaya|low|kam|wala|items?)\b/g, ' '))
     return { kind: 'stock', q: q.length >= 2 ? q : null }
+  }
+  // Sales report PDF: "sales report", "bikri report", "report pdf", "pdf bhejo", "is mahine ki sales report"
+  if (/\b(sales report|bikri (ki )?report|bikri report|report pdf|pdf report|sales pdf|pdf bhej\w*|pdf do|pdf chahiye|poori report|full report)\b/.test(body)) {
+    const period = /\b(pichhle|pichle|last) (mahine|month)\b/.test(body) ? 'lastmonth' : /\b(mahina|mahine|month)\b/.test(body) ? 'month'
+      : /\b(pichhle|pichle|last) (hafte|week)\b/.test(body) ? 'lastweek' : /\b(hafta|hafte|week|7 din)\b/.test(body) ? 'week' : /\b(aaj|today)\b/.test(body) ? 'today' : 'till'
+    return { kind: 'salesreport', period }
   }
   if (/\b(hafta|hafte|week|weekly|7 din|saat din)\b/.test(body)) return { kind: 'week' }
   if (/\b(kal ka|kal ki|yesterday)\b.*\b(hisaab|hisab|report|bikri|sale|kitna|kitni)\b|\b(hisaab|hisab|report|bikri)\b.*\b(kal ka|kal ki|yesterday)\b/.test(body)) return { kind: 'yesterday' }

@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, BookOpen, Boxes, Building2, Calculator, Coins, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BarChart3, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { useStockWatch } from '../../shared/api/db'
 import { useMoneyHoldings } from './money'
@@ -32,6 +32,7 @@ import MoneyPage from './MoneyPage'
 import KharchaPage from './KharchaPage'
 import ProductsPage from './ProductsPage'
 import PepsiPage from './PepsiPage'
+import SalesReportPage from './SalesReportPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -65,7 +66,7 @@ export default function AdminApp() {
     { to: 'khata', label: t('nav.khata'), icon: BookOpen },
     ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'money', label: t('nav.money'), icon: Wallet, badge: moneyLate }] : []),
     ...(profile?.role === 'admin' ? [{ to: 'kharcha', label: t('nav.kharcha'), icon: Coins }] : []),
-    ...(profile?.role === 'admin' ? [{ to: 'products', label: t('nav.products'), icon: BarChart3 }] : []),
+    ...(profile?.role === 'admin' ? [{ to: 'report', label: t('nav.salesReport'), icon: FileText }, { to: 'products', label: t('nav.products'), icon: BarChart3 }] : []),
     { to: 'closing', label: t('nav.closing'), icon: ClipboardCheck, badge: attention },
   ]
   // Manager (owner, 13 Nov 2026): runs the day, never sees buy prices, purchases, pricing, logins or the change history.
@@ -142,6 +143,7 @@ export default function AdminApp() {
           <Route path="purchases" element={adminOnly(<PurchasesPage />)} />
           <Route path="pricing" element={adminOnly(<PricingPage />)} />
           <Route path="pepsi" element={adminOnly(<PepsiPage />)} />
+          <Route path="report" element={adminOnly(<SalesReportPage />)} />
           <Route path="schemes" element={<SchemesPage />} />
           <Route path="shops" element={<ShopsPage />} />
           <Route path="catalog" element={<CatalogPage />} />

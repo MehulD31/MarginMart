@@ -774,3 +774,9 @@ button.date-field[aria-invalid='true'] { border-color: var(--danger); box-shadow
 .prod-meter > i { display: block; height: 100%; border-radius: 6px; transition: width .4s ease; }
 .prod-nums small { font-size: 11px; }
 .prod-whatif { border-top: 1px dashed var(--line, #e2e8f0); padding-top: 8px; }
+.srep-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .srep-grid { grid-template-columns: 1fr 1fr; } }
+.srep-bar { height: 8px; border-radius: 4px; background: var(--line-2, #f1f5f9); overflow: hidden; }
+.srep-bar > i { display: block; height: 100%; background: #22c55e; border-radius: 4px; }
+.th-sort { all: unset; cursor: pointer; font: inherit; text-transform: inherit; letter-spacing: inherit; }
+.th-sort:focus-visible { outline: 2px solid #16a34a; outline-offset: 2px; border-radius: 3px; }

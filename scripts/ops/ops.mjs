@@ -131,6 +131,7 @@ async function weekly() {
   const { text, cases } = weekText(w, sleeping, waLink)
   await say(text)
   try { await audience() } catch (e) { console.log('audience failed', e.message) }
+  try { await gh('actions/workflows/report.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { period: 'lastweek' } }) }) } catch (e) { console.log('report pdf dispatch', e.message) }
   await mark('weekly', today, { cases })
 }
 // New events, checked every ~10 minutes. Each one is alerted exactly once (ops_log) so a re-run never repeats it.
@@ -220,6 +221,7 @@ async function month() {
   const sales = rows.filter((x) => x.kind !== 'Payment received' && x.status !== 'void' && x.status !== 'voided')
   await tgDoc(`kd-foods-${r.label}.csv`, '\uFEFF' + toCsv(['date', 'kind', 'number', 'shop', 'gstin', 'amount_rs', 'mode', 'paid_into', 'status'], rows),
     `📒 ${r.label} ka register: ${sales.length} bill, bikri ${rs(sales.reduce((a, x) => a + x.amount_rs * 100, 0))}, vasooli ${rs(-rows.filter((x) => x.kind === 'Payment received').reduce((a, x) => a + x.amount_rs * 100, 0))}. Accountant ko bhej do.`)
+  try { await gh('actions/workflows/report.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { period: 'lastmonth' } }) }) } catch (e) { console.log('report pdf dispatch', e.message) }
   await mark('month', r.label, { rows: rows.length })
 }
 

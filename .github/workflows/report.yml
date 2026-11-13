@@ -1,0 +1,41 @@
+name: report
+# Sales report PDF -> Telegram (scripts/ops/report-pdf.mjs). Started by ops.yml (weekly: last week, 1st: last month),
+# by the Telegram bot ("report" / "sales report"), or by hand. Idempotent per period and day.
+on:
+  workflow_dispatch:
+    inputs:
+      period: { description: "till | week | lastweek | month | lastmonth | today", required: false, default: "till" }
+      force: { description: "1 = send again even if sent today", required: false, default: "" }
+concurrency: { group: "report-${{ github.event.inputs.period }}", cancel-in-progress: false }
+permissions: { contents: read }
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "scripts/ops/report-pdf.mjs\nscripts/scheme-bot/lib.mjs\nsrc/shared/salesReport.js", sparse-checkout-cone-mode: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: Chromium
+        run: |
+          npm i --no-save --no-package-lock playwright@1.59.1 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Make and send the PDF
+        env:
+          PERIOD: ${{ github.event.inputs.period }}
+          FORCE: ${{ github.event.inputs.force }}
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/report-pdf.mjs
+      - name: Tell the KD group if this failed
+        if: failure()
+        env:
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${KD_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${KD_CHAT_ID}" \
+            --data-urlencode "text=⚠️ Sales report PDF nahi bana. Website pe Sales report page se download kar lo. Details: ${URL}" > /dev/null
