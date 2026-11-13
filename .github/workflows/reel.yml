@@ -14,7 +14,7 @@ permissions: { contents: read }
 jobs:
   edit:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
         with: { sparse-checkout: "scripts/reel\nscripts/ops/media.mjs\nscripts/scheme-bot/lib.mjs", sparse-checkout-cone-mode: false }
@@ -23,7 +23,7 @@ jobs:
       - name: Tools
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
-          pip install -q numpy
+          pip install -q numpy edge-tts
           npm i --no-save --no-package-lock playwright@1.59.1 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
       - name: Add release media to the library
@@ -57,7 +57,7 @@ jobs:
           else node scripts/reel/reel.mjs; fi
       - uses: actions/upload-artifact@v4
         if: github.event.inputs.test == '1'
-        with: { name: reel-test, path: "scripts/reel/work/*.mp4" }
+        with: { name: reel-test, path: "scripts/reel/work/reel*.mp4" }
       - name: Tell the KD group if this run failed
         if: failure() && github.event.inputs.test != '1'
         env:

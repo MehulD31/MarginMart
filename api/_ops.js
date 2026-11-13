@@ -287,7 +287,7 @@ export async function handleOpsTap(q, ctx = {}) {
       // ⚡ = nothing left to choose, so all buttons go; ✅ keeps ❌ so it can still be stopped before 7:30 PM
       await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message.message_id, reply_markup: { inline_keyboard: now ? [] : [[{ text: '❌ Mat daalo (7:30 se pehle)', callback_data: `sp:no:${m[2]}` }]] } })
       if (now && ctx.dispatch) await ctx.dispatch({ mode: 'social', post: m[2] }, 'ops.yml')
-      await send(chat, now ? `⚡ ${q.from?.first_name ?? ''}: post ho raha hai, 2-3 minute me link aayega.` : `✅ ${q.from?.first_name ?? ''}: aaj 7:30 baje Facebook + Instagram pe jayega.`)
+      await send(chat, now ? `⚡ ${q.from?.first_name ?? ''}: post ho raha hai, 2-3 minute me link aayega.` : `✅ ${q.from?.first_name ?? ''}: queue me lag gaya, 7:30 PM wale slot me Facebook + Instagram pe jayega (Reels roz ek-ek, purani pehle).`)
     } catch (e) { await answer(`Error: ${String(e.message).slice(0, 150)}`) }
     return true
   }

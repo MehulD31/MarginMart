@@ -1,7 +1,10 @@
-﻿# Original 120 BPM track, 15 s (7.5 bars), synthesized: no licence needed. Beats every 0.5 s, cuts every 2 s.
+﻿# Original 120 BPM track, synthesized: no licence needed. Beats every 0.5 s; a whoosh lands on every cut.
 import numpy as np, wave, sys
-# usage: music.py out.wav TOTAL_SECONDS BRAND_AT (drop on the brand card, end hit 2 s later)
+# usage: music.py out.wav TOTAL_SECONDS BRAND_AT [CUTS_CSV] [STYLE]  (drop on the brand card, end hit 2 s later)
+# STYLE punch = four-on-the-floor; story = half-time, softer, warm keys (voice-led); frame = bouncy pluck groove
 OUT = sys.argv[1]; T = float(sys.argv[2]); DROP = float(sys.argv[3]); END = DROP + 2
+CUTS = [float(x) for x in sys.argv[4].split(',') if x] if len(sys.argv) > 4 else list(np.arange(2.0, DROP, 2.0))
+STYLE = sys.argv[5] if len(sys.argv) > 5 else 'punch'
 SR = 44100; BPM = 120; B = 60 / BPM
 n = int(SR * T); t = np.arange(n) / SR; out = np.zeros(n)
 def add(sig, at, g=1.0):
@@ -24,11 +27,31 @@ def chord(fs, d):
     k = np.arange(int(SR * d)) / SR; s = sum(np.sign(np.sin(2 * np.pi * f * k)) * 0.5 + np.sin(2 * np.pi * f * 1.003 * k) for f in fs)
     s = np.convolve(s, np.ones(24) / 24, 'same'); return s * np.minimum(1, k / 0.01) * np.exp(-k / 0.18)
 np.random.seed(7)
-prog = [(55.0, [220, 277.2, 329.6]), (73.4, [293.7, 370, 440]), (61.7, [246.9, 311.1, 370]), (49.0, [196, 246.9, 293.7])]
+PROGS = {
+    'punch': [(55.0, [220, 277.2, 329.6]), (73.4, [293.7, 370, 440]), (61.7, [246.9, 311.1, 370]), (49.0, [196, 246.9, 293.7])],
+    'story': [(65.4, [261.6, 329.6, 392]), (55.0, [220, 261.6, 329.6]), (43.7, [174.6, 220, 261.6]), (49.0, [196, 246.9, 293.7])],
+    'frame': [(58.3, [233.1, 293.7, 349.2]), (77.8, [311.1, 392, 466.2]), (51.9, [207.7, 261.6, 311.1]), (69.3, [277.2, 349.2, 415.3])],
+}
+prog = PROGS.get(STYLE, PROGS['punch'])
+def pluck(f, d=0.22):
+    k = np.arange(int(SR * d)) / SR; return (np.sin(2 * np.pi * f * k) + 0.3 * np.sin(4 * np.pi * f * k)) * np.exp(-k / 0.06)
 beats = int(T / B)
 for b in range(beats):
     at = b * B; bar = b // 4; root, ch = prog[bar % 4]
-    if at < END:
+    if at >= END: continue
+    if STYLE == 'story':   # half-time: kick on 1, snare on 3, long warm chords, quiet so the voice leads
+        if b % 4 == 0: add(kick(), at, 0.7)
+        if b % 4 == 2: add(clap(), at, 0.25)
+        add(hat(), at + B / 2, 0.08)
+        if b % 4 == 0:
+            add(chord(ch, 2.0) * np.exp(-np.arange(int(SR * 2.0)) / SR / 0.9) * 2.5, at, 0.06); add(bass(root, B * 3.6), at, 0.22)
+    elif STYLE == 'frame':  # bouncy: kick 1 and the "and" of 2, plucked arpeggio on every 8th
+        if b % 4 in (0, 2) or (b % 4 == 1): add(kick(), at + (B / 2 if b % 4 == 1 else 0), 0.8)
+        if b % 2 == 1: add(clap(), at, 0.3)
+        add(hat(), at + B / 2, 0.15)
+        add(pluck(ch[b % 3] * 2), at, 0.12); add(pluck(ch[(b + 1) % 3] * 2), at + B / 2, 0.09)
+        add(bass(root, B * 0.45), at, 0.3)
+    else:
         add(kick(), at, 0.9)
         if b % 2 == 1: add(clap(), at, 0.35)
         add(hat(), at + B / 2, 0.18); add(hat(), at, 0.1)
@@ -37,7 +60,7 @@ for b in range(beats):
 # riser into the drop at 10 s (green card) and impact; end card 12 s: big hit + held chord, fade
 k = np.arange(int(SR * 1.0)) / SR; r = np.random.randn(len(k)); r = r - np.convolve(r, np.ones(16) / 16, 'same')
 add(r * (k / 1.0) ** 2 * 0.25, DROP - 1.0)
-for at in np.arange(2.0, DROP, 2.0): add(r[:int(SR * .25)] * np.linspace(0, 1, int(SR * .25)) ** 2 * 0.12, at - 0.25)   # whoosh into each cut
+for at in CUTS: add(r[:int(SR * .25)] * np.linspace(0, 1, int(SR * .25)) ** 2 * 0.12, at - 0.25)   # whoosh into each cut
 add(kick(), DROP, 1.2); add(kick(), END, 1.3)
 add(chord([220, 277.2, 329.6, 440], 3.0) * np.exp(-np.arange(int(SR * 3)) / SR / 1.2) * 3, END, 0.1)
 add(bass(55, 2.8), END, 0.35)

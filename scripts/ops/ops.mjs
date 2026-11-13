@@ -610,7 +610,10 @@ async function rateComments() {
 // 19:30 job: every approved post (max 5). With POST_ID (⚡ in Telegram): just that one, right now.
 async function social() {
   const id = process.env.POST_ID
-  const list = await db(id ? `social_post?id=eq.${id}&status=eq.queued&select=*` : 'social_post?status=eq.queued&order=created_at&limit=5&select=*')
+  // Reels go out one per evening (oldest approved first) so a batch that became 3 Reels fills 3 days, not one feed burst
+  const list = id ? await db(`social_post?id=eq.${id}&status=eq.queued&select=*`) : [
+    ...await db('social_post?status=eq.queued&kind=neq.reel&order=created_at&limit=5&select=*'),
+    ...await db('social_post?status=eq.queued&kind=eq.reel&order=created_at&limit=1&select=*')]
   if (!list.length) return console.log('nothing queued')
   let failed = null
   for (const p of list) { try { await postOne(p) } catch (e) { console.log('post failed', p.id, e.message); failed = e } }
