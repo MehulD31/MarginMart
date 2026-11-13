@@ -7,7 +7,7 @@ import { detectIntent } from './_intent.js'
 import { askJson } from './_sale.js'
 import { parseKharcha } from '../src/shared/kharcha.js'
 import { dayText, weekText } from '../scripts/ops/report.mjs'
-import { item, reorderText, remindText, waLink } from '../scripts/ops/format.mjs'
+import { idleLowText, item, reorderText, remindText, waLink } from '../scripts/ops/format.mjs'
 import { finishCaption, postIdOf } from '../scripts/ops/media.mjs'
 
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
@@ -130,8 +130,10 @@ async function stock(chat, q) {
 async function order(chat) {
   await typing(chat)
   const rows = await rpc('bot_reorder', {})
-  if (!rows.length) return send(chat, '✅ Abhi kuch mangane ki zaroorat nahi (7 din ka stock hai).', [back])
+  const idle = idleLowText(await rpc('bot_idle_low', {}).catch(() => []))
+  if (!rows.length) return send(chat, `✅ Abhi kuch mangane ki zaroorat nahi (7 din ka stock hai).${idle ? '\n\n' + idle : ''}`, [back])
   await send(chat, `📝 7 din ke stock ke liye (pichhli 30 din ki bikri se). Ye message Pepsi ko forward kar do:\n\n${reorderText(rows, hiDate(todayIST()))}`, [back])
+  if (idle) await send(chat, idle, [back])
 }
 async function sleeping(chat) {
   const rows = await rpc('bot_sleeping', { p_days: 10 })

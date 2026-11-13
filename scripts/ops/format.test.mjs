@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { item, monthRange, reorderText, toCsv, waLink, waNumber } from './format.mjs'
+import { idleLowText, item, monthRange, reorderText, toCsv, waLink, waNumber } from './format.mjs'
 
 describe('item', () => {
   it('shows doubled catalogue names once', () => {
@@ -28,6 +28,13 @@ describe('waNumber / waLink', () => {
   })
   it('encodes the message', () => {
     expect(waLink('9876543210', 'a b&c')).toBe('https://wa.me/919876543210?text=a%20b%26c')
+  })
+})
+
+describe('idleLowText', () => {
+  it('lists low-stock items that did not sell, and is empty when none', () => {
+    expect(idleLowText([{ item: '300ml Can Pepsi', on_hand: 5 }])).toContain('• 300ml Can Pepsi: 5 peti')
+    expect(idleLowText([])).toBe('')
   })
 })
 
