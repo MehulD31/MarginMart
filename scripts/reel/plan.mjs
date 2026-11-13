@@ -84,7 +84,8 @@ export function timeShots(shots, voLen, style) {
   let at = 0
   const out = shots.map((s, i) => {
     const want = Math.ceil(((voLen[i] || 0) + 0.45) / BEAT) * BEAT
-    const len = Math.min(st.max, Math.max(st.min, want))
+    const len = Math.max(st.min, want)        // never shorter than its voice line, or two lines would overlap
+    if (len > st.max) console.log(`shot ${i + 1}: voice needs ${len} s (style max ${st.max})`)
     const r = { ...s, at, len }; at += len; return r
   })
   return { shots: out, brandAt: at, endAt: at + BRAND }

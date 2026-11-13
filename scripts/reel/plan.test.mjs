@@ -55,10 +55,10 @@ describe('styles', () => {
   it('shot lengths follow the voice, on the half-second beat, inside the style range', () => {
     const shots = [{}, {}, {}]
     const t = timeShots(shots, [1.2, 3.9, 0], 'story')
-    expect(t.shots.map((s) => s.len)).toEqual([2.5, 4, 2.5])
+    expect(t.shots.map((s) => s.len)).toEqual([2.5, 4.5, 2.5])
     expect(t.shots[1].at).toBe(2.5)
-    expect(t.brandAt).toBe(9)
-    expect(timeShots(shots, [1.2, 3.9, 0], 'punch').shots.map((s) => s.len)).toEqual([2, 2.5, 2])
+    expect(t.brandAt).toBe(9.5)
+    expect(timeShots(shots, [1.2, 1.6, 0], 'punch').shots.map((s) => s.len)).toEqual([2, 2.5, 2])
     for (const k of Object.keys(STYLES)) expect(STYLES[k].accent).toMatch(/^#/)
   })
   it('every shot gets a voice line even if the AI gives none', () => {
