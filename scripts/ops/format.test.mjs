@@ -51,6 +51,12 @@ describe('reorderCard', () => {
     expect(t).toContain('Nimbooz 345ml</b>')
     expect(t).not.toContain('Nimbooz 345ml Nimbooz')
   })
+  it('warns when some items were priced without the portal (cost may be before GST)', () => {
+    const priced = { item: 'A', need: 1, on_hand: 5, days_left: 9, per_day: 1, cost_paise: 100, pepsi_sku: '1' }
+    expect(reorderCard([priced], rs)).not.toContain('portal se match nahi')
+    const t = reorderCard([priced, { ...priced, item: 'B', pepsi_sku: null }, { ...priced, item: 'C', pepsi_sku: undefined, cost_paise: 0 }], rs)
+    expect(t).toContain('1 item ka rate portal se match nahi')
+  })
   it('has no urgent section when nothing is urgent, and escapes names', () => {
     const t = reorderCard([{ item: 'A & B <x>', need: 1, on_hand: 5, days_left: 9, per_day: 1, cost_paise: 100 }], rs)
     expect(t).not.toContain('Abhi chahiye')

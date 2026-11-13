@@ -43,12 +43,15 @@ export const reorderCard = (rows, rs, dateLabel, credit = null) => {
   }
   const urgent = rows.filter((r) => r.urgent), rest = rows.filter((r) => !r.urgent)
   const cost = rows.reduce((a, r) => a + (Number(r.cost_paise) || 0), 0)
+  // rows priced from the portal carry pepsi_sku (price incl. GST, what Pepsi bills); the rest fall back to our average cost
+  const unpriced = rows.filter((r) => Number(r.cost_paise) > 0 && !r.pepsi_sku).length
   return [
     `📝 <b>Pepsi Order${dateLabel ? ' · ' + esc(dateLabel) : ''}</b>`,
     `${rows.length} item${cost > 0 ? ` · kul ~<b>${rs(cost)}</b> ka maal` : ''}`,
     credit && cost > 0 ? (credit.paise >= cost
       ? `✅ Pepsi credit ${rs(credit.paise)} hai, order chal jayega`
       : `💳 Pepsi credit sirf ${rs(credit.paise)}. Order se pehle ~<b>${rs(cost - credit.paise)}</b> Pepsi ko bhejna hoga`) : '',
+    unpriced ? `⚠️ ${unpriced} item ka rate portal se match nahi hua, unka hisaab hamare average cost se hai (GST ke bina ho sakta hai). Asli bill ~20% tak zyada ho sakta hai.` : '',
     urgent.length ? `\n🔴 <b>Abhi chahiye</b> (delivery aane se pehle khatam)\n${urgent.map(line).join('\n')}` : '',
     rest.length ? `\n🟡 <b>Is hafte ke liye</b>\n${rest.map(line).join('\n')}` : '',
     '\n<i>Pichhle hafte ki bikri, trend, season aur delivery time ke hisaab se.</i>',

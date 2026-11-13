@@ -31,7 +31,7 @@ Price list, SKU master, credit, order history, End to End and Order Summary repo
 - [x] **A1. Order lines table** (done 13 Nov: `oms_order_line`, 87 lines stored) (`oms_order_line`): per order and SKU, with order type (General / Specific MRP / Near Expiry / Range / Must Bill / Filler), asked, corrected, allocated, invoiced, delete or rejection reason. Foundation for A2 to A4. (F1, F2, F4)
 - [x] **A2. Telegram + Pepsi page: "Near Expiry / Specific MRP lines on your order"**: which SKUs, how many cases, "sell these first". (F1)
 - [x] **A3. Why Pepsi changed or cut an order**: add the reason (deleted reason, SAP rejection reason, truck fill, filler added) to the existing change alert and the Pepsi page. (F2, F4)
-- [ ] **A4. Credit check on the order card**: show "credit ₹X vs this order ₹Y, short by ₹Z" and a warning when credit is below the order value. (F5)
+- [x] **A4. Credit check on the order card** (was already there, priced from portal prices incl. GST; now warns when some items fall back to our average cost): show "credit ₹X vs this order ₹Y, short by ₹Z" and a warning when credit is below the order value. (F5)
 - [ ] **A5. Truck meter on the order card**: kg and % of an 8,000 kg truck for the suggested order (weights from allocated lines), warn under 70%. (F2)
 - [ ] **A6. Must Bill and Range SKUs** shown on the Pepsi page and marked on the order card; show month-to-date range quantities. (F6, F7)
 - [ ] **A7. Sync schedule that does not log the team out**: fixed quiet times only (no 10-minute polling), and skip the sync when the portal session is in use. (constraint above)
