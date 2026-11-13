@@ -51,3 +51,26 @@ describe('priceChanges / orderEvents', () => {
     expect(e[0]).toMatchObject({ invoice: 'INV9', value: 46000 })
   })
 })
+
+import { invoiceLines, orderRows, unbookedInvoices } from './oms.mjs'
+const row = (o) => ({ 'Requested Order Number': 'RO1', 'Order Date': '2026-11-03', 'Sku Code': '4068', 'Sku Description': 'PEPSI BLACK 300ml CAN', 'Pristine Order Quantity': 0,
+  'Corrected Order Quantity': 0, 'Allocated Order Quantity': 0, 'Invoiced Quantity Sap': 0, 'Invoiced Value Sap': 0, 'Invoice Number Sap': '', 'Invoiced Date Sap': 'NaT', 'Deleted Quantity': 0, ...o })
+describe('reports', () => {
+  const e2e = [row({ 'Pristine Order Quantity': 5, 'Corrected Order Quantity': 8, 'Allocated Order Quantity': 8, 'Invoiced Quantity Sap': 8, 'Invoiced Value Sap': 2621.43, 'Invoice Number Sap': '5348', 'Invoiced Date Sap': '2026-11-04' }),
+    row({ 'Sku Code': '4189', 'Sku Description': 'MIRINDA 750', 'Pristine Order Quantity': 3, 'Corrected Order Quantity': 3, 'Invoiced Quantity Sap': 3, 'Invoiced Value Sap': 2000, 'Invoice Number Sap': '5348', 'Invoiced Date Sap': '2026-11-04' }),
+    row({ 'Requested Order Number': 'RO2', 'Pristine Order Quantity': 50, 'Deleted Quantity': 50 })]
+  it('groups invoice lines and orders', () => {
+    expect(invoiceLines(e2e)).toEqual([
+      { invoice_no: '5348', sku_code: '4068', description: 'PEPSI BLACK 300ml CAN', invoiced_on: '2026-11-04', order_no: 'RO1', qty: 8, value_paise: 262143 },
+      { invoice_no: '5348', sku_code: '4189', description: 'MIRINDA 750', invoiced_on: '2026-11-04', order_no: 'RO1', qty: 3, value_paise: 200000 }])
+    const o = orderRows(e2e, [{ 'Requested Order Number': 'RO1', 'Order Status Desc': 'SAP SO Created' }])
+    expect(o.find((x) => x.order_no === 'RO1')).toMatchObject({ asked: 8, corrected: 11, invoiced: 11, status: 'SAP SO Created' })
+    expect(o.find((x) => x.order_no === 'RO2')).toMatchObject({ asked: 50, deleted: 50, corrected: 0 })
+  })
+  it('an invoice is booked when a purchase near that day has the same cases', () => {
+    const lines = invoiceLines(e2e)
+    expect(unbookedInvoices(lines, [{ invoice_no: 'RV1', purchase_date: '2026-11-04', cases: 11 }])).toEqual([])
+    expect(unbookedInvoices(lines, [{ invoice_no: 'X 5348', purchase_date: '2026-10-01', cases: 1 }])).toEqual([])
+    expect(unbookedInvoices(lines, [])).toMatchObject([{ invoice_no: '5348', qty: 11 }])
+  })
+})

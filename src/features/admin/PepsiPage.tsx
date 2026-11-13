@@ -12,7 +12,7 @@ interface Sku { sku_code: string; description: string; mrp_paise: number | null;
 interface Map_ { variant_id: string; sku_code: string; source: 'auto' | 'manual'; mrp_differs: boolean }
 interface Change { id: number; sku_code: string; old_paise: number; new_paise: number; seen_at: string }
 interface State { synced_at: string | null; ok: boolean | null; error: string | null; distributor_code: string | null; distributor_name: string | null
-  credit_paise: number | null; credit_at: string | null; orders: Record<string, unknown>[] | null; schemes: unknown[] | null }
+  credit_paise: number | null; credit_at: string | null; orders: Record<string, unknown>[] | null; schemes: unknown[] | null; unbooked: Unbooked[] | null }
 
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—')
 
@@ -101,11 +101,59 @@ export default function PepsiPage() {
       </table></div>
       <p className="muted">{t('pepsi.how')}</p>
 
-      <div className="card stack" style={{ gap: 6 }}>
-        <b>{t('pepsi.orders')}</b>
-        {!s.orders?.length ? <span className="cell-sub">{t('pepsi.noOrders')}</span>
-          : s.orders.slice(0, 15).map((o, i) => <div key={i} className="cell-sub">{['order_number', 'order_status', 'order_value', 'invoice_no', 'order_timestamp'].map((k) => o[k]).filter((v) => v != null && v !== '').join(' · ') || JSON.stringify(o).slice(0, 160)}</div>)}
-      </div>
+      <Orders unbooked={s.unbooked ?? []} />
     </section>
+  )
+}
+
+interface Order { order_no: string; ordered_on: string | null; created_by: string | null; status: string | null; asked: number; corrected: number; allocated: number; invoiced: number; deleted: number; value_paise: number; invoiced_paise: number }
+interface InvLine { invoice_no: string; sku_code: string; description: string | null; invoiced_on: string | null; order_no: string | null; qty: number; value_paise: number }
+interface Unbooked { invoice_no: string; on: string | null; qty: number; value_paise: number; lines: number }
+
+/** Pepsi's side of every order: what we asked for, what they changed it to, what they invoiced; plus invoices not yet entered as purchases. */
+function Orders({ unbooked }: { unbooked: Unbooked[] }) {
+  const { t } = useTranslation()
+  const orders = useQuery({ queryKey: ['oms_order'], queryFn: () => must<Order[]>(supabase.from('oms_order').select('*').order('ordered_on', { ascending: false }).limit(30)) })
+  const lines = useQuery({ queryKey: ['oms_invoice_line'], queryFn: () => must<InvLine[]>(supabase.from('oms_invoice_line').select('*').order('invoiced_on', { ascending: false }).limit(500)) })
+  const [open, setOpen] = useState<string | null>(null)
+  const invoices = useMemo(() => {
+    const m = new Map<string, { no: string; on: string | null; qty: number; value: number; lines: InvLine[] }>()
+    for (const l of lines.data ?? []) { const x = m.get(l.invoice_no) ?? { no: l.invoice_no, on: l.invoiced_on, qty: 0, value: 0, lines: [] }; x.qty += l.qty; x.value += l.value_paise; x.lines.push(l); m.set(l.invoice_no, x) }
+    return [...m.values()]
+  }, [lines.data])
+  const pending = new Set(unbooked.map((u) => u.invoice_no))
+  return (
+    <>
+      {!!unbooked.length && <Alert msg={{ kind: 'warn', text: t('pepsi.unbooked', { n: unbooked.length, list: unbooked.map((u) => `${u.invoice_no} (${u.on ?? ''}, ${u.qty} ${t('pepsi.cases')})`).join(', ') }) }} />}
+      <div className="card stack" style={{ gap: 8 }}>
+        <b>{t('pepsi.orders')}</b>
+        {!orders.data?.length ? <span className="cell-sub">{t('pepsi.noOrders')}</span> : (
+          <div className="table-wrap table-scroll"><table className="dense" data-testid="pepsi-orders">
+            <thead><tr><th scope="col">{t('pepsi.order')}</th><th scope="col">{t('pepsi.asked')}</th><th scope="col">{t('pepsi.corrected')}</th><th scope="col">{t('pepsi.invoicedQty')}</th><th scope="col">{t('pepsi.value')}</th><th scope="col">{t('pepsi.status')}</th></tr></thead>
+            <tbody>{orders.data.map((o) => (
+              <tr key={o.order_no}>
+                <th scope="row">{o.order_no}<div className="cell-sub">{o.ordered_on} · {o.created_by?.split('@')[0]}</div></th>
+                <td className="num">{o.asked}</td>
+                <td className="num">{o.corrected !== o.asked && o.corrected ? <b style={{ color: '#b45309' }}>{o.corrected}</b> : o.corrected || '—'}</td>
+                <td className="num">{o.invoiced || '—'}</td>
+                <td className="num">{formatPaise(o.invoiced_paise || o.value_paise)}</td>
+                <td>{o.deleted && !o.corrected ? <span className="badge badge-red">{t('pepsi.cancelled')}</span> : <span className="badge">{o.status ?? '—'}</span>}</td>
+              </tr>))}</tbody>
+          </table></div>)}
+        <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.ordersHow')}</p>
+      </div>
+      <div className="card stack" style={{ gap: 8 }}>
+        <b>{t('pepsi.invoices')}</b>
+        {!invoices.length ? <span className="cell-sub">{t('pepsi.noInvoices')}</span> : invoices.map((v) => (
+          <div key={v.no} className="stack" style={{ gap: 4 }}>
+            <button type="button" className="row-between" style={{ all: 'unset', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }} onClick={() => setOpen(open === v.no ? null : v.no)} aria-expanded={open === v.no}>
+              <span><b>{v.no}</b> · {v.on} {pending.has(v.no) ? <span className="badge badge-amber">{t('pepsi.notEntered')}</span> : <span className="badge badge-green">{t('pepsi.entered')}</span>}</span>
+              <span className="num">{v.qty} {t('pepsi.cases')} · {formatPaise(v.value)}</span>
+            </button>
+            {open === v.no && v.lines.map((l) => <div key={l.sku_code} className="row-between cell-sub"><span>{l.description}</span><span className="num">{l.qty} · {formatPaise(l.value_paise)}</span></div>)}
+          </div>))}
+        <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.invHow')}</p>
+      </div>
+    </>
   )
 }

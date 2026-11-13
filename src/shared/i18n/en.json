@@ -1649,7 +1649,22 @@
     "gst": "incl. GST {{v}}",
     "saved": "Saved. The next sync keeps your choice.",
     "how": "Our cost is the average of what we paid on purchases. A red difference means Pepsi now charges more than our recorded cost, so the next stock will cost more: check selling rates. Items marked “Check” have a different MRP on the portal and are not used for order costs until you confirm them.",
-    "orders": "Orders on the portal",
-    "noOrders": "No orders on the portal yet."
+    "orders": "Pepsi orders (portal)",
+    "noOrders": "No orders on the portal yet.",
+    "order": "Order",
+    "asked": "You asked",
+    "corrected": "Pepsi made it",
+    "invoicedQty": "Invoiced",
+    "value": "Value",
+    "status": "Status",
+    "cancelled": "Cancelled",
+    "ordersHow": "Orange = Pepsi changed the quantity you asked for. Cases.",
+    "invoices": "Pepsi invoices",
+    "noInvoices": "No invoices in the last 60 days.",
+    "notEntered": "Not in Purchases",
+    "entered": "In Purchases",
+    "cases": "cases",
+    "invHow": "Values are before GST, as shown on the portal. Tap an invoice for its items.",
+    "unbooked": "{{n}} Pepsi invoice(s) are not entered as purchases yet: {{list}}. Enter them in Purchases so stock and costs are right."
   }
 }
