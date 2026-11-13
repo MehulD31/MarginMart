@@ -16,6 +16,8 @@ export async function probeOms({ env }) {
     // second pass: the endpoints that refused POST are GET (like get-portal-order-history)
     for (const p of ['report_server_filters/report-lookup', 'report_server_filters/one-click-report-lookup', 'report_server_filters/report-trigger-mapping', 'report_server_filters/report-status', 'ocp_os/get-orders-summary', 'ocp_os/get-order-correction-data', 'ocp_ao/get-allocated-order', 'ocp_po/get-purchase-order-summary', 'ocp_op/get-suggested-orders'])
       await t('GET ' + p, p, null, 'GET')
+    const rl = await s.call('report_server_filters/report-lookup', null, 'GET').catch(() => null)
+    console.log('\nREPORTS', (rl?.data ?? []).map((r) => ` |  |  | active= | updated `).join('\n'))
     await t('stock at source (node)', 'ocp/get-stock-at-source', { sender_node_code: '1042', receiver_node_code: node })
     await t('sku schemes (all)', 'ocp/get-sku-schemes', { receiver_node_code: node, tool: 'OMS' })
     console.log('\nprice rows', snap.prices.length, 'schemes', snap.schemes.length, 'vehicles', snap.vehicles.length, 'orders', snap.orders.length, 'pdp', short(snap.pdp, 200))
