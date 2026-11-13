@@ -125,7 +125,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <DayPnlCard link />
+      {profile?.role === 'admin' && <DayPnlCard link />}
 
       <Insights />
 
