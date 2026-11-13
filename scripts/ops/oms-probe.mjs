@@ -1,25 +1,25 @@
-// One-off, READ-ONLY look at the Pepsi portal. Prints our own data only; changes nothing, saves nothing.
-// Run: ops.yml mode=omsprobe. The login takes over the single portal session for a minute, then logs out.
-import { omsLogin, omsSnapshot } from './oms.mjs'
-
-const short = (x, n = 600) => { const t = typeof x === 'string' ? x : JSON.stringify(x); return t.length > n ? t.slice(0, n) + `… (${t.length} chars)` : t }
+// One-off, READ-ONLY check of how the Pepsi portal answers a second login while a session is already open (our own test session only).
+// Run: ops.yml mode=omsprobe. Nothing is read or saved from the portal.
+const B = 'https://oms.rjcorp.in/v1/api/'
+const login = async (u, p, take) => {
+  const r = await fetch(B + 'auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p, loginCurrentSystem: take }) })
+  const j = await r.json().catch(() => ({}))
+  return { status: r.status, response: j.response, message: j.message, hasToken: !!j.token, token: j.token, keys: Object.keys(j).join(',') }
+}
+const show = (name, x) => console.log(name, JSON.stringify({ status: x.status, response: x.response, message: x.message, hasToken: x.hasToken, keys: x.keys }))
 
 export async function probeOms({ env }) {
-  const s = await omsLogin(env('OMS_USER'), env('OMS_PASS'))
+  const u = env('OMS_USER'), p = env('OMS_PASS')
+  const a = await login(u, p, true)            // session A, like the sync today
+  show('A (takeover=true)', a)
   try {
-    const snap = await omsSnapshot(s)
-    console.log('node', snap.node)
-    const sk = snap.skus.find((x) => /MIRINDA/.test(x.sku_description)) ?? snap.skus[0]
-    console.log('SKU MASTER KEYS', Object.keys(sk ?? {}).join(' | '))
-    console.log('SKU SAMPLE', short(sk, 1500))
-    const wkeys = new Set()
-    for (const x of snap.skus) for (const k of Object.keys(x)) if (/weight|wt|kg|gross|net/i.test(k)) wkeys.add(k)
-    console.log('WEIGHT-LIKE KEYS', [...wkeys].join(', ') || '(none)')
-    const withW = snap.skus.filter((x) => Number(x.gross_weight ?? x.weight ?? x.gross_wt ?? 0) > 0).length
-    console.log('SKUs with a weight', withW, 'of', snap.skus.length)
-    const ao = await s.call('ocp_ao/get-allocated-order', null, 'GET').catch((e) => ({ error: e.message }))
-    const rows = ao.allocated_order ?? []
-    console.log('ALLOCATED rows', rows.length)
-    for (const r of rows.slice(0, 20)) console.log('AO', r.sku_code, '|', r.sku_description, '| final', r.final_order, '| gross_weight', r.gross_weight, '| h6', r.h6, '| h10', r.h10)
-  } finally { await s.logout() }
+    const b = await login(u, p, false)         // a second login that does NOT take over
+    show('B (takeover=false while A is open)', b)
+    if (b.token) await fetch(B + 'auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', authorization: b.token }, body: '{}' }).catch(() => null)
+  } finally {
+    if (a.token) await fetch(B + 'auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', authorization: a.token }, body: '{}' }).catch(() => null)
+  }
+  const c = await login(u, p, false)           // nothing open now: must succeed without taking over
+  show('C (takeover=false, nothing open)', c)
+  if (c.token) await fetch(B + 'auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', authorization: c.token }, body: '{}' }).catch(() => null)
 }
