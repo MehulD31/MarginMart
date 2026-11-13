@@ -28,7 +28,7 @@ export const reorderText = (rows, dateLabel) =>
 
 // Low stock but nothing sold in 30 days: not ordered automatically, the owner decides (owner, 12 Nov 2026).
 export const idleLowText = (rows) =>
-  rows.length ? `🧊 Stock kam hai par 30 din me bika nahi (${rows.length}). Ye order me nahi daale, aap decide karo:\n` + rows.map((r) => `• ${item(r.item)}: ${r.on_hand} peti`).join('\n') : ''
+  rows?.length ? `🧊 Stock kam hai par 30 din me bika nahi (${rows.length}). Ye order me nahi daale, aap decide karo:\n` + rows.map((r) => `• ${item(r.item)}: ${r.on_hand} peti`).join('\n') : ''
 
 const csvCell = (v) => {
   const s = v == null ? '' : String(v)

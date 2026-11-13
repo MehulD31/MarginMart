@@ -11,6 +11,7 @@ const DATA = {
   bot_sleeping: [],
   bot_day: DAY,
   bot_reorder: [{ item: 'Sting 250ml', need: 12, on_hand: 3, days_left: 1.5 }],
+  bot_idle_low: [{ item: '300ml Can Pepsi', on_hand: 5 }],
   bot_shop_card: { id: '11111111-1111-1111-1111-111111111111', name: 'Sai Baba General Store', locality: 'Shanti Nagar', phone: '9584810952', owner: 'Tarsam',
     route: 'V1', balance: 250000, overdue: 100000, credit_days: 7, entries: [{ type: 'invoice', amount_paise: 250000, mode: null, created_at: '2026-11-01T10:00:00Z' }],
     last_order: null, last_sale: null, orders_30d: 3 },
@@ -70,6 +71,8 @@ describe('slash commands', () => {
   it('/order gives a forwardable Pepsi order', async () => {
     await handleOpsCommand(msg(), '/order')
     expect(sent[0].text).toContain('• Sting 250ml: 12 peti')
+    expect(sent[1].text).toContain('bika nahi')
+    expect(sent[1].text).toContain('• 300ml Can Pepsi: 5 peti')
   })
   it('/menu shows buttons and refreshes the command list', async () => {
     await handleOpsCommand(msg(), '/menu')
