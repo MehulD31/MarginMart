@@ -62,8 +62,6 @@ export default function PepsiPage() {
       <div className="stats">
         <div className="stat"><div className="label">{t('pepsi.credit')}</div><div className="value num">{s.credit_paise != null ? formatPaise(s.credit_paise) : '—'}</div><div className="cell-sub">{t('pepsi.asOf', { at: when(s.credit_at) })}</div></div>
         <div className="stat"><div className="label">{t('pepsi.synced')}</div><div className="value" style={{ fontSize: 18 }}>{when(s.synced_at)}</div><div className="cell-sub">{s.distributor_name} · {s.distributor_code}</div></div>
-        <div className="stat"><div className="label">{t('pepsi.items')}</div><div className="value num">{priced.length}</div><div className="cell-sub">{t('pepsi.itemsSub', { n: skus.data.length })}</div></div>
-        <div className="stat"><div className="label">{t('pepsi.matched')}</div><div className="value num">{rows.length - unmatched}/{rows.length}</div><div className="cell-sub">{t('pepsi.matchedSub', { u: unmatched })}</div></div>
       </div>
 
       {!!changes.data?.length && (
