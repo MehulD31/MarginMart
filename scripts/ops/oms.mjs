@@ -139,6 +139,40 @@ export function invoiceLines(e2e) {
   }
   return [...m.values()]
 }
+/** Which kind of line is this? Pepsi writes the order type as text, sometimes several ("General Order, Range SKU Order").
+ * Near Expiry and Filler win (they change what we receive), then Specific MRP, Must Bill, Range, Promo/Freebie, General. */
+export function lineKind(typeDesc) {
+  const t = String(typeDesc ?? '').toLowerCase()
+  if (/near expiry/.test(t)) return 'near_expiry'
+  if (/filler/.test(t)) return 'filler'
+  if (/specific mrp/.test(t)) return 'specific_mrp'
+  if (/must bill/.test(t)) return 'must_bill'
+  if (/range/.test(t)) return 'range'
+  if (/promo|freebie/.test(t)) return 'promo'
+  if (/general/.test(t)) return 'general'
+  return 'other'
+}
+const clean = (x) => { const t = String(x ?? '').trim(); return !t || /^(nan|nat|none|null)$/i.test(t) ? null : t }
+/** Lines of the End to End report grouped by order + SKU + kind: what we asked, what Pepsi corrected, allocated, invoiced and deleted, and why. */
+export function orderLines(e2e) {
+  const m = new Map()
+  for (const r of e2e) {
+    const order_no = clean(r['Requested Order Number']), sku = clean(r['Sku Code'])
+    if (!order_no || !sku) continue
+    const kind = lineKind(r['Order Type Description Oms'])
+    const k = `${order_no}|${sku}|${kind}`
+    const x = m.get(k) ?? { order_no, sku_code: String(sku), kind, order_type: clean(r['Order Type Description Oms']), order_date: day(r['Order Date']), description: clean(r['Sku Description']),
+      asked: 0, corrected: 0, allocated: 0, invoiced: 0, deleted: 0, value_paise: 0, delete_reason: null, reject_reason: null }
+    x.asked += num(r['Pristine Order Quantity']); x.corrected += num(r['Corrected Order Quantity']); x.allocated += num(r['Allocated Order Quantity'])
+    x.invoiced += num(r['Invoiced Quantity Sap']); x.deleted += num(r['Deleted Quantity'])
+    x.value_paise += Math.round(num(r['Allocated Order Value'] || r['Corrected Order Value'] || r['Pristine Order Value']) * 100)
+    x.delete_reason ??= clean(r['Delete Reason Oms'])
+    x.reject_reason ??= clean(r['Rejection Des Sap']) ?? clean(r['Reason Of Rejection Sap'])
+    m.set(k, x)
+  }
+  return [...m.values()]
+}
+
 /** One row per Pepsi order (requested order number) with quantities at each stage and its status. */
 export function orderRows(e2e, summary = []) {
   const status = new Map(summary.map((r) => [r['Requested Order Number'], r['Order Status Desc']]))

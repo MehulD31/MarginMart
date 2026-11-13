@@ -1,7 +1,7 @@
 // Pepsi portal -> MarginMart sync (owner, 13 Nov 2026). READ-ONLY on the portal. Runs as MODE=oms and at the start of the
 // morning report. Writes oms_sku / oms_price_change / oms_map / oms_state, then tells Telegram what changed:
 // price changes on items we stock, a new order / invoice on the portal, and a failure (never silent).
-import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, unbookedInvoices } from './oms.mjs'
+import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, unbookedInvoices } from './oms.mjs'
 import { item } from './format.mjs'
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -56,11 +56,12 @@ export async function syncOms({ db, say, env }) {
     const [e2e, summary] = await Promise.all([
       omsReport(s, 'end_to_end_report', from, to, { ship_to_party: '', sales_office: '', sku_description: '', created_by_oms: '' }),
       omsReport(s, 'order_summary_report', from, to).catch(() => [])])
-    const ords = orderRows(e2e, summary), lines = invoiceLines(e2e)
+    const ords = orderRows(e2e, summary), lines = invoiceLines(e2e), olines = orderLines(e2e)
     const oldOrders = new Map((await db('oms_order?select=order_no,status,corrected,invoiced,asked')).map((o) => [o.order_no, o]))
     const knownInv = new Set((await db('oms_invoice_line?select=invoice_no')).map((l) => l.invoice_no))
     if (ords.length) await db('oms_order?on_conflict=order_no', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(ords.map((o) => ({ ...o, updated_at: now }))) })
     if (lines.length) await db('oms_invoice_line?on_conflict=invoice_no,sku_code', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lines) })
+    if (olines.length) await db('oms_order_line?on_conflict=order_no,sku_code,kind', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(olines.map((l) => ({ ...l, updated_at: now }))) })
     const purchases = (await db(`purchase?purchase_date=gte.${from}&select=invoice_no,purchase_date,purchase_line(qty)`)).map((p) => ({ ...p, cases: (p.purchase_line ?? []).reduce((a, l) => a + l.qty, 0) }))
     const unbooked = unbookedInvoices(lines, purchases)
     await db('oms_state?id=eq.1', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ unbooked }) })

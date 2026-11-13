@@ -52,7 +52,34 @@ describe('priceChanges / orderEvents', () => {
   })
 })
 
-import { invoiceLines, orderRows, unbookedInvoices } from './oms.mjs'
+import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind } from './oms.mjs'
+
+describe('orderLines', () => {
+  const r = (o) => ({ 'Requested Order Number': 'RO9', 'Order Date': '2026-11-13', 'Sku Code': '1892', 'Sku Description': 'PEPSI COLA 1.25 L PET 15 Rs50 PROMO', 'Order Type Description Oms': 'General Order',
+    'Pristine Order Quantity': 0, 'Corrected Order Quantity': 0, 'Allocated Order Quantity': 0, 'Invoiced Quantity Sap': 0, 'Deleted Quantity': 0, 'Allocated Order Value': 0,
+    'Delete Reason Oms': '', 'Rejection Des Sap': 'nan', ...o })
+  it('classifies Pepsi order types', () => {
+    expect(lineKind('Near Expiry Order - NS01')).toBe('near_expiry')
+    expect(lineKind('General Order, Range SKU Order')).toBe('range')
+    expect(lineKind('General Order, Specific MRP Order')).toBe('specific_mrp')
+    expect(lineKind('Filler Order')).toBe('filler')
+    expect(lineKind('Must Bill Order')).toBe('must_bill')
+    expect(lineKind('General Order')).toBe('general')
+    expect(lineKind('')).toBe('other')
+  })
+  it('keeps Near Expiry apart from General lines of the same SKU and carries reasons', () => {
+    const l = orderLines([
+      r({ 'Pristine Order Quantity': 15, 'Corrected Order Quantity': 15, 'Allocated Order Value': 9615 }),
+      r({ 'Order Type Description Oms': 'Near Expiry Order - NS01', 'Pristine Order Quantity': 15, 'Deleted Quantity': 15, 'Delete Reason Oms': 'PFA' }),
+      r({ 'Order Type Description Oms': 'Near Expiry Order - NS01', 'Corrected Order Quantity': 5 })])
+    expect(l.length).toBe(2)
+    expect(l.find((x) => x.kind === 'general')).toMatchObject({ asked: 15, corrected: 15, value_paise: 961500, delete_reason: null, reject_reason: null })
+    expect(l.find((x) => x.kind === 'near_expiry')).toMatchObject({ asked: 15, corrected: 5, deleted: 15, delete_reason: 'PFA' })
+  })
+  it('skips rows without an order or SKU', () => {
+    expect(orderLines([r({ 'Requested Order Number': '' }), r({ 'Sku Code': 'nan' })])).toEqual([])
+  })
+})
 const row = (o) => ({ 'Requested Order Number': 'RO1', 'Order Date': '2026-11-03', 'Sku Code': '4068', 'Sku Description': 'PEPSI BLACK 300ml CAN', 'Pristine Order Quantity': 0,
   'Corrected Order Quantity': 0, 'Allocated Order Quantity': 0, 'Invoiced Quantity Sap': 0, 'Invoiced Value Sap': 0, 'Invoice Number Sap': '', 'Invoiced Date Sap': 'NaT', 'Deleted Quantity': 0, ...o })
 describe('reports', () => {
