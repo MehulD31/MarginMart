@@ -11,7 +11,7 @@
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
 import { probeOms } from './oms-probe.mjs'
 import { syncOms } from './oms-sync.mjs'
-import { idleLowText, item, monthRange, reorderCard, reorderText, remindText, toCsv, waLink } from './format.mjs'
+import { idleLowText, item, monthRange, reorderCard, reorderText, remindText, toCsv, truckLoad, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, dmReply, needsAutoReply, rateDm, wantsRate, waShare } from './media.mjs'
 import { describe, esc, groupRows, split as splitLines, windowOf } from './activity.mjs'
@@ -685,7 +685,15 @@ async function diag() {
 async function sendOrder(reorder) {
   let credit = null
   try { const [st] = await db('oms_state?id=eq.1&select=credit_paise,credit_at,ok'); if (st?.credit_paise != null) credit = { paise: n(st.credit_paise), at: st.credit_at } } catch (e) { console.log('credit', e.message) }
-  const card = reorderCard(reorder, rs, hi(today), credit), forward = reorderText(reorder, hi(today))
+  let truck = null
+  try {
+    const skus = [...new Set(reorder.map((r) => r.pepsi_sku).filter(Boolean))]
+    const w = skus.length ? await db(`oms_sku?sku_code=in.(${skus.join(',')})&select=sku_code,gross_weight_kg`) : []
+    const [st] = await db('oms_state?id=eq.1&select=vehicles')
+    const cap = Number(st?.vehicles?.[0]?.weight_capacity) || 8000
+    truck = truckLoad(reorder, new Map(w.map((x) => [x.sku_code, Number(x.gross_weight_kg) || 0])), cap)
+  } catch (e) { console.log('truck', e.message) }
+  const card = reorderCard(reorder, rs, hi(today), credit, truck), forward = reorderText(reorder, hi(today))
   console.log('ORDER CARD >>>\n' + card + '\n<<<\nFORWARD >>>\n' + forward + '\n<<<')   // so the run log shows exactly what was sent
   await say(card, { parse_mode: 'HTML', disable_web_page_preview: true })
   await say(forward)

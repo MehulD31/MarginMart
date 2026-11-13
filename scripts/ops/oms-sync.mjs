@@ -24,7 +24,7 @@ export async function syncOms({ db, say, env }) {
     const now = new Date().toISOString()
     await db('oms_sku?on_conflict=sku_code', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(items.map((i) => ({ sku_code: i.sku_code, description: i.description, child: i.child, mrp_paise: i.mrp ? Math.round(i.mrp * 100) : null,
-        units_per_case: i.units_per_case, price_paise: i.price_paise, base_paise: i.base_paise, tax_paise: i.tax_paise, updated_at: now }))) })
+        units_per_case: i.units_per_case, gross_weight_kg: i.weight_kg, price_paise: i.price_paise, base_paise: i.base_paise, tax_paise: i.tax_paise, updated_at: now }))) })
     if (changes.length) await db('oms_price_change', { method: 'POST', headers: { Prefer: 'return=minimal' },
       body: JSON.stringify(changes.map((c) => ({ sku_code: c.sku_code, old_paise: c.old, new_paise: c.now }))) })
 

@@ -31,8 +31,26 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 
 // Owner-only card above the forwardable order (Telegram HTML): urgent items first, each with stock and days left,
 // then the total cost and what the numbers are based on.
+/** How full is the Pepsi truck? weights: Map sku_code -> kg per case (portal gross_weight). Rows without a portal SKU or weight are counted in `unknown`.
+ * Pepsi sizes orders to one truck (8,000 kg here) and adds filler when it is under ~70% (portal setting filler_truck_threshold). */
+export const truckLoad = (rows, weights, cap = 8000) => {
+  let kg = 0, unknown = 0
+  for (const r of rows) {
+    const w = weights.get(String(r.pepsi_sku ?? ''))
+    if (w > 0) kg += w * (Number(r.need) || 0); else unknown++
+  }
+  return { kg: Math.round(kg), cap, pct: cap > 0 ? Math.round((kg / cap) * 100) : 0, unknown }
+}
+export const truckLine = (t) => {
+  if (!t || t.kg <= 0) return ''
+  const base = `🚚 Truck: ~<b>${t.kg.toLocaleString('en-IN')} kg</b> = <b>${t.pct}%</b> of ${t.cap.toLocaleString('en-IN')} kg`
+  const tail = t.pct < 70 ? ' ⚠️ 70% se kam: Pepsi filler maal jod sakta hai ya order chhota maan sakta hai'
+    : t.pct > 100 ? ` · ~${Math.ceil(t.pct / 100)} truck ka order` : ' ✅ ek truck bhar jayega'
+  return base + tail + (t.unknown ? ` (${t.unknown} item ka wazan nahi mila, kuch zyada ho sakta hai)` : '')
+}
 // credit: { paise, at } from the Pepsi portal (optional) -> how much to pay Pepsi before this order can go.
-export const reorderCard = (rows, rs, dateLabel, credit = null) => {
+// truck: result of truckLoad (optional).
+export const reorderCard = (rows, rs, dateLabel, credit = null, truck = null) => {
   const line = (r) => {
     const out = Number(r.on_hand) <= 0
     const days = out || r.days_left == null ? '' : `~${Math.round(Number(r.days_left))} din chalega`
@@ -51,6 +69,7 @@ export const reorderCard = (rows, rs, dateLabel, credit = null) => {
     credit && cost > 0 ? (credit.paise >= cost
       ? `✅ Pepsi credit ${rs(credit.paise)} hai, order chal jayega`
       : `💳 Pepsi credit sirf ${rs(credit.paise)}. Order se pehle ~<b>${rs(cost - credit.paise)}</b> Pepsi ko bhejna hoga`) : '',
+    truckLine(truck),
     unpriced ? `⚠️ ${unpriced} item ka rate portal se match nahi hua, unka hisaab hamare average cost se hai (GST ke bina ho sakta hai). Asli bill ~20% tak zyada ho sakta hai.` : '',
     urgent.length ? `\n🔴 <b>Abhi chahiye</b> (delivery aane se pehle khatam)\n${urgent.map(line).join('\n')}` : '',
     rest.length ? `\n🟡 <b>Is hafte ke liye</b>\n${rest.map(line).join('\n')}` : '',

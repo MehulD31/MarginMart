@@ -46,7 +46,7 @@ export function omsItems(snap) {
   }
   return snap.skus.map((s) => ({
     sku_code: String(s.sku_code), description: s.sku_description, child: s.child_sku_description ?? null, mrp: Number(s.mrp) || null,
-    units_per_case: Number(s.factor_Case_BT) || null, brand: s.h6 ?? null, flavour: s.h8 ?? null, size: s.h9 ?? null, pack: s.h10 ?? null,
+    units_per_case: Number(s.factor_Case_BT) || null, weight_kg: Number(s.gross_weight) || null, brand: s.h6 ?? null, flavour: s.h8 ?? null, size: s.h9 ?? null, pack: s.h10 ?? null,
     price_paise: price.has(String(s.sku_code)) ? Math.round(price.get(String(s.sku_code)).price * 100) : null,
     base_paise: price.has(String(s.sku_code)) ? Math.round(price.get(String(s.sku_code)).base * 100) : null,
     tax_paise: price.has(String(s.sku_code)) ? Math.round(price.get(String(s.sku_code)).tax * 100) : null,

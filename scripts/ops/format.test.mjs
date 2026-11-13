@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { idleLowText, item, monthRange, reorderCard, reorderText, toCsv, waLink, waNumber } from './format.mjs'
+import { idleLowText, item, monthRange, reorderCard, reorderText, toCsv, truckLoad, waLink, waNumber } from './format.mjs'
 
 describe('item', () => {
   it('shows doubled catalogue names once', () => {
@@ -56,6 +56,21 @@ describe('reorderCard', () => {
     expect(reorderCard([priced], rs)).not.toContain('portal se match nahi')
     const t = reorderCard([priced, { ...priced, item: 'B', pepsi_sku: null }, { ...priced, item: 'C', pepsi_sku: undefined, cost_paise: 0 }], rs)
     expect(t).toContain('1 item ka rate portal se match nahi')
+  })
+  it('shows how full the 8,000 kg truck is and warns under 70% (Pepsi adds filler)', () => {
+    const w = new Map([['1', 12.9], ['2', 19.9]])
+    const r = (sku, need) => ({ item: 'x' + sku, need, on_hand: 1, days_left: 1, per_day: 1, cost_paise: 100, pepsi_sku: sku })
+    const small = truckLoad([r('1', 100), r('2', 50)], w)            // 1290 + 995 = 2285 kg
+    expect(small).toMatchObject({ kg: 2285, pct: 29, unknown: 0 })
+    expect(reorderCard([r('1', 100), r('2', 50)], rs, '', null, small)).toContain('29%')
+    expect(reorderCard([r('1', 100), r('2', 50)], rs, '', null, small)).toContain('70% se kam')
+    const full = truckLoad([r('1', 600)], w)                           // 7740 kg = 97%
+    expect(reorderCard([r('1', 600)], rs, '', null, full)).toContain('ek truck bhar jayega')
+    const two = truckLoad([r('1', 1000)], w)                           // 12900 kg
+    expect(reorderCard([r('1', 1000)], rs, '', null, two)).toContain('2 truck ka order')
+    expect(truckLoad([r('9', 10)], w)).toMatchObject({ kg: 0, unknown: 1 })
+    expect(reorderCard([r('9', 10)], rs, '', null, truckLoad([r('9', 10)], w))).not.toContain('Truck:')
+    expect(truckLoad([r('1', 10), { ...r('3', 5), pepsi_sku: null }], w)).toMatchObject({ unknown: 1 })
   })
   it('has no urgent section when nothing is urgent, and escapes names', () => {
     const t = reorderCard([{ item: 'A & B <x>', need: 1, on_hand: 5, days_left: 9, per_day: 1, cost_paise: 100 }], rs)
