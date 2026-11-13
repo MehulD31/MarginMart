@@ -108,6 +108,7 @@ export default function PepsiPage() {
 
 interface Order { order_no: string; ordered_on: string | null; created_by: string | null; status: string | null; asked: number; corrected: number; allocated: number; invoiced: number; deleted: number; value_paise: number; invoiced_paise: number }
 interface InvLine { invoice_no: string; sku_code: string; description: string | null; invoiced_on: string | null; order_no: string | null; qty: number; value_paise: number }
+interface OrderLine { order_no: string; sku_code: string; kind: string; order_date: string | null; description: string | null; asked: number; corrected: number; allocated: number; invoiced: number; deleted: number; delete_reason: string | null }
 interface Unbooked { invoice_no: string; on: string | null; qty: number; value_paise: number; lines: number }
 
 /** Pepsi's side of every order: what we asked for, what they changed it to, what they invoiced; plus invoices not yet entered as purchases. */
@@ -122,6 +123,9 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
     return [...m.values()]
   }, [lines.data])
   const pending = new Set(unbooked.map((u) => u.invoice_no))
+  const special = useQuery({ queryKey: ['oms_order_line_special'], queryFn: () => must<OrderLine[]>(supabase.from('oms_order_line').select('order_no,sku_code,kind,order_date,description,asked,corrected,allocated,invoiced,deleted,delete_reason')
+    .in('kind', ['near_expiry', 'specific_mrp', 'filler']).order('order_date', { ascending: false }).limit(60)) })
+  const kindLabel = (k: string) => (k === 'near_expiry' ? t('pepsi.kindNearExpiry') : k === 'filler' ? t('pepsi.kindFiller') : t('pepsi.kindSpecificMrp'))
   return (
     <>
       {!!unbooked.length && <Alert msg={{ kind: 'warn', text: t('pepsi.unbooked', { n: unbooked.length, list: unbooked.map((u) => `${u.invoice_no} (${u.on ?? ''}, ${u.qty} ${t('pepsi.cases')})`).join(', ') }) }} />}
@@ -141,6 +145,21 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
               </tr>))}</tbody>
           </table></div>)}
         <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.ordersHow')}</p>
+      </div>
+      <div className="card stack" style={{ gap: 8 }}>
+        <b>{t('pepsi.special')}</b>
+        {!special.data?.length ? <span className="cell-sub">{t('pepsi.noSpecial')}</span> : (
+          <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="pepsi-special">
+            <thead><tr><th scope="col">{t('pepsi.item')}</th><th scope="col">{t('pepsi.order')}</th><th scope="col">{t('pepsi.askedShort')}</th><th scope="col">{t('pepsi.gotShort')}</th></tr></thead>
+            <tbody>{special.data.map((l) => (
+              <tr key={`${l.order_no}-${l.sku_code}-${l.kind}`}>
+                <td className="lead"><span className={`badge ${l.kind === 'near_expiry' ? 'badge-red' : 'badge-amber'} badge-wrap`}>{kindLabel(l.kind)}</span> {l.description}</td>
+                <td data-label={t('pepsi.order')}>{l.order_no}<div className="cell-sub">{l.order_date}</div></td>
+                <td className="num" data-label={t('pepsi.askedShort')}>{l.asked || '—'}</td>
+                <td className="num" data-label={t('pepsi.gotShort')}>{l.invoiced || l.allocated || (l.deleted ? `0 (${l.delete_reason ?? t('pepsi.cancelled')})` : '—')}</td>
+              </tr>))}</tbody>
+          </table></div>)}
+        <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.specialHow')}</p>
       </div>
       <div className="card stack" style={{ gap: 8 }}>
         <b>{t('pepsi.invoices')}</b>

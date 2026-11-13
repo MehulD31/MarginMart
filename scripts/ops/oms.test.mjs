@@ -52,7 +52,7 @@ describe('priceChanges / orderEvents', () => {
   })
 })
 
-import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind } from './oms.mjs'
+import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews } from './oms.mjs'
 
 describe('orderLines', () => {
   const r = (o) => ({ 'Requested Order Number': 'RO9', 'Order Date': '2026-11-13', 'Sku Code': '1892', 'Sku Description': 'PEPSI COLA 1.25 L PET 15 Rs50 PROMO', 'Order Type Description Oms': 'General Order',
@@ -75,6 +75,14 @@ describe('orderLines', () => {
     expect(l.length).toBe(2)
     expect(l.find((x) => x.kind === 'general')).toMatchObject({ asked: 15, corrected: 15, value_paise: 961500, delete_reason: null, reject_reason: null })
     expect(l.find((x) => x.kind === 'near_expiry')).toMatchObject({ asked: 15, corrected: 5, deleted: 15, delete_reason: 'PFA' })
+  })
+  it('announces new or bigger special lines once, grouped by order, never lines we do not get', () => {
+    const L = (o) => ({ order_no: 'RO1', sku_code: '1', kind: 'near_expiry', description: 'PEPSI 1.25L', allocated: 5, invoiced: 5, ...o })
+    const lines = [L({}), L({ sku_code: '2', kind: 'specific_mrp', description: 'MIRINDA 400', allocated: 100, invoiced: 0 }), L({ sku_code: '3', allocated: 0, invoiced: 0 }), L({ sku_code: '4', kind: 'general' })]
+    const n = specialNews(new Map(), lines)
+    expect(n).toEqual([{ order_no: 'RO1', items: [{ kind: 'near_expiry', description: 'PEPSI 1.25L', qty: 5 }, { kind: 'specific_mrp', description: 'MIRINDA 400', qty: 100 }] }])
+    expect(specialNews(new Map([['RO1|1|near_expiry', 5], ['RO1|2|specific_mrp', 100]]), lines)).toEqual([])
+    expect(specialNews(new Map([['RO1|1|near_expiry', 2]]), [L({})])[0].items[0].qty).toBe(5)
   })
   it('skips rows without an order or SKU', () => {
     expect(orderLines([r({ 'Requested Order Number': '' }), r({ 'Sku Code': 'nan' })])).toEqual([])

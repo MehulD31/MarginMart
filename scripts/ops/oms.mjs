@@ -173,6 +173,22 @@ export function orderLines(e2e) {
   return [...m.values()]
 }
 
+/** Special lines (Near Expiry, Specific MRP, Filler) we have not announced yet: new, or the quantity we get went up. Grouped by order.
+ * prev: Map "order|sku|kind" -> quantity we got when last seen. Lines where we get nothing (cut or deleted) are not news. */
+export function specialNews(prev, lines) {
+  const out = new Map()
+  for (const l of lines) {
+    if (!['near_expiry', 'specific_mrp', 'filler'].includes(l.kind)) continue
+    const got = l.invoiced || l.allocated || 0
+    const was = prev.get(`${l.order_no}|${l.sku_code}|${l.kind}`)
+    if (!got || (was !== undefined && was >= got)) continue
+    const o = out.get(l.order_no) ?? { order_no: l.order_no, items: [] }
+    o.items.push({ kind: l.kind, description: l.description, qty: got })
+    out.set(l.order_no, o)
+  }
+  return [...out.values()]
+}
+
 /** One row per Pepsi order (requested order number) with quantities at each stage and its status. */
 export function orderRows(e2e, summary = []) {
   const status = new Map(summary.map((r) => [r['Requested Order Number'], r['Order Status Desc']]))

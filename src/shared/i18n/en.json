@@ -1666,7 +1666,15 @@
     "entered": "In Purchases",
     "cases": "cases",
     "invHow": "Values are before GST, as shown on the portal. Tap an invoice for its items.",
-    "unbooked": "{{n}} Pepsi invoice(s) are not entered as purchases yet: {{list}}. Enter them in Purchases so stock and costs are right."
+    "unbooked": "{{n}} Pepsi invoice(s) are not entered as purchases yet: {{list}}. Enter them in Purchases so stock and costs are right.",
+    "special": "Lines Pepsi added to your orders",
+    "specialHow": "Pepsi adds Near Expiry and Specific MRP stock, and filler to fill the truck. “Got” is what Pepsi allocated and invoiced. Check the expiry of Near Expiry cases when they arrive and sell them first.",
+    "kindNearExpiry": "Near expiry",
+    "kindSpecificMrp": "Specific MRP",
+    "kindFiller": "Filler",
+    "askedShort": "Asked",
+    "gotShort": "Got",
+    "noSpecial": "No Near Expiry, Specific MRP or filler lines in the last 60 days."
   },
   "srep": {
     "title": "Sales report",

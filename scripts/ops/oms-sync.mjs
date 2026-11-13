@@ -1,7 +1,7 @@
 // Pepsi portal -> MarginMart sync (owner, 13 Nov 2026). READ-ONLY on the portal. Runs as MODE=oms and at the start of the
 // morning report. Writes oms_sku / oms_price_change / oms_map / oms_state, then tells Telegram what changed:
 // price changes on items we stock, a new order / invoice on the portal, and a failure (never silent).
-import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, unbookedInvoices } from './oms.mjs'
+import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, unbookedInvoices } from './oms.mjs'
 import { item } from './format.mjs'
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -61,6 +61,8 @@ export async function syncOms({ db, say, env }) {
     const knownInv = new Set((await db('oms_invoice_line?select=invoice_no')).map((l) => l.invoice_no))
     if (ords.length) await db('oms_order?on_conflict=order_no', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(ords.map((o) => ({ ...o, updated_at: now }))) })
     if (lines.length) await db('oms_invoice_line?on_conflict=invoice_no,sku_code', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lines) })
+    const oldLines = await db('oms_order_line?select=order_no,sku_code,kind,allocated,invoiced&limit=5000')
+    const specials = oldLines.length ? specialNews(new Map(oldLines.map((l) => [`${l.order_no}|${l.sku_code}|${l.kind}`, Number(l.invoiced) || Number(l.allocated) || 0])), olines) : []   // first import: no announcements
     if (olines.length) await db('oms_order_line?on_conflict=order_no,sku_code,kind', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(olines.map((l) => ({ ...l, updated_at: now }))) })
     const purchases = (await db(`purchase?purchase_date=gte.${from}&select=invoice_no,purchase_date,purchase_line(qty)`)).map((p) => ({ ...p, cases: (p.purchase_line ?? []).reduce((a, l) => a + l.qty, 0) }))
     const unbooked = unbookedInvoices(lines, purchases)
@@ -78,6 +80,12 @@ export async function syncOms({ db, say, env }) {
 
     // 4. Telegram: only what matters, only when it changes
     if (orderNews.length) await say(orderNews.join('\n'), { parse_mode: 'HTML' })
+    const KIND = { near_expiry: '⏳ Near Expiry', specific_mrp: '🏷 Specific MRP', filler: '📦 Filler' }
+    for (const o of specials) {
+      await say([`⚠️ <b>Pepsi order ${esc(o.order_no)}</b> me Pepsi ne ye alag maal daala hai:`,
+        ...o.items.map((i) => `▸ ${KIND[i.kind]}: ${esc(i.description)}: <b>${i.qty}</b> peti`),
+        '<i>Near Expiry peti aate hi expiry check karo aur pehle becho. Specific MRP ka MRP/rate alag ho sakta hai, purchase me dhyan se likho.</i>'].join('\n'), { parse_mode: 'HTML' })
+    }
     for (const no of newInv) {
       const ls = lines.filter((l) => l.invoice_no === no)
       await say([`🧾 <b>Pepsi invoice ${esc(no)}</b> · ${ls[0]?.invoiced_on ?? ''}`, `${ls.reduce((a, l) => a + l.qty, 0)} peti · ${rs(ls.reduce((a, l) => a + l.value_paise, 0))} (GST se pehle)`,
@@ -96,7 +104,7 @@ export async function syncOms({ db, say, env }) {
         e.value ? `Value: ${rs(e.value * 100)}` : '', e.qty ? `Qty: ${e.qty} peti` : '', e.invoice ? `Invoice: ${esc(e.invoice)}` : '',
         e.kind === 'invoiced' ? '→ Maal aate hi Purchases me ye invoice entry karo.' : ''].filter(Boolean).join('\n'), { parse_mode: 'HTML' })
     }
-    console.log(`oms sync ok: ${items.length} skus, ${maps.length} mapped, ${changes.length} price changes, ${events.length} order events, credit ${credit}, ${ords.length} orders, ${lines.length} invoice lines, ${unbooked.length} unbooked, ${orderNews.length + newInv.length} news`)
+    console.log(`oms sync ok: ${items.length} skus, ${maps.length} mapped, ${changes.length} price changes, ${events.length} order events, credit ${credit}, ${ords.length} orders, ${lines.length} invoice lines, ${unbooked.length} unbooked, ${orderNews.length + newInv.length + specials.length} news (${specials.length} special)`)
     return { items, maps, changes, events, credit, node: snap.node, unbooked }
   } catch (e) {
     await db('oms_state?id=eq.1', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ok: false, error: String(e.message).slice(0, 300) }) }).catch(() => {})
