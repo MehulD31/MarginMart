@@ -1578,7 +1578,7 @@
       "buy": "Buy price",
       "sell": "Avg sold",
       "trade": "Pepsi rate",
-      "zones": "loses money Â· earns"
+      "zones": "loses money · earns"
     },
     "none": "No products with prices or sales yet.",
     "sold": "{{n}} cases in {{d}} days",

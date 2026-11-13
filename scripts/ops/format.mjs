@@ -32,20 +32,22 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 // then the total cost and what the numbers are based on.
 export const reorderCard = (rows, rs, dateLabel) => {
   const line = (r) => {
-    const days = r.days_left == null ? '' : Number(r.days_left) <= 0 ? 'stock khatam' : `~${Math.round(Number(r.days_left))} din chalega`
-    const sells = Number(r.per_day) > 0 ? `roz ~${r.per_day} peti bikta hai` : ''
-    const meta = [`stock ${r.on_hand}`, days, sells, r.thin ? 'kam data' : ''].filter(Boolean).join(' � ')
-    return `? <b>${esc(item(r.item))}</b> � <b>${r.need} peti</b>\n    <i>${meta}</i>`
+    const out = Number(r.on_hand) <= 0
+    const days = out || r.days_left == null ? '' : `~${Math.round(Number(r.days_left))} din chalega`
+    const pd = Number(r.per_day)
+    const sells = pd >= 1 ? `roz ~${Math.round(pd)} peti bikta hai` : pd > 0 ? `hafte me ~${Math.max(1, Math.round(pd * 7))} peti bikta hai` : ''
+    const meta = [out ? 'stock khatam' : `stock ${r.on_hand} peti`, days, sells, r.thin ? 'kam data' : ''].filter(Boolean).join(' · ')
+    return `▸ <b>${esc(item(r.item))}</b> — <b>${r.need} peti</b>\n    <i>${meta}</i>`
   }
   const urgent = rows.filter((r) => r.urgent), rest = rows.filter((r) => !r.urgent)
   const cost = rows.reduce((a, r) => a + (Number(r.cost_paise) || 0), 0)
   return [
-    `?? <b>Pepsi Order${dateLabel ? ' � ' + esc(dateLabel) : ''}</b>`,
-    `${rows.length} item${cost > 0 ? ` � kul ~<b>${rs(cost)}</b> ka maal` : ''}`,
-    urgent.length ? `\n?? <b>Abhi chahiye</b> (delivery aane se pehle khatam)\n${urgent.map(line).join('\n')}` : '',
-    rest.length ? `\n?? <b>Is hafte ke liye</b>\n${rest.map(line).join('\n')}` : '',
+    `📝 <b>Pepsi Order${dateLabel ? ' · ' + esc(dateLabel) : ''}</b>`,
+    `${rows.length} item${cost > 0 ? ` · kul ~<b>${rs(cost)}</b> ka maal` : ''}`,
+    urgent.length ? `\n🔴 <b>Abhi chahiye</b> (delivery aane se pehle khatam)\n${urgent.map(line).join('\n')}` : '',
+    rest.length ? `\n🟡 <b>Is hafte ke liye</b>\n${rest.map(line).join('\n')}` : '',
     '\n<i>Pichhle hafte ki bikri, trend, season aur delivery time ke hisaab se.</i>',
-    '?? Neeche wala message Pepsi ko forward karo',
+    '👇 Neeche wala message Pepsi ko forward karo',
   ].filter(Boolean).join('\n')
 }
 // Low stock but nothing sold in 30 days: not ordered automatically, the owner decides (owner, 12 Nov 2026).

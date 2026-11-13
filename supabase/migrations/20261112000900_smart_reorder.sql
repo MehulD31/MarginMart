@@ -47,7 +47,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
                      / nullif(case when extract(month from cfg.today)::int = any (cfg.seasons) then cfg.pon else cfg.poff end, 0) end f
       from cfg),
   base as (
-    select p.name_en || coalesce(' ' || nullif(v.flavour_en, ''), '') item, p.sort, s.on_hand, s.avg_cost_paise,
+    select case when v.flavour_en = p.name_en then p.name_en else v.flavour_en || ' ' || p.name_en end item, p.sort, s.on_hand, s.avg_cost_paise,
            coalesce(bk.q, 0) booked, coalesce(st.sell_days, 0) sell_days, cfg.lead, cfg.cyc,
            (0.6 * coalesce(st.last7, 0)::numeric / least(hist.h, 7) + 0.4 * coalesce(st.tot, 0)::numeric / hist.h)
              * case when s.on_hand <= 0 then 1.25 else 1 end * coalesce(season.f, 1) rate,

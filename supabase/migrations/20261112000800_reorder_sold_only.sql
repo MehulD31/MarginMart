@@ -18,7 +18,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
       join public.orders o on o.id = ol.order_id join public.route_day_plan p on p.id = o.route_day_plan_id
      where o.status in ('placed', 'locked') and p.date >= current_date group by 1),
   calc as (
-    select p.name_en || coalesce(' ' || nullif(v.flavour_en, ''), '') item, s.on_hand, coalesce(b.q, 0) booked,
+    select case when v.flavour_en = p.name_en then p.name_en else v.flavour_en || ' ' || p.name_en end item, s.on_hand, coalesce(b.q, 0) booked,
            round(coalesce(sd.per_day, 0), 1) per_day, p.sort,
            case when coalesce(sd.per_day, 0) > 0 then round((s.on_hand - coalesce(b.q, 0)) / sd.per_day, 1) end days_left,
            greatest(ceil(coalesce(sd.per_day, 0) * p_cover_days + coalesce(b.q, 0) - s.on_hand),
@@ -36,7 +36,7 @@ $$;
 create or replace function public.ops_idle_low()
 returns jsonb language sql stable security definer set search_path = '' as $$
   select coalesce(jsonb_agg(jsonb_build_object('item', x.item, 'on_hand', x.on_hand) order by x.on_hand, x.sort), '[]'::jsonb) from (
-    select p.name_en || coalesce(' ' || nullif(v.flavour_en, ''), '') item, s.on_hand, p.sort
+    select case when v.flavour_en = p.name_en then p.name_en else v.flavour_en || ' ' || p.name_en end item, s.on_hand, p.sort
       from public.stock s join public.variant v on v.id = s.variant_id join public.pack p on p.id = v.pack_id
       join public._bought_items() bi on bi.variant_id = s.variant_id
      where v.active and p.active and s.low_threshold > 0 and s.on_hand <= s.low_threshold

@@ -32,19 +32,21 @@ describe('waNumber / waLink', () => {
 })
 
 describe('reorderCard', () => {
-  const rs = (p) => `?${p / 100}`
+  const rs = (p) => `â‚¹${p / 100}`
   const rows = [
     { item: 'Nimbooz 345ml Nimbooz 345ml', need: 39, on_hand: 24, days_left: 6.9, per_day: 3.5, urgent: false, cost_paise: 100000 },
     { item: 'Pepsi 400ml', need: 32, on_hand: 0, days_left: 0, per_day: 2.2, urgent: true, cost_paise: 50000 },
     { item: 'Slice Tetra 125ml', need: 3, on_hand: 14, days_left: 12.9, per_day: 1.1, urgent: false, thin: true, cost_paise: 0 }]
   it('puts urgent items first with stock and days left, and totals the cost', () => {
     const t = reorderCard(rows, rs, '13 Nov')
-    expect(t).toContain('<b>Pepsi Order · 13 Nov</b>')
-    expect(t).toContain('3 item · kul ~<b>?1500</b>')
+    expect(t).toContain('<b>Pepsi Order Â· 13 Nov</b>')
+    expect(t).toContain('3 item Â· kul ~<b>â‚¹1500</b>')
     expect(t.indexOf('Abhi chahiye')).toBeLessThan(t.indexOf('Is hafte ke liye'))
-    expect(t).toContain('? <b>Pepsi 400ml</b> — <b>32 peti</b>')
-    expect(t).toContain('stock 0 · stock khatam')
-    expect(t).toContain('stock 24 · ~7 din chalega · roz ~3.5 peti bikta hai')
+    expect(t).toContain('â–¸ <b>Pepsi 400ml</b> â€” <b>32 peti</b>')
+    expect(t).toContain('stock khatam Â· roz ~2 peti bikta hai')
+    expect(t).not.toContain('stock 0')
+    expect(t).toContain('stock 24 peti Â· ~7 din chalega Â· roz ~4 peti bikta hai')
+    expect(t).toContain('stock 14 peti Â· ~13 din chalega Â· roz ~1 peti bikta hai')
     expect(t).toContain('kam data')
     expect(t).toContain('Nimbooz 345ml</b>')
     expect(t).not.toContain('Nimbooz 345ml Nimbooz')

@@ -658,8 +658,10 @@ async function diag() {
 // The Pepsi order as three messages: the owner's card (urgent first, cost, why), the clean text to forward, and the
 // low-stock items that did not sell (owner decides). Used by the morning plan and by MODE=order (on demand).
 async function sendOrder(reorder) {
-  await say(reorderCard(reorder, rs, hi(today)), { parse_mode: 'HTML', disable_web_page_preview: true })
-  await say(reorderText(reorder, hi(today)))
+  const card = reorderCard(reorder, rs, hi(today)), forward = reorderText(reorder, hi(today))
+  console.log('ORDER CARD >>>\n' + card + '\n<<<\nFORWARD >>>\n' + forward + '\n<<<')   // so the run log shows exactly what was sent
+  await say(card, { parse_mode: 'HTML', disable_web_page_preview: true })
+  await say(forward)
   try { const idle = idleLowText(await rpc('ops_idle_low', {})); if (idle) await say(idle) } catch (e) { console.log('idle low', e.message) }
 }
 async function order() {
