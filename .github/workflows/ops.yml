@@ -5,7 +5,7 @@ name: ops
 on:
   workflow_dispatch:
     inputs:
-      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask | media | ads", required: true, default: watchdog }
+      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask | media | ads | order", required: true, default: watchdog }
       question: { description: "for mode=ask", required: false, default: "" }
       force: { description: "1 = send again even if already sent", required: false, default: "" }
       file: { description: "mode=media: Telegram file_id of the video/photo", required: false, default: "" }

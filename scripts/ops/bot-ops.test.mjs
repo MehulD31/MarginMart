@@ -72,7 +72,7 @@ describe('slash commands', () => {
     await handleOpsCommand(msg(), '/order')
     expect(sent[1].text).toContain('• Sting 250ml: 12 peti')
     expect(sent[1].text).not.toContain('🔴')
-    expect(sent[0].text).toContain('Jaldi chahiye')
+    expect(sent[0].text).toContain('Abhi chahiye')
     expect(sent[0].text).toContain('₹6,000')
     expect(sent.some((m) => m.text.includes('bika nahi') && m.text.includes('• 300ml Can Pepsi: 5 peti'))).toBe(true)
   })

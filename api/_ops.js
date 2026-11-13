@@ -7,7 +7,7 @@ import { detectIntent } from './_intent.js'
 import { askJson } from './_sale.js'
 import { parseKharcha } from '../src/shared/kharcha.js'
 import { dayText, weekText } from '../scripts/ops/report.mjs'
-import { idleLowText, item, reorderNote, reorderText, remindText, waLink } from '../scripts/ops/format.mjs'
+import { idleLowText, item, reorderCard, reorderText, remindText, waLink } from '../scripts/ops/format.mjs'
 import { finishCaption, postIdOf } from '../scripts/ops/media.mjs'
 
 const env = new Proxy({}, { get: (_, k) => String(process.env[k] ?? '').trim() })
@@ -25,8 +25,8 @@ async function rpc(fn, args) {
 }
 const tg = (method, payload) => fetch(`https://api.telegram.org/bot${env.KD_BOT_TOKEN}/${method}`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then((r) => r.json()).catch(() => null)
-const send = (chat, text, buttons) => tg('sendMessage', { chat_id: chat, text: String(text).slice(0, 4000), disable_web_page_preview: true,
-  ...(buttons ? { reply_markup: { inline_keyboard: buttons } } : {}) })
+const send = (chat, text, buttons, extra = {}) => tg('sendMessage', { chat_id: chat, text: String(text).slice(0, 4000), disable_web_page_preview: true,
+  ...(buttons ? { reply_markup: { inline_keyboard: buttons } } : {}), ...extra })
 const typing = (chat) => tg('sendChatAction', { chat_id: chat, action: 'typing' })
 const ago = (iso) => { if (!iso) return 'kabhi nahi'; const d = Math.floor((Date.now() - Date.parse(iso)) / 864e5); return d <= 0 ? 'aaj' : `${d} din pehle` }
 const back = [{ text: '🏠 Menu', callback_data: 'm:menu' }]
@@ -132,7 +132,7 @@ async function order(chat) {
   const rows = await rpc('bot_reorder', {})
   const idle = idleLowText(await rpc('bot_idle_low', {}).catch(() => []))
   if (!rows.length) return send(chat, `✅ Abhi kuch mangane ki zaroorat nahi (7 din ka stock hai).${idle ? '\n\n' + idle : ''}`, [back])
-  await send(chat, `📝 Pepsi order taiyaar. Neeche wala message forward kar do.\n\n${reorderNote(rows, rs)}`, [])
+  await send(chat, reorderCard(rows, rs, hiDate(todayIST())), undefined, { parse_mode: 'HTML' })
   await send(chat, reorderText(rows, hiDate(todayIST())), [back])
   if (idle) await send(chat, idle, [back])
 }

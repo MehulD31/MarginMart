@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { idleLowText, item, monthRange, reorderNote, reorderText, toCsv, waLink, waNumber } from './format.mjs'
+import { idleLowText, item, monthRange, reorderCard, reorderText, toCsv, waLink, waNumber } from './format.mjs'
 
 describe('item', () => {
   it('shows doubled catalogue names once', () => {
@@ -31,19 +31,30 @@ describe('waNumber / waLink', () => {
   })
 })
 
-describe('reorderNote', () => {
-  const rs = (p) => `â‚¹${p / 100}`
-  it('flags urgent items, totals the cost and says what it is based on', () => {
-    const t = reorderNote([{ item: 'Nimbooz 345ml', urgent: true, cost_paise: 100000 }, { item: 'Slice Tetra 125ml', thin: true, cost_paise: 50000 }], rs)
-    expect(t).toContain('ðŸ”´ Jaldi chahiye')
-    expect(t).toContain('Nimbooz')
-    expect(t).toContain('â‚¹1500')
-    expect(t).toContain('Kam data')
-    expect(t).toContain('trend, season aur delivery time')
+describe('reorderCard', () => {
+  const rs = (p) => `?${p / 100}`
+  const rows = [
+    { item: 'Nimbooz 345ml Nimbooz 345ml', need: 39, on_hand: 24, days_left: 6.9, per_day: 3.5, urgent: false, cost_paise: 100000 },
+    { item: 'Pepsi 400ml', need: 32, on_hand: 0, days_left: 0, per_day: 2.2, urgent: true, cost_paise: 50000 },
+    { item: 'Slice Tetra 125ml', need: 3, on_hand: 14, days_left: 12.9, per_day: 1.1, urgent: false, thin: true, cost_paise: 0 }]
+  it('puts urgent items first with stock and days left, and totals the cost', () => {
+    const t = reorderCard(rows, rs, '13 Nov')
+    expect(t).toContain('<b>Pepsi Order · 13 Nov</b>')
+    expect(t).toContain('3 item · kul ~<b>?1500</b>')
+    expect(t.indexOf('Abhi chahiye')).toBeLessThan(t.indexOf('Is hafte ke liye'))
+    expect(t).toContain('? <b>Pepsi 400ml</b> — <b>32 peti</b>')
+    expect(t).toContain('stock 0 · stock khatam')
+    expect(t).toContain('stock 24 · ~7 din chalega · roz ~3.5 peti bikta hai')
+    expect(t).toContain('kam data')
+    expect(t).toContain('Nimbooz 345ml</b>')
+    expect(t).not.toContain('Nimbooz 345ml Nimbooz')
   })
-  it('has no urgent line when nothing is urgent', () => expect(reorderNote([{ item: 'Sting', cost_paise: 100 }], rs)).not.toContain('Jaldi'))
+  it('has no urgent section when nothing is urgent, and escapes names', () => {
+    const t = reorderCard([{ item: 'A & B <x>', need: 1, on_hand: 5, days_left: 9, per_day: 1, cost_paise: 100 }], rs)
+    expect(t).not.toContain('Abhi chahiye')
+    expect(t).toContain('A &amp; B &lt;x&gt;')
+  })
 })
-
 describe('idleLowText', () => {
   it('lists low-stock items that did not sell, and is empty when none', () => {
     expect(idleLowText([{ item: '300ml Can Pepsi', on_hand: 5 }])).toContain('â€¢ 300ml Can Pepsi: 5 peti')

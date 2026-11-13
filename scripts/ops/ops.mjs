@@ -9,7 +9,7 @@
 //   MODE=ask       QUESTION="..."  answers an owner's /ask from the live numbers (free Gemini key)
 // Every job writes public.ops_log (job, key). A re-run of the same thing sees the row and does nothing (FORCE=1 overrides).
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
-import { idleLowText, item, monthRange, reorderNote, reorderText, remindText, toCsv, waLink } from './format.mjs'
+import { idleLowText, item, monthRange, reorderCard, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, dmReply, needsAutoReply, rateDm, wantsRate, waShare } from './media.mjs'
 import { describe, esc, groupRows, split as splitLines, windowOf } from './activity.mjs'
@@ -80,10 +80,8 @@ async function morning() {
   const st = ins && smartText(ins, waLink)
   if (st) await say(st)
   if (reorder.length) {
-    await say(`📝 Pepsi order taiyaar. Neeche wala message forward kar do.\n\n${reorderNote(reorder, rs)}`)
-    await say(reorderText(reorder, hi(today)))
+    await sendOrder(reorder)
   }
-  try { const idle = idleLowText(await rpc('ops_idle_low', {})); if (idle) await say(idle) } catch (e) { console.log('idle low', e.message) }
   try { await ads() } catch (e) { console.log('ads check failed', e.message); await say(`⚠️ Ads check nahi hua: ${e.message.slice(0, 150)}`) }
   await mark('morning', today)
 }
@@ -657,7 +655,20 @@ async function diag() {
   }
 }
 
-const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads, audience }
+// The Pepsi order as three messages: the owner's card (urgent first, cost, why), the clean text to forward, and the
+// low-stock items that did not sell (owner decides). Used by the morning plan and by MODE=order (on demand).
+async function sendOrder(reorder) {
+  await say(reorderCard(reorder, rs, hi(today)), { parse_mode: 'HTML', disable_web_page_preview: true })
+  await say(reorderText(reorder, hi(today)))
+  try { const idle = idleLowText(await rpc('ops_idle_low', {})); if (idle) await say(idle) } catch (e) { console.log('idle low', e.message) }
+}
+async function order() {
+  const reorder = await rpc('ops_reorder', {})
+  if (!reorder.length) return say('✅ Abhi Pepsi ko kuch mangane ki zaroorat nahi.')
+  await sendOrder(reorder)
+}
+
+const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads, audience, order }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)
