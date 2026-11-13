@@ -189,6 +189,29 @@ export function specialNews(prev, lines) {
   return [...out.values()]
 }
 
+const KIND_HI = { near_expiry: 'Near Expiry', specific_mrp: 'Specific MRP', filler: 'Filler', must_bill: 'Must Bill', range: 'Range', promo: 'Promo' }
+/** Why Pepsi's version of an order differs from ours, in plain words: the reasons Pepsi recorded when it deleted or rejected lines, and the
+ * extra cases it added by kind (Near Expiry, Specific MRP, Filler, ...). Returns [] when there is nothing to explain. */
+export function orderWhy(lines, orderNo) {
+  const mine = lines.filter((l) => l.order_no === orderNo)
+  const out = []
+  const del = [...new Set(mine.filter((l) => l.delete_reason).map((l) => l.delete_reason))]
+  if (del.length) out.push(`Pepsi ne line hatayi, karan: ${del.join(', ')}`)
+  const rej = [...new Set(mine.filter((l) => l.reject_reason).map((l) => l.reject_reason))]
+  if (rej.length) out.push(`SAP ne reject kiya: ${rej.join(', ')}`)
+  const added = {}
+  for (const l of mine) {
+    const extra = (Number(l.corrected) || 0) - (Number(l.asked) || 0)
+    if (extra > 0 && l.kind !== 'general') added[l.kind] = (added[l.kind] ?? 0) + extra
+  }
+  const parts = Object.entries(added).map(([k, n]) => `${KIND_HI[k] ?? k} +${n}`)
+  if (parts.length) out.push(`Pepsi ne jodha: ${parts.join(', ')} peti`)
+  const gen = mine.filter((l) => l.kind === 'general')
+  const more = gen.reduce((a, l) => a + Math.max(0, (Number(l.corrected) || 0) - (Number(l.asked) || 0)), 0)
+  if (more > 0) out.push(`General maal me ${more} peti badhayi (truck bharne ke liye)`)
+  return out
+}
+
 /** One row per Pepsi order (requested order number) with quantities at each stage and its status. */
 export function orderRows(e2e, summary = []) {
   const status = new Map(summary.map((r) => [r['Requested Order Number'], r['Order Status Desc']]))

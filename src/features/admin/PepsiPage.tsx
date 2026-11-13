@@ -125,6 +125,9 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
   const pending = new Set(unbooked.map((u) => u.invoice_no))
   const special = useQuery({ queryKey: ['oms_order_line_special'], queryFn: () => must<OrderLine[]>(supabase.from('oms_order_line').select('order_no,sku_code,kind,order_date,description,asked,corrected,allocated,invoiced,deleted,delete_reason')
     .in('kind', ['near_expiry', 'specific_mrp', 'filler']).order('order_date', { ascending: false }).limit(60)) })
+  const reasons = useQuery({ queryKey: ['oms_order_line_reason'], queryFn: () => must<{ order_no: string; delete_reason: string | null; reject_reason: string | null }[]>(supabase.from('oms_order_line')
+    .select('order_no,delete_reason,reject_reason').or('delete_reason.not.is.null,reject_reason.not.is.null').limit(300)) })
+  const reasonOf = (no: string) => [...new Set((reasons.data ?? []).filter((r) => r.order_no === no).flatMap((r) => [r.delete_reason, r.reject_reason]).filter(Boolean))].join(', ')
   const kindLabel = (k: string) => (k === 'near_expiry' ? t('pepsi.kindNearExpiry') : k === 'filler' ? t('pepsi.kindFiller') : t('pepsi.kindSpecificMrp'))
   return (
     <>
@@ -141,7 +144,8 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
                 <td className="num" data-label={t('pepsi.corrected')}>{o.corrected !== o.asked && o.corrected ? <b style={{ color: '#b45309' }}>{o.corrected}</b> : o.corrected || '—'}</td>
                 <td className="num" data-label={t('pepsi.invoicedQty')}>{o.invoiced || '—'}</td>
                 <td className="num" data-label={t('pepsi.value')}>{formatPaise(o.invoiced_paise || o.value_paise)}</td>
-                <td>{o.deleted && !o.corrected ? <span className="badge badge-red">{t('pepsi.cancelled')}</span> : <span className="badge">{o.status ?? '—'}</span>}</td>
+                <td>{o.deleted && !o.corrected ? <span className="badge badge-red">{t('pepsi.cancelled')}</span> : <span className="badge">{o.status ?? '—'}</span>}
+                  {!!reasonOf(o.order_no) && <div className="cell-sub">{t('pepsi.reason', { r: reasonOf(o.order_no) })}</div>}</td>
               </tr>))}</tbody>
           </table></div>)}
         <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.ordersHow')}</p>

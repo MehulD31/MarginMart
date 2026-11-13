@@ -52,7 +52,7 @@ describe('priceChanges / orderEvents', () => {
   })
 })
 
-import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews } from './oms.mjs'
+import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy } from './oms.mjs'
 
 describe('orderLines', () => {
   const r = (o) => ({ 'Requested Order Number': 'RO9', 'Order Date': '2026-11-13', 'Sku Code': '1892', 'Sku Description': 'PEPSI COLA 1.25 L PET 15 Rs50 PROMO', 'Order Type Description Oms': 'General Order',
@@ -83,6 +83,13 @@ describe('orderLines', () => {
     expect(n).toEqual([{ order_no: 'RO1', items: [{ kind: 'near_expiry', description: 'PEPSI 1.25L', qty: 5 }, { kind: 'specific_mrp', description: 'MIRINDA 400', qty: 100 }] }])
     expect(specialNews(new Map([['RO1|1|near_expiry', 5], ['RO1|2|specific_mrp', 100]]), lines)).toEqual([])
     expect(specialNews(new Map([['RO1|1|near_expiry', 2]]), [L({})])[0].items[0].qty).toBe(5)
+  })
+  it('explains an order: deleted reason, extra Pepsi lines, general maal added', () => {
+    const L = (o) => ({ order_no: 'RO1', kind: 'general', asked: 0, corrected: 0, delete_reason: null, reject_reason: null, ...o })
+    const lines = [L({ asked: 50, corrected: 70 }), L({ kind: 'near_expiry', corrected: 5 }), L({ kind: 'specific_mrp', corrected: 100 }), L({ delete_reason: 'PFA' }), L({ order_no: 'RO2', delete_reason: 'X' })]
+    const w = orderWhy(lines, 'RO1')
+    expect(w).toEqual(['Pepsi ne line hatayi, karan: PFA', 'Pepsi ne jodha: Near Expiry +5, Specific MRP +100 peti', 'General maal me 20 peti badhayi (truck bharne ke liye)'])
+    expect(orderWhy(lines, 'RO3')).toEqual([])
   })
   it('skips rows without an order or SKU', () => {
     expect(orderLines([r({ 'Requested Order Number': '' }), r({ 'Sku Code': 'nan' })])).toEqual([])

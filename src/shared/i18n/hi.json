@@ -1672,6 +1672,8 @@
     "kindNearExpiry": "नियर एक्सपायरी",
     "kindSpecificMrp": "स्पेसिफिक MRP",
     "kindFiller": "फिलर",
+    "reason": "पेप्सी का कारण: {{r}}",
+    "item": "आइटम",
     "askedShort": "माँगा",
     "gotShort": "मिला",
     "noSpecial": "पिछले 60 दिनों में कोई नियर एक्सपायरी, स्पेसिफिक MRP या फिलर लाइन नहीं।"

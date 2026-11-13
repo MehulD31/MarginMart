@@ -1672,6 +1672,8 @@
     "kindNearExpiry": "Near expiry",
     "kindSpecificMrp": "Specific MRP",
     "kindFiller": "Filler",
+    "reason": "Pepsi’s reason: {{r}}",
+    "item": "Item",
     "askedShort": "Asked",
     "gotShort": "Got",
     "noSpecial": "No Near Expiry, Specific MRP or filler lines in the last 60 days."

@@ -1,7 +1,7 @@
 // Pepsi portal -> MarginMart sync (owner, 13 Nov 2026). READ-ONLY on the portal. Runs as MODE=oms and at the start of the
 // morning report. Writes oms_sku / oms_price_change / oms_map / oms_state, then tells Telegram what changed:
 // price changes on items we stock, a new order / invoice on the portal, and a failure (never silent).
-import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, unbookedInvoices } from './oms.mjs'
+import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, orderWhy, unbookedInvoices } from './oms.mjs'
 import { item } from './format.mjs'
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -74,6 +74,7 @@ export async function syncOms({ db, say, env }) {
       else if (o.status && o.status !== b.status) out.push(`🔄 Pepsi order <b>${esc(o.order_no)}</b>: ${esc(b.status ?? '?')} → <b>${esc(o.status)}</b>`)
       if (o.corrected && o.asked && o.corrected !== o.asked && (!b || b.corrected !== o.corrected)) out.push(`✏️ Pepsi ne order ${esc(o.order_no)} badla: aapne <b>${o.asked}</b> peti maangi, unhone <b>${o.corrected}</b> kar di`)
       if (o.deleted && (!b || !b.deleted) && !o.corrected) out.push(`🗑 Pepsi order ${esc(o.order_no)} cancel/short-close hua (${o.deleted} peti)`)
+      if (out.length) { const why = orderWhy(olines, o.order_no); if (why.length) out.push(...why.map((w) => `   ↳ ${esc(w)}`)) }   // A3: say why, right under the change
       return out
     })
     const newInv = firstRun ? [] : [...new Set(lines.map((l) => l.invoice_no))].filter((no) => !knownInv.has(no))
