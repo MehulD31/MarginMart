@@ -51,3 +51,16 @@ Price list, SKU master, credit, order history, End to End and Order Summary repo
 ## Do not do
 - Never call `submit-orders`, `update-*`, `delete-*`, `push-to-sap`, `short-close-*` or any save endpoint without the owner's OK.
 - Never use the "OT End to End Report All" report.
+
+## Message for Pepsi's rep (covers B1 to B4, edit before sending)
+
+Namaste. Portal dekhte hue kuch sawaal hain, K.D. Foods (Fortifit, code 198626):
+
+1. **Must Bill aur Range SKU**: Nov ki Must Bill list me 14 SKU hain par quantity sab ki 0 hai. Kya hamare liye koi target hai? Aur Must Bill / Range SKU bill karne par hamein kya milta hai (support, scheme, incentive)?
+2. **Norms, PDP aur lead time**: hamare portal me norms, PDP (order ka din) aur lead time set nahi hain, isliye Suggested Order kaam nahi karta (error aata hai). Kya ye set ho sakta hai? Hamara order din aur lead time aap batayein.
+3. **30 Oct ke 2 order**: RO30102601544 (Short Closed) aur RO30102601700 (reason "PFA"). "PFA" ka matlab kya hai, aur ye kyun cancel hue (credit, truck load, ya kuch aur)?
+4. **Near Expiry aur Specific MRP**: har order me ye lines Pepsi jodti hai. Near Expiry maal ki expiry date aur rate pehle se pata chal sakta hai? Kya hum ye lene se mana kar sakte hain?
+5. **Truck**: 8,000 kg ka truck aur 70% se kam par filler. Kya hum chhota order de sakte hain bina filler ke?
+6. **Ek jankari**: portal me "OT End to End Report All" naam ki report sab distributors ka data dikha rahi hai (hamne use nahi kiya, sirf bata rahe hain).
+
+Dhanyavaad.
