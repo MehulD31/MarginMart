@@ -9,7 +9,7 @@
 //   MODE=ask       QUESTION="..."  answers an owner's /ask from the live numbers (free Gemini key)
 // Every job writes public.ops_log (job, key). A re-run of the same thing sees the row and does nothing (FORCE=1 overrides).
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
-import { idleLowText, item, monthRange, reorderText, remindText, toCsv, waLink } from './format.mjs'
+import { idleLowText, item, monthRange, reorderNote, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, dmReply, needsAutoReply, rateDm, wantsRate, waShare } from './media.mjs'
 import { describe, esc, groupRows, split as splitLines, windowOf } from './activity.mjs'
@@ -79,7 +79,10 @@ async function morning() {
   const ins = await smart()
   const st = ins && smartText(ins, waLink)
   if (st) await say(st)
-  if (reorder.length) await say(`📝 Pepsi ko ye order bhej do (7 din ka stock, pichhle 30 din ki bikri se):\n\n${reorderText(reorder, hi(today))}`)
+  if (reorder.length) {
+    await say(`📝 Pepsi order taiyaar. Neeche wala message forward kar do.\n\n${reorderNote(reorder, rs)}`)
+    await say(reorderText(reorder, hi(today)))
+  }
   try { const idle = idleLowText(await rpc('ops_idle_low', {})); if (idle) await say(idle) } catch (e) { console.log('idle low', e.message) }
   try { await ads() } catch (e) { console.log('ads check failed', e.message); await say(`⚠️ Ads check nahi hua: ${e.message.slice(0, 150)}`) }
   await mark('morning', today)

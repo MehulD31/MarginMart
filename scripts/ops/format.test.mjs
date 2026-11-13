@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { idleLowText, item, monthRange, reorderText, toCsv, waLink, waNumber } from './format.mjs'
+import { idleLowText, item, monthRange, reorderNote, reorderText, toCsv, waLink, waNumber } from './format.mjs'
 
 describe('item', () => {
   it('shows doubled catalogue names once', () => {
@@ -29,6 +29,19 @@ describe('waNumber / waLink', () => {
   it('encodes the message', () => {
     expect(waLink('9876543210', 'a b&c')).toBe('https://wa.me/919876543210?text=a%20b%26c')
   })
+})
+
+describe('reorderNote', () => {
+  const rs = (p) => `₹${p / 100}`
+  it('flags urgent items, totals the cost and says what it is based on', () => {
+    const t = reorderNote([{ item: 'Nimbooz 345ml', urgent: true, cost_paise: 100000 }, { item: 'Slice Tetra 125ml', thin: true, cost_paise: 50000 }], rs)
+    expect(t).toContain('🔴 Jaldi chahiye')
+    expect(t).toContain('Nimbooz')
+    expect(t).toContain('₹1500')
+    expect(t).toContain('Kam data')
+    expect(t).toContain('trend, season aur delivery time')
+  })
+  it('has no urgent line when nothing is urgent', () => expect(reorderNote([{ item: 'Sting', cost_paise: 100 }], rs)).not.toContain('Jaldi'))
 })
 
 describe('idleLowText', () => {

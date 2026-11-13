@@ -26,6 +26,19 @@ export const remindText = (shop, amountRupees) =>
 export const reorderText = (rows, dateLabel) =>
   `Pepsi order ${dateLabel}:\n` + rows.map((r) => `• ${item(r.item)}: ${r.need} peti`).join('\n')
 
+// Owner-only note above the forwardable order: what is urgent, what it costs, and why these numbers.
+export const reorderNote = (rows, rs) => {
+  const urgent = rows.filter((r) => r.urgent).map((r) => item(r.item))
+  const thin = rows.filter((r) => r.thin).map((r) => item(r.item))
+  const cost = rows.reduce((a, r) => a + (Number(r.cost_paise) || 0), 0)
+  return [
+    urgent.length ? `🔴 Jaldi chahiye (delivery aane se pehle khatam ho jayega): ${urgent.join(', ')}` : '',
+    cost > 0 ? `💰 Kul ~${rs(cost)} ka maal (abhi ke buy rate pe)` : '',
+    thin.length ? `ℹ️ Kam data (abhi 1 hi din bika): ${thin.join(', ')}` : '',
+    '📊 Pichhle hafte ki bikri, trend, season aur delivery time ke hisaab se.',
+  ].filter(Boolean).join('\n')
+}
+
 // Low stock but nothing sold in 30 days: not ordered automatically, the owner decides (owner, 12 Nov 2026).
 export const idleLowText = (rows) =>
   rows?.length ? `🧊 Stock kam hai par 30 din me bika nahi (${rows.length}). Ye order me nahi daale, aap decide karo:\n` + rows.map((r) => `• ${item(r.item)}: ${r.on_hand} peti`).join('\n') : ''
