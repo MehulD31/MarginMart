@@ -84,3 +84,12 @@ What matches: the 4 Nov purchase has the same 1,636 cases as the invoices (28 li
 | D9 | **Pepsi 1.25 L**: mapped to the old PROMO SKU 1892; Pepsi invoices the current SKU 5550224. Same ₹630. | **Fixed** (mapped to 5550224) |
 | D11 | Six rate-sheet placeholder items showed "not on portal" (never bought, sold or ordered; stock 0): Mix Fruit/Apple/Litchi Tetra 125ml, 750ml (MRP 35), Slice 1.2L, Trop PET 1L, VAD (MRP 20), VAD Rest (MRP 30). | **Fixed** (Tetra 125ml mapped to Fruitz Mixed Fruit 8339, 750ml MRP 35 to Mountain Dew 750 ml 5550247, the other four hidden; hidden items can be shown again from Catalogue) |
 | D10 | Portal sells **37 priced SKUs** we have no item for (see Pepsi page, "Not matched"). Not an error; shows what we could stock. | Info |
+
+## Rule from the owner (13 Nov 2026)
+The Pepsi rate sheet (price list PepsiCo 01-09-2026) is older than the portal. **Follow the invoice, which matches the portal** (all 40 invoice lines have the same MRP as the portal item). Our pack MRPs came from the rate sheet (pack.source_name keeps the sheet's row name).
+
+## Cleanup 13 Nov (after D1 to D11)
+- Hidden: Tropicana Tetra 1L (MRP 115) and Tropicana Tetra 1L Cranberry (MRP 120): no history, duplicates of the 105 and 140 items.
+- Cleared the stale starting cost (Rs300) on 200ml RGB Slice (never bought, no moves).
+- Open, needs owner (price decisions): Mountain Dew 2.25L now costs Rs739 at Pepsi (MRP 100) but sells at Rs665; Pepsi Black 300ml can sells Rs775 against Rs979 for the new MRP-50 can; Tropicana 1L Cranberry (MRP 140) price line.
+- Open: three backup tables _bak_fnpl03nov_* (copies of the 3 Nov purchase before it was revised); Trop PET 180ml and Trop PET 180ml Guava are two items for one portal SKU.
