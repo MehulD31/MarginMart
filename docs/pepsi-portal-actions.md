@@ -35,8 +35,8 @@ Price list, SKU master, credit, order history, End to End and Order Summary repo
 - [x] **A5. Truck meter on the order card**: kg and % of an 8,000 kg truck for the suggested order (weights from allocated lines), warn under 70%. (F2)
 - [x] **A6. Must Bill and Range SKUs** (page card + Telegram when Pepsi sets a Must Bill quantity; not marked on the order card) shown on the Pepsi page and marked on the order card; show month-to-date range quantities. (F6, F7)
 - [x] **A7. Sync that does not log the team out**: logs in without taking over (the portal answers "User Already Logged In" when someone is on it), waits up to 4.5 min, then skips quietly; takes over only if the data is over 20 h old or FORCE=1. Runs once a day (08:00) plus a refresh before an order card if the data is over 3 h old. (constraint above)
-- [ ] **A8. Tell the owner now: book invoice 5348045407 in Purchases when the goods arrive.** (F11)
-- [ ] **A9. Price check**: compare invoiced price per case with our current cost per SKU and flag differences. (F12)
+- [x] **A8. Tell the owner now: book invoice 5348045407 in Purchases when the goods arrive.** (F11)
+- [x] **A9. Price check** (done 13 Nov): invoiced price per case equals the portal base price for 28 of 29 SKUs; the one exception (Sting Classic 180 ml can, ₹406 vs ₹488) was a Near Expiry line. Our recorded stock cost equals the portal price incl. GST, same basis as the order card. No fix needed. Note: Near Expiry and Specific MRP lines can be invoiced at a different price, so check the invoice price when entering the purchase. (F12)
 
 ### P1, needs a conversation with Pepsi's rep (Kaman Patel / Deepak Sharma)
 - [ ] **B1.** Ask what Must Bill and Range SKUs earn (this is the open question about the ₹11 support), and get the November targets set (all 0 today). (F6, F7)
