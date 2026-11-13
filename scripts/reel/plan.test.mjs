@@ -93,4 +93,9 @@ describe('reelButtons', () => {
     expect(d).toEqual([`sp:ok:${ID}`, `sp:now:${ID}`, `sp:fb:${ID}`, `sp:no:${ID}`])
     expect(d.every((x) => x.length <= 64)).toBe(true)
   })
+  it('the WhatsApp cut is a link button, not a second video', () => {
+    const b = reelButtons(ID, 'https://x/wa.mp4').inline_keyboard.flat()
+    expect(b.filter((x) => x.url).map((x) => x.url)).toEqual(['https://x/wa.mp4'])
+    expect(b.filter((x) => x.callback_data).length).toBe(4)
+  })
 })

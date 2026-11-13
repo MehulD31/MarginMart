@@ -166,8 +166,10 @@ export function reelPrompt(note, n, style, siblings = []) {
 }
 
 // Telegram preview buttons for an edited Reel. ✅ queues it: Reels go out one per evening at 7:30 PM, oldest first.
-export const reelButtons = (id) => ({ inline_keyboard: [
+// waUrl: the WhatsApp cut (group QR on the end card) is NOT sent as a second video; it is a link button instead.
+export const reelButtons = (id, waUrl) => ({ inline_keyboard: [
   [{ text: '✅ Queue (roz 7:30 PM, ek-ek)', callback_data: `sp:ok:${id}` }, { text: '⚡ Abhi daalo', callback_data: `sp:now:${id}` }],
   [{ text: '📘 Sirf FB · Insta main khud (music ke saath)', callback_data: `sp:fb:${id}` }],
+  ...(waUrl ? [[{ text: '📲 WhatsApp Status wala video (QR ke saath)', url: waUrl }]] : []),
   [{ text: '❌ Mat daalo', callback_data: `sp:no:${id}` }],
 ] })

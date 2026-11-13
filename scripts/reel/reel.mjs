@@ -192,7 +192,7 @@ try {
       if (!res.ok) throw new Error(`upload ${res.status}: ${(await res.text()).slice(0, 200)}`)
       return `${env('SUPABASE_URL')}/storage/v1/object/public/social-media/${key}`
     }
-    const url = await put('final.mp4'), manual = await put('manual.mp4')
+    const url = await put('final.mp4'), manual = await put('manual.mp4'), waUrl = await put('wa.mp4')
     await db(`social_post?id=eq.${postId}`, { method: 'PATCH', body: JSON.stringify({ image_url: url, manual_url: manual, caption, style: plan.style }) })
     await db('media_use?on_conflict=media_id,post_id,from_s', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
       body: JSON.stringify([...new Map(plan.shots.map((s) => [`${s.id}|${s.from}`, { media_id: s.id, post_id: postId, from_s: s.from, style: plan.style }])).values()]) })
@@ -201,8 +201,7 @@ try {
       `${nNew} nayi${nOld ? ` + ${nOld} purani library se` : ''} clips/photos\n` +
       (ear ? (ear.missing.length ? `⚠️ Sun ke check kiya: ye line saaf nahi aayi: "${ear.missing.join('", "').slice(0, 120)}"\n\n` : `🎧 Sun ke check kiya: saari lines poori, ${ear.wpm} shabd/min\n\n`) : '\n')
     const tail = '\n\n✏️ Caption badalna ho to is message ka reply karke naya likho.\n📘 = Facebook + Telegram abhi, Insta ke liye bina-music video milega.'
-    const msg = await tgVideo(path.join(W, 'final.mp4'), (head + caption).slice(0, 1024 - tail.length) + tail, reelButtons(postId))
-    await tgVideo(path.join(W, 'wa.mp4'), `📲 Reel ${of > 1 ? `${r + 1} ` : ''}WhatsApp Status / group ke liye (end me group ka QR). Ise seedha forward karo.`)
+    const msg = await tgVideo(path.join(W, 'final.mp4'), (head + caption).slice(0, 1024 - tail.length) + tail, reelButtons(postId, waUrl))
     await db('ops_log?on_conflict=job,key', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ job: 'preview', key: postId, detail: { message_id: msg.message_id } }) })
     console.log('preview sent', postId)
     return { postId, style: plan.style, T }
