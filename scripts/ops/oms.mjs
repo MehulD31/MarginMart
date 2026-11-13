@@ -212,6 +212,24 @@ export function orderWhy(lines, orderNo) {
   return out
 }
 
+const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+/** Telegram lines for what changed on Pepsi's side since the last sync. old: Map order_no -> { status, asked, corrected, deleted } as stored last time.
+ * Each change is announced once: the same stored state must produce nothing. (13 Nov: a missing `deleted` field in `old` re-sent the cancel line on every sync.) */
+export function orderChangeNews(old, ords, olines = []) {
+  const out = []
+  for (const o of ords) {
+    const b = old.get(o.order_no), lines = []
+    const was = (k) => Number(b?.[k]) || 0
+    if (!b) lines.push(`🆕 Pepsi order <b>${escHtml(o.order_no)}</b> (${o.ordered_on ?? ''}): ${o.asked || o.corrected} peti${o.created_by ? ` · ${escHtml(o.created_by)}` : ''}`)
+    else if (o.status && o.status !== b.status) lines.push(`🔄 Pepsi order <b>${escHtml(o.order_no)}</b>: ${escHtml(b.status ?? '?')} → <b>${escHtml(o.status)}</b>`)
+    if (o.corrected && o.asked && o.corrected !== o.asked && (!b || was('corrected') !== o.corrected)) lines.push(`✏️ Pepsi ne order ${escHtml(o.order_no)} badla: aapne <b>${o.asked}</b> peti maangi, unhone <b>${o.corrected}</b> kar di`)
+    if (o.deleted && was('deleted') !== o.deleted && !o.corrected) lines.push(`🗑 Pepsi order ${escHtml(o.order_no)} cancel/short-close hua (${o.deleted} peti)`)
+    if (lines.length) lines.push(...orderWhy(olines, o.order_no).map((w) => `   ↳ ${escHtml(w)}`))
+    out.push(...lines)
+  }
+  return out
+}
+
 /** One row per Pepsi order (requested order number) with quantities at each stage and its status. */
 export function orderRows(e2e, summary = []) {
   const status = new Map(summary.map((r) => [r['Requested Order Number'], r['Order Status Desc']]))

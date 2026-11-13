@@ -52,7 +52,7 @@ describe('priceChanges / orderEvents', () => {
   })
 })
 
-import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy } from './oms.mjs'
+import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy, orderChangeNews } from './oms.mjs'
 
 describe('orderLines', () => {
   const r = (o) => ({ 'Requested Order Number': 'RO9', 'Order Date': '2026-11-13', 'Sku Code': '1892', 'Sku Description': 'PEPSI COLA 1.25 L PET 15 Rs50 PROMO', 'Order Type Description Oms': 'General Order',
@@ -90,6 +90,17 @@ describe('orderLines', () => {
     const w = orderWhy(lines, 'RO1')
     expect(w).toEqual(['Pepsi ne line hatayi, karan: PFA', 'Pepsi ne jodha: Near Expiry +5, Specific MRP +100 peti', 'General maal me 20 peti badhayi (truck bharne ke liye)'])
     expect(orderWhy(lines, 'RO3')).toEqual([])
+  })
+  it('announces a Pepsi change once: the same stored state gives no news (cancelled order was re-sent every sync)', () => {
+    const cancelled = { order_no: 'RO2', ordered_on: '2026-10-30', status: 'Order Short Closed', asked: 2105, corrected: 0, deleted: 2105 }
+    const stored = new Map([['RO2', { status: 'Order Short Closed', asked: 2105, corrected: 0, deleted: 2105 }]])
+    expect(orderChangeNews(stored, [cancelled], [])).toEqual([])
+    expect(orderChangeNews(new Map(), [cancelled], []).join('\n')).toContain('cancel/short-close')
+    const changed = { order_no: 'RO3', status: 'SAP SO Created', asked: 990, corrected: 1636, deleted: 0 }
+    const was = new Map([['RO3', { status: 'SAP SO Created', asked: 990, corrected: 990, deleted: 0 }]])
+    const n = orderChangeNews(was, [changed], [{ order_no: 'RO3', kind: 'general', asked: 990, corrected: 1636 }])
+    expect(n[0]).toContain('990'); expect(n[0]).toContain('1636'); expect(n.at(-1)).toContain('General maal me 646 peti')
+    expect(orderChangeNews(new Map([['RO3', { status: 'SAP SO Created', asked: 990, corrected: 1636, deleted: 0 }]]), [changed], [])).toEqual([])
   })
   it('skips rows without an order or SKU', () => {
     expect(orderLines([r({ 'Requested Order Number': '' }), r({ 'Sku Code': 'nan' })])).toEqual([])
