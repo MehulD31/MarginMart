@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../shared/api/supabase'
-import { must } from '../../shared/api/db'
+import { loadBusinessSettings, must } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
 import type { KharchaSettings, PnlInput } from '../../shared/kharcha.js'
 
@@ -10,7 +10,7 @@ export const r100 = (p: number) => formatPaise(Math.round(p / 100) * 100)
 
 export const useKharchaSettings = () => useQuery({
   queryKey: ['business_settings'],
-  queryFn: () => must<KharchaSettings & { id: number }>(supabase.from('business_settings').select('*').eq('id', 1).single()),
+  queryFn: () => loadBusinessSettings<KharchaSettings & { id: number }>(),
 })
 export const usePnl = (from: string, to: string) => useQuery({
   queryKey: ['pnl', from, to],

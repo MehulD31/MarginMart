@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactElement } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -64,24 +64,25 @@ export default function AdminApp() {
     { to: 'khata', label: t('nav.khata'), icon: BookOpen },
     ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'money', label: t('nav.money'), icon: Wallet, badge: moneyLate }] : []),
     ...(profile?.role === 'admin' ? [{ to: 'kharcha', label: t('nav.kharcha'), icon: Coins }] : []),
-    ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'products', label: t('nav.products'), icon: BarChart3 }] : []),
+    ...(profile?.role === 'admin' ? [{ to: 'products', label: t('nav.products'), icon: BarChart3 }] : []),
     { to: 'closing', label: t('nav.closing'), icon: ClipboardCheck, badge: attention },
   ]
+  // Manager (owner, 13 Nov 2026): runs the day, never sees buy prices, purchases, pricing, logins or the change history.
+  const isAdmin = profile?.role === 'admin'
   const setup: Item[] = [
     { to: 'inventory', label: t('nav.inventory'), icon: Boxes, badge: lowStock },
-    { to: 'purchases', label: t('nav.purchases'), icon: ShoppingCart },
-    { to: 'pricing', label: t('nav.pricing'), icon: Calculator },
+    ...(isAdmin ? [{ to: 'purchases', label: t('nav.purchases'), icon: ShoppingCart }, { to: 'pricing', label: t('nav.pricing'), icon: Calculator }] : []),
     { to: 'schemes', label: t('nav.schemes'), icon: Gift },
     { to: 'shops', label: t('nav.shops'), icon: Store },
     { to: 'catalog', label: t('nav.catalog'), icon: Package },
-    { to: 'prices', label: t('nav.prices'), icon: Tags },
+    ...(isAdmin ? [{ to: 'prices', label: t('nav.prices'), icon: Tags }] : []),
     { to: 'network', label: t('nav.network'), icon: RouteIcon },
   ]
   const people: Item[] = [
     { to: 'join-requests', label: t('nav.joinRequests'), icon: Inbox, badge: joins },
-    { to: 'users', label: t('nav.users'), icon: Users },
-    { to: 'audit', label: t('nav.audit'), icon: History },
+    ...(isAdmin ? [{ to: 'users', label: t('nav.users'), icon: Users }, { to: 'audit', label: t('nav.audit'), icon: History }] : []),
   ]
+  const adminOnly = (el: ReactElement) => (isAdmin ? el : <Navigate to="/admin/dashboard" replace />)
   // Bottom bar holds the four most used destinations; the rest live under "More".
   const bottom = ops.slice(0, 3)
   const more = [...ops.slice(3), ...setup, ...people]
@@ -131,19 +132,19 @@ export default function AdminApp() {
           <Route path="sales" element={<CounterSalesPage />} />
           <Route path="khata" element={<KhataPage />} />
           <Route path="money" element={<MoneyPage />} />
-          <Route path="kharcha" element={<KharchaPage />} />
-          <Route path="products" element={<ProductsPage />} />
+          <Route path="kharcha" element={adminOnly(<KharchaPage />)} />
+          <Route path="products" element={adminOnly(<ProductsPage />)} />
           <Route path="closing" element={<ClosingPage />} />
-          <Route path="audit" element={<AuditPage />} />
+          <Route path="audit" element={adminOnly(<AuditPage />)} />
           <Route path="inventory" element={<InventoryPage />} />
-          <Route path="purchases" element={<PurchasesPage />} />
-          <Route path="pricing" element={<PricingPage />} />
+          <Route path="purchases" element={adminOnly(<PurchasesPage />)} />
+          <Route path="pricing" element={adminOnly(<PricingPage />)} />
           <Route path="schemes" element={<SchemesPage />} />
           <Route path="shops" element={<ShopsPage />} />
           <Route path="catalog" element={<CatalogPage />} />
-          <Route path="prices" element={<PriceListsPage />} />
+          <Route path="prices" element={adminOnly(<PriceListsPage />)} />
           <Route path="network" element={<NetworkPage />} />
-          <Route path="users" element={<UsersPage />} />
+          <Route path="users" element={adminOnly(<UsersPage />)} />
           <Route path="join-requests" element={<JoinRequestsPage />} />
         </Routes>
       </main>

@@ -101,7 +101,7 @@ function SettingsForm({ s, onDone }: { s: BusinessSettings; onDone: () => void }
         planned_cases_off: Number(f.off), planned_cases_on: Number(f.on),
         on_season_months: f.months.split(/[,\s]+/).map(Number).filter((n) => n >= 1 && n <= 12),
         slabs: { off: toSlabs(slabs.off), on: toSlabs(slabs.on) },
-      }).eq('id', 1).select())
+      }).eq('id', 1).select('id'))
       void qc.invalidateQueries({ queryKey: ['business_settings'] })
       onDone()
     } catch (err) { setMsg({ kind: 'error', text: errorMessage(t, err) }) }

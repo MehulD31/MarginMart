@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../shared/api/supabase'
-import { must, usePacks, useStock, useVariants, useVehicles, type PriceListItem } from '../../shared/api/db'
+import { loadBusinessSettings, must, usePacks, useStock, useVariants, useVehicles, type PriceListItem } from '../../shared/api/db'
 import { costPerCase, isOnSeason, monthCases, packPrice, schemeFor, withFunding, type BusinessSettings, type PackPrice, type Scheme } from '../../shared/margin'
 import { todayIST } from './opsData'
 
 export const useBusinessSettings = () => useQuery({
   queryKey: ['business_settings'],
-  queryFn: () => must<BusinessSettings>(supabase.from('business_settings').select('*').eq('id', 1).single()),
+  queryFn: () => loadBusinessSettings<BusinessSettings>(),
 })
 
 export const useMonthStats = () => useQuery({

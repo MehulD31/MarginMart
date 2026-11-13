@@ -60,10 +60,24 @@ export const useVariants = () => useQuery({
 
 export interface Stock { variant_id: string; on_hand: number; low_threshold: number; avg_cost_paise: number; updated_at: string }
 /** Warehouse stock per flavour, in cases. Flavours never stocked have no row (treat as 0). */
+// Costs are admin-only in the database (owner, 13 Nov 2026): other logins can't read stock.avg_cost_paise, so they get 0.
 export const useStock = () => useQuery({
   queryKey: ['stock'],
-  queryFn: () => must<Stock[]>(supabase.from('stock').select('*')),
+  queryFn: async () => {
+    const rows = await must<Omit<Stock, 'avg_cost_paise'>[]>(supabase.from('stock').select('variant_id,on_hand,low_threshold,updated_at'))
+    const { data: costs } = await supabase.rpc('admin_stock_costs')
+    const cost = new Map(((costs ?? []) as { variant_id: string; avg_cost_paise: number }[]).map((c) => [c.variant_id, Number(c.avg_cost_paise)]))
+    return rows.map((r) => ({ ...r, avg_cost_paise: cost.get(r.variant_id) ?? 0 })) as Stock[]
+  },
 })
+
+const SETTINGS_COLS = 'id,loading_paise_per_case,cash_discount_paise,on_time_pct,default_margin_paise,truck_capacity,trips_per_day,working_days,on_season_months,planned_cases_off,planned_cases_on,slabs,updated_at,spend_line,reorder_lead_days,reorder_cycle_days'
+/** Business settings; salaries/fixed costs only for admins (others get an empty list). */
+export async function loadBusinessSettings<T>(): Promise<T> {
+  const s = await must<Record<string, unknown>>(supabase.from('business_settings').select(SETTINGS_COLS).eq('id', 1).single())
+  const { data: fixed } = await supabase.rpc('admin_fixed_costs')
+  return { ...s, fixed_costs: Array.isArray(fixed) ? fixed : [] } as T
+}
 /** Low when at or below its threshold (only if a threshold is set), or below zero. */
 export const isLowStock = (s: Pick<Stock, 'on_hand' | 'low_threshold'>) => s.on_hand < 0 || (s.low_threshold > 0 && s.on_hand <= s.low_threshold)
 /** Bought items only (never the whole catalogue): selling speed, days of stock left, and whether it is low.
