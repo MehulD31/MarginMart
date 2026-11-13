@@ -52,7 +52,7 @@ describe('priceChanges / orderEvents', () => {
   })
 })
 
-import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy, orderChangeNews, targetRows, targetNews } from './oms.mjs'
+import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy, orderChangeNews, targetRows, targetNews, omsSession, OmsBusy } from './oms.mjs'
 
 describe('orderLines', () => {
   const r = (o) => ({ 'Requested Order Number': 'RO9', 'Order Date': '2026-11-13', 'Sku Code': '1892', 'Sku Description': 'PEPSI COLA 1.25 L PET 15 Rs50 PROMO', 'Order Type Description Oms': 'General Order',
@@ -112,6 +112,23 @@ describe('orderLines', () => {
     expect(rows.find((r) => r.kind === 'range')).toMatchObject({ parent_sku_code: 'P1', done_qty: 100, open_qty: 200 })
     expect(targetNews(new Map(), rows).map((r) => r.parent_sku_code)).toEqual(['P1'])          // only targets that are set
     expect(targetNews(new Map([['2026-11|P1', 40]]), rows)).toEqual([])                         // announced once
+  })
+  it('logs in without taking over; waits while the portal is busy; skips if it stays busy unless the data is old or forced', async () => {
+    const calls = []
+    const mk = (busyFor) => async (u, p, take) => { calls.push(take); if (!take && calls.filter((c) => c === false).length <= busyFor) throw new OmsBusy('busy'); return { token: take ? 'T' : 'P' } }
+    const sleeps = []
+    const opt = (o = {}) => ({ sleep: async (ms) => { sleeps.push(ms) }, ...o })
+    expect((await omsSession('u', 'p', opt({ login: mk(0) }))).token).toBe('P')
+    expect(calls).toEqual([false]); calls.length = 0
+    expect((await omsSession('u', 'p', opt({ login: mk(2) }))).token).toBe('P')            // busy twice, free on the third try
+    expect(calls).toEqual([false, false, false]); expect(sleeps).toEqual([90000, 90000]); calls.length = 0; sleeps.length = 0
+    await expect(omsSession('u', 'p', opt({ login: mk(9), lastOkAt: Date.now() - 3600e3 }))).rejects.toBeInstanceOf(OmsBusy)   // busy, data fresh: skip, never take over
+    expect(calls.every((c) => c === false)).toBe(true); calls.length = 0
+    expect((await omsSession('u', 'p', opt({ login: mk(9), lastOkAt: Date.now() - 30 * 3600e3 }))).token).toBe('T')            // data 30 h old: take over
+    expect(calls.at(-1)).toBe(true); calls.length = 0
+    expect((await omsSession('u', 'p', opt({ login: mk(9), force: true }))).token).toBe('T')
+    expect(calls).toEqual([true])
+    await expect(omsSession('u', 'p', opt({ login: async () => { throw new Error('OMS login failed: Invalid login credentials') } }))).rejects.toThrow('Invalid login')   // real failures still surface
   })
   it('skips rows without an order or SKU', () => {
     expect(orderLines([r({ 'Requested Order Number': '' }), r({ 'Sku Code': 'nan' })])).toEqual([])

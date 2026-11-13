@@ -4,9 +4,13 @@
 // so we log in briefly, read, and log out. Nothing here creates, saves or submits an order.
 const B = 'https://oms.rjcorp.in/v1/api/'
 
-export async function omsLogin(username, password) {
-  const r = await fetch(B + 'auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, loginCurrentSystem: true }) })
+/** The portal has someone logged in and we were told not to take the session over. */
+export class OmsBusy extends Error {}
+
+export async function omsLogin(username, password, takeOver = true) {
+  const r = await fetch(B + 'auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, loginCurrentSystem: takeOver }) })
   const j = await r.json().catch(() => ({}))
+  if (!takeOver && /already logged in/i.test(String(j.response ?? j.message ?? ''))) throw new OmsBusy('portal is in use')   // verified 13 Nov: 200 + "User Already Logged In", no token
   if (j.response !== 'SUCCESS' || !j.token) throw new Error(`OMS login failed: ${j.message ?? j.response ?? r.status}`)
   const token = j.token
   const node = null
@@ -16,6 +20,19 @@ export async function omsLogin(username, password) {
     return res.json()
   }
   return { token, user: j.user, node, call, logout: () => call('auth/logout', {}).catch(() => null) }
+}
+
+/** Log in without logging anyone out. The portal allows one session per user, so a person working on the website (Shobhit, or Pepsi's team on the shared login)
+ * would be thrown out by a takeover. We try politely, wait while the portal is busy, and skip when it stays busy, unless the data is getting old.
+ * lastOkAt: ms of the last good sync (or null). force: take over right now. */
+export async function omsSession(username, password, { lastOkAt = null, force = false, waitsSec = [90, 90, 90], staleHours = 20, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), login = omsLogin, now = () => Date.now() } = {}) {
+  if (force) return login(username, password, true)
+  for (const w of [0, ...waitsSec]) {
+    if (w) await sleep(w * 1000)
+    try { return await login(username, password, false) } catch (e) { if (!(e instanceof OmsBusy)) throw e }
+  }
+  if (!lastOkAt || now() - lastOkAt > staleHours * 3600e3) return login(username, password, true)   // data too old: take over anyway
+  throw new OmsBusy('portal still in use, skipped this sync')
 }
 
 /** Everything useful for MarginMart in one read. `node` is the distributor (sold-to) code. */

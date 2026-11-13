@@ -51,7 +51,7 @@ async function tgDoc(filename, text, caption) {
 }
 
 // Pepsi portal (oms.rjcorp.in): read prices, credit, orders. MODE=oms on demand / schedule; also run first thing in the morning.
-async function oms() { await syncOms({ db, say: (t, x) => say(t, x), env }) }
+async function oms(opts = {}) { await syncOms({ db, say: (t, x) => say(t, x), env, ...opts }) }
 
 async function morning() {
   if (await done('morning', today)) return console.log('morning already sent')
@@ -683,6 +683,8 @@ async function diag() {
 // The Pepsi order as three messages: the owner's card (urgent first, cost, why), the clean text to forward, and the
 // low-stock items that did not sell (owner decides). Used by the morning plan and by MODE=order (on demand).
 async function sendOrder(reorder) {
+  // credit must be fresh for the card: refresh if the portal data is older than 3 h (polite login, no waiting if somebody is on the portal)
+  try { const [o] = await db('oms_state?id=eq.1&select=synced_at'); if (env('OMS_USER', false) && (!o?.synced_at || Date.now() - Date.parse(o.synced_at) > 3 * 3600e3)) await oms({ quick: true }) } catch (e) { console.log('credit refresh', e.message) }
   let credit = null
   try { const [st] = await db('oms_state?id=eq.1&select=credit_paise,credit_at,ok'); if (st?.credit_paise != null) credit = { paise: n(st.credit_paise), at: st.credit_at } } catch (e) { console.log('credit', e.message) }
   let truck = null

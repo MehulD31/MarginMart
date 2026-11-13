@@ -34,7 +34,7 @@ Price list, SKU master, credit, order history, End to End and Order Summary repo
 - [x] **A4. Credit check on the order card** (was already there, priced from portal prices incl. GST; now warns when some items fall back to our average cost): show "credit ₹X vs this order ₹Y, short by ₹Z" and a warning when credit is below the order value. (F5)
 - [x] **A5. Truck meter on the order card**: kg and % of an 8,000 kg truck for the suggested order (weights from allocated lines), warn under 70%. (F2)
 - [x] **A6. Must Bill and Range SKUs** (page card + Telegram when Pepsi sets a Must Bill quantity; not marked on the order card) shown on the Pepsi page and marked on the order card; show month-to-date range quantities. (F6, F7)
-- [ ] **A7. Sync schedule that does not log the team out**: fixed quiet times only (no 10-minute polling), and skip the sync when the portal session is in use. (constraint above)
+- [x] **A7. Sync that does not log the team out**: logs in without taking over (the portal answers "User Already Logged In" when someone is on it), waits up to 4.5 min, then skips quietly; takes over only if the data is over 20 h old or FORCE=1. Runs once a day (08:00) plus a refresh before an order card if the data is over 3 h old. (constraint above)
 - [ ] **A8. Tell the owner now: book invoice 5348045407 in Purchases when the goods arrive.** (F11)
 - [ ] **A9. Price check**: compare invoiced price per case with our current cost per SKU and flag differences. (F12)
 

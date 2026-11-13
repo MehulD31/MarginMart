@@ -1,19 +1,19 @@
 // Pepsi portal -> MarginMart sync (owner, 13 Nov 2026). READ-ONLY on the portal. Runs as MODE=oms and at the start of the
 // morning report. Writes oms_sku / oms_price_change / oms_map / oms_state, then tells Telegram what changed:
 // price changes on items we stock, a new order / invoice on the portal, and a failure (never silent).
-import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, orderChangeNews, targetRows, targetNews, unbookedInvoices } from './oms.mjs'
+import { OmsBusy, omsSession, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, orderChangeNews, targetRows, targetNews, unbookedInvoices } from './oms.mjs'
 import { item } from './format.mjs'
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const rs = (p) => '₹' + Math.round(Number(p ?? 0) / 100).toLocaleString('en-IN')
 
-export async function syncOms({ db, say, env }) {
+export async function syncOms({ db, say, env, quick = false }) {
   const user = env('OMS_USER', false), pass = env('OMS_PASS', false)
   if (!user || !pass) { console.log('OMS_USER/OMS_PASS not set; skipping portal sync'); return null }
   const [state] = await db('oms_state?id=eq.1&select=*')
   let s
   try {
-    s = await omsLogin(user, pass)
+    s = await omsSession(user, pass, { lastOkAt: state?.ok && state?.synced_at ? Date.parse(state.synced_at) : null, force: process.env.FORCE === '1', waitsSec: quick ? [] : [90, 90, 90] })
     const snap = await omsSnapshot(s)
     const items = omsItems(snap)
 
@@ -112,6 +112,7 @@ export async function syncOms({ db, say, env }) {
     console.log(`oms sync ok: ${items.length} skus, ${maps.length} mapped, ${changes.length} price changes, ${events.length} order events, credit ${credit}, ${ords.length} orders, ${lines.length} invoice lines, ${unbooked.length} unbooked, ${orderNews.length + newInv.length + specials.length} news (${specials.length} special)`)
     return { items, maps, changes, events, credit, node: snap.node, unbooked }
   } catch (e) {
+    if (e instanceof OmsBusy) { console.log('oms sync skipped:', e.message); return null }   // somebody is on the portal: not a failure, nothing logged out, try again later
     await db('oms_state?id=eq.1', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ok: false, error: String(e.message).slice(0, 300) }) }).catch(() => {})
     // alert on the first failure only; the watchdog keeps reminding if the data goes stale (> 26 h)
     if (state?.ok !== false) await say(`⚠️ Pepsi portal sync fail: ${String(e.message).slice(0, 200)}\n(Password badla ho to GitHub secret OMS_PASS update karo.)`).catch(() => {})
