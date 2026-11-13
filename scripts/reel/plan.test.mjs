@@ -7,7 +7,7 @@ const img = (id) => ({ id, kind: 'image' })
 describe('windows', () => {
   it('a 16 s video gives several windows spread over the clip, a photo one', () => {
     const w = windows(vid('a', 16))
-    expect(w.length).toBe(5)
+    expect(w.length).toBe(3)
     expect(w[0]).toBeLessThan(w.at(-1))
     expect(w.at(-1) + 2.5).toBeLessThanOrEqual(16)
     expect(windows(img('p'))).toEqual([0])
@@ -20,7 +20,7 @@ describe('mixReels', () => {
     const reels = mixReels(fresh, [], [])
     expect(reels.length).toBe(3)
     expect(new Set(reels.map((r) => r.shots[0].id)).size).toBe(3)
-    const used = reels.flatMap((r) => r.shots.map((s) => `${s.id}@${s.from}`))
+    const used = reels.flatMap((r) => r.shots.filter((s) => !s.again).map((s) => `${s.id}@${s.from}`))
     expect(new Set(used).size).toBe(used.length)
     for (const r of reels) { expect(r.shots.length).toBeGreaterThanOrEqual(MIN_SHOTS); expect(r.shots.length).toBeLessThanOrEqual(MAX_SHOTS) }
     expect(new Set(reels.map((r) => r.style)).size).toBe(3)
@@ -55,10 +55,10 @@ describe('styles', () => {
   it('shot lengths follow the voice, on the half-second beat, inside the style range', () => {
     const shots = [{}, {}, {}]
     const t = timeShots(shots, [1.2, 3.9, 0], 'story')
-    expect(t.shots.map((s) => s.len)).toEqual([2.5, 4.5, 2.5])
-    expect(t.shots[1].at).toBe(2.5)
-    expect(t.brandAt).toBe(9.5)
-    expect(timeShots(shots, [1.2, 1.6, 0], 'punch').shots.map((s) => s.len)).toEqual([2, 2.5, 2])
+    expect(t.shots.map((s) => s.len)).toEqual([3.5, 4.5, 3.5])
+    expect(t.shots[1].at).toBe(3.5)
+    expect(t.brandAt).toBe(11.5)
+    expect(timeShots(shots, [1.2, 2.6, 0], 'punch').shots.map((s) => s.len)).toEqual([3, 3.5, 3])
     for (const k of Object.keys(STYLES)) expect(STYLES[k].accent).toMatch(/^#/)
   })
   it('every shot gets a voice line even if the AI gives none', () => {

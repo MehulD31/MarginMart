@@ -101,7 +101,7 @@ try {
   async function editOne(plan, postId, r, of) {
     const W = path.join(WORK, `r${r}`); fs.mkdirSync(W)
     let shots = plan.shots.map((s) => {
-      const m = src.get(s.id), len = 4
+      const m = src.get(s.id), len = 3.5
       const from = m.kind === 'image' ? 0 : Math.max(0, Math.min(s.from, m.duration - len - 0.15))
       return { ...s, from, dir: m.dir, n: m.n }
     })
@@ -124,8 +124,16 @@ try {
     // voice first: shot lengths follow the spoken lines
     const vo = await synthAll([...vt.shots, vt.brand, vt.end.ig, vt.end.wa], W)
     const timed = timeShots(text.shots, vo.slice(0, shots.length).map((x) => x.len), plan.style)
-    shots = timed.shots.map((s, k) => ({ ...s, vo: { text: vt.shots[k], at: s.at + 0.15, len: vo[k].len } }))
-    const { brandAt, endAt } = timed
+    // footage shorter than its shot plays slower (down to 0.6x) instead of freezing on the last frame
+    shots = timed.shots.map((s, k) => {
+      const m = src.get(s.id), avail = m.kind === 'image' ? s.len : Math.max(0.5, m.duration - s.from - 0.1)
+      return { ...s, rate: +Math.max(0.6, Math.min(1, avail / s.len)).toFixed(3), vo: { text: vt.shots[k], at: s.at + 0.15, len: vo[k].len } }
+    })
+    // plan check: no voice line may run into the next line or past its shot
+    const brandAt0 = timed.brandAt
+    for (const [k, s] of shots.entries()) if (s.vo.at + s.vo.len > (shots[k + 1]?.at ?? brandAt0) - 0.2) throw new Error(`plan: voice line ${k + 1} (${s.vo.len.toFixed(2)} s) does not fit its ${s.len} s shot`)
+    // the brand card lasts as long as its own line (it was a fixed 2 s and the line ran into the end card)
+    const brandAt = timed.brandAt, endAt = brandAt + Math.max(2.5, Math.ceil((vo[shots.length].len + 0.2 + 0.6) * 2) / 2)
     const placed = [
       ...shots.map((s, k) => ({ ...vo[k], at: s.at + 0.15 })),
       { ...vo[shots.length], at: brandAt + 0.2 },
@@ -167,10 +175,13 @@ try {
     mux('silent-ig.mp4', fullIg, 'final.mp4'); mux('silent-wa.mp4', fullWa, 'wa.mp4')
     mux('silent-ig.mp4', voIg, 'manual.mp4')          // for Instagram by hand: voice only, Instagram's music goes under it
 
+    // listen to the finished Reel (speech-to-text) and compare with the plan; a missing line is shown in the preview
+    let ear = null
+    try { ear = JSON.parse(sh(process.env.PYTHON || 'python3', [path.join(HERE, 'listen.py'), path.join(W, 'final.mp4'), path.join(W, 'plan.json'), '--json']).trim().split('\n').at(-1)); console.log('listened', JSON.stringify(ear)) } catch (e) { console.log('listen failed:', e.message) }
     let caption = finishCaption(ai?.caption)
     if (!ai?.caption || caption.length < 60) caption = fallbackCaption(note, 'video')
     if (!/comment/i.test(caption)) caption = caption.replace(/\n\n#/, '\n👉 Follow karein aur comment mein RATE likhein, rate list DM mein bhejenge 📩\n\n#')
-    if (LOCAL) { fs.copyFileSync(path.join(W, 'final.mp4'), path.join(WORK, `reel${r + 1}-${plan.style}.mp4`)); return { style: plan.style, T, caption, voice: vo[0].engine } }
+    if (LOCAL) { fs.copyFileSync(path.join(W, 'final.mp4'), path.join(WORK, `reel${r + 1}-${plan.style}.mp4`)); return { style: plan.style, T, ear, voice: vo[0].engine } }
 
     // store, preview
     if (r > 0) await db('social_post', { method: 'POST', body: JSON.stringify({ id: postId, kind: 'reel', source_id: postId, media_type: 'video', image_url: '', caption: '', status: 'draft', made_by: madeBy }) })
@@ -187,7 +198,8 @@ try {
       body: JSON.stringify([...new Map(plan.shots.map((s) => [`${s.id}|${s.from}`, { media_id: s.id, post_id: postId, from_s: s.from, style: plan.style }])).values()]) })
     const nNew = new Set(plan.shots.filter((s) => s.fresh).map((s) => s.id)).size, nOld = new Set(plan.shots.filter((s) => !s.fresh).map((s) => s.id)).size
     const head = `🎬 Reel ${of > 1 ? `${r + 1}/${of} ` : ''}· ${STYLES[plan.style].name} · ${T} sec · 🎙 voiceover (${vo[0].engine})\n` +
-      `${nNew} nayi${nOld ? ` + ${nOld} purani library se` : ''} clips/photos\n\n`
+      `${nNew} nayi${nOld ? ` + ${nOld} purani library se` : ''} clips/photos\n` +
+      (ear ? (ear.missing.length ? `⚠️ Sun ke check kiya: ye line saaf nahi aayi: "${ear.missing.join('", "').slice(0, 120)}"\n\n` : `🎧 Sun ke check kiya: saari lines poori, ${ear.wpm} shabd/min\n\n`) : '\n')
     const tail = '\n\n✏️ Caption badalna ho to is message ka reply karke naya likho.\n📘 = Facebook + Telegram abhi, Insta ke liye bina-music video milega.'
     const msg = await tgVideo(path.join(W, 'final.mp4'), (head + caption).slice(0, 1024 - tail.length) + tail, reelButtons(postId))
     await tgVideo(path.join(W, 'wa.mp4'), `📲 Reel ${of > 1 ? `${r + 1} ` : ''}WhatsApp Status / group ke liye (end me group ka QR). Ise seedha forward karo.`)
@@ -254,7 +266,7 @@ async function synthAll(lines, W) {
           const raw = path.join(W, `vo${i}-${engine}.raw`)
           if (engine === 'gemini') await ttsGemini(key, text, raw); else ttsEdge(text, raw)
           const f = path.join(W, `vo${i}-${engine}.wav`)
-          sh('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-af', 'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,aresample=48000,aformat=channel_layouts=stereo', f])
+          sh('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-af', 'silenceremove=start_periods=1:start_threshold=-55dB:start_silence=0.08,areverse,silenceremove=start_periods=1:start_threshold=-55dB:start_silence=0.15,areverse,aresample=48000,aformat=channel_layouts=stereo', f])
           cache.set(ck, { f, len: probe(f), engine })
         }
         out.push(cache.get(ck))
@@ -266,7 +278,7 @@ async function synthAll(lines, W) {
   throw new Error('voiceover nahi bana (Gemini aur Edge dono fail)')
 }
 function ttsEdge(text, file) {
-  sh(process.env.PYTHON || 'python3', ['-m', 'edge_tts', '--voice', 'hi-IN-MadhurNeural', '--rate=+8%', '--text', text, '--write-media', file])
+  sh(process.env.PYTHON || 'python3', ['-m', 'edge_tts', '--voice', 'hi-IN-MadhurNeural', '--rate=-6%', '--text', text, '--write-media', file])
 }
 function mixVo(all, T, which, W) {
   const parts = all.filter((x) => !x.only || x.only === which)
@@ -286,7 +298,7 @@ async function ttsGemini(key, text, file) {
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({ model, response_format: { type: 'audio' }, generation_config: { speech_config: [{ voice: 'Charon' }] },
           input: [{ type: 'user_input', content: [{ type: 'text', text, annotations: [{ type: 'speech_metadata',
-            style: 'confident Indian male, natural Hinglish, warm and energetic, a Bhilai wholesale dealer talking to shopkeepers, quick pace' }] }] }] }) })
+            style: 'confident Indian male, natural Hinglish, warm and friendly, a Bhilai wholesale dealer talking to shopkeepers face to face. Calm, clear, unhurried pace, every word pronounced fully, a short natural pause at commas' }] }] }] }) })
       const j = await r.json().catch(() => ({}))
       for (const s of j.steps ?? []) for (const c of s.content ?? []) if (c.data && /audio/.test(c.mime_type ?? c.type ?? '')) { fs.writeFileSync(file, Buffer.from(c.data, 'base64')); return }
       last = `${model} ${r.status} ${JSON.stringify(j).slice(0, 200)}`; console.log('tts', last)
