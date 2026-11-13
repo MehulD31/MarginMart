@@ -37,6 +37,17 @@ Rules: no prices, MarginMart brand (Pepsi only as a product name), Bhilai only i
 - Multi-destination (Messenger + Instagram DM) needs a DOF creative that the API kept turning into a plain link ad; switch to it in Ads Manager later if Instagram DM is wanted.
 - When a WhatsApp Business number exists: new CTWA ad set in the same campaign, same targeting.
 
+## 13 Nov: one ad set, Facebook + Instagram + Messenger (as in Vajra)
+- Ad set 120247070453180540 now has placements Facebook, Instagram and Messenger (Rs150/day, unchanged). One ad set, no separate Instagram set.
+- Archived (cleanup): Instagram-only ad set 120247070496750540 (was paused, Rs96/day) and its ad 120247070516750540; duplicate Facebook-only ad 120247090956610540.
+- Live ads: 'Nayi Gaadi Reel · Messenger (existing FB post)' 120247070458640540 and 'Reel 13 Nov voiceover · FB+IG' 120247091051960540 (video 1163255602896373, Instagram account attached, button Send message).
+- To promote a new Reel: create a creative from the posted video (video_id + page 1428432177022562 + instagram_actor_id 17841449663127112, link https://m.me/1428432177022562, CTA MESSAGE_PAGE) and add an ad to this ad set. Meta rejects the stored fb_post_id as an object_story_id (it is a video id).
+
+## 13 Nov evening: Reels only, Rs100/day (owner said yes)
+- First hour of the new ad: ~Rs120 spent, 92% on Facebook feed (CPM ~Rs148 vs ~Rs51 on Instagram Reels), 0 chats.
+- Ad set 120247070453180540 now: placements Facebook Reels + Instagram Reels only, daily budget Rs100 (was Rs150). Location, age, exclusions, end date 26 Nov unchanged.
+- Judge at the 08:00 ads report; if still 0 chats after ~Rs200, tell the owner and suggest the next change.
+
 ## 12 Nov: known shops
 - Custom Audience 120247070940520540 'MarginMart known shops (phone)': 708 hashed numbers, refreshed every Monday; excluded from the new-shop ad set (re-checked daily).
 - Own-shops ad: owner chose to wait. On 17 Nov the morning ads report asks in Telegram; if yes, shift money from the new-shop ad (total stays Rs150/day).

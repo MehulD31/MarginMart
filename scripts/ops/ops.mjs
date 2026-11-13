@@ -9,6 +9,7 @@
 //   MODE=ask       QUESTION="..."  answers an owner's /ask from the live numbers (free Gemini key)
 // Every job writes public.ops_log (job, key). A re-run of the same thing sees the row and does nothing (FORCE=1 overrides).
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
+import { probeOms } from './oms-probe.mjs'
 import { syncOms } from './oms-sync.mjs'
 import { idleLowText, item, monthRange, reorderCard, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
@@ -696,7 +697,8 @@ async function order() {
   await sendOrder(reorder)
 }
 
-const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads, audience, order, oms }
+async function omsprobe() { await probeOms({ env }) }
+const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads, audience, order, oms, omsprobe }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)
