@@ -190,6 +190,31 @@ export function specialNews(prev, lines) {
 }
 
 const KIND_HI = { near_expiry: 'Near Expiry', specific_mrp: 'Specific MRP', filler: 'Filler', must_bill: 'Must Bill', range: 'Range', promo: 'Promo' }
+/** Must Bill list and Range progress for one month ('YYYY-MM'). mustBill: rows of must_bill_dbr_target_report, range: rows of range_target_report (one per day and SKU).
+ * Must bill target = the biggest of the quantities Pepsi fills in (user must bill, system must bill, DBR parent target). Range: the latest day's month-to-date billed and open-order cases. */
+export function targetRows(mustBill, range, month) {
+  const out = []
+  for (const r of mustBill) {
+    if (String(r['Month Year'] ?? '').slice(0, 7) !== month) continue
+    const code = clean(r['Parent SKU Code']); if (!code) continue
+    out.push({ kind: 'must_bill', month, parent_sku_code: code, description: clean(r['Parent SKU Descr']) ?? code, brand: clean(r.Brand),
+      target_qty: Math.max(num(r['User Must Bill Qty']), num(r['System MB Qty']), num(r['User DBR Parent Target Qty*']), num(r['DBR Parent Target Qty'])),
+      done_qty: 0, open_qty: 0, valid_to: day(r['Valid To']) })
+  }
+  const latest = new Map()
+  for (const r of range) {
+    const code = clean(r['Parent SKU Code']), d = day(r.report_date ?? r['MTD Date']); if (!code || !d || d.slice(0, 7) !== month) continue
+    if (!latest.has(code) || d > latest.get(code).d) latest.set(code, { d, r })
+  }
+  for (const [code, { r }] of latest) out.push({ kind: 'range', month, parent_sku_code: code, description: clean(r['Parent SKU Desc']) ?? code, brand: clean(r.Brand),
+    target_qty: 0, done_qty: num(r['DBR Parent MTD']), open_qty: num(r['DBR Parent MTD OO']), valid_to: null })
+  return out
+}
+/** Must Bill targets that Pepsi has just set or changed (prev: Map "month|parent" -> target_qty as stored). */
+export function targetNews(prev, rows) {
+  return rows.filter((r) => r.kind === 'must_bill' && r.target_qty > 0 && (prev.get(`${r.month}|${r.parent_sku_code}`) ?? 0) !== r.target_qty)
+}
+
 /** Why Pepsi's version of an order differs from ours, in plain words: the reasons Pepsi recorded when it deleted or rejected lines, and the
  * extra cases it added by kind (Near Expiry, Specific MRP, Filler, ...). Returns [] when there is nothing to explain. */
 export function orderWhy(lines, orderNo) {

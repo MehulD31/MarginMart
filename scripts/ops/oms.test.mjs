@@ -52,7 +52,7 @@ describe('priceChanges / orderEvents', () => {
   })
 })
 
-import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy, orderChangeNews } from './oms.mjs'
+import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy, orderChangeNews, targetRows, targetNews } from './oms.mjs'
 
 describe('orderLines', () => {
   const r = (o) => ({ 'Requested Order Number': 'RO9', 'Order Date': '2026-11-13', 'Sku Code': '1892', 'Sku Description': 'PEPSI COLA 1.25 L PET 15 Rs50 PROMO', 'Order Type Description Oms': 'General Order',
@@ -101,6 +101,17 @@ describe('orderLines', () => {
     const n = orderChangeNews(was, [changed], [{ order_no: 'RO3', kind: 'general', asked: 990, corrected: 1636 }])
     expect(n[0]).toContain('990'); expect(n[0]).toContain('1636'); expect(n.at(-1)).toContain('General maal me 646 peti')
     expect(orderChangeNews(new Map([['RO3', { status: 'SAP SO Created', asked: 990, corrected: 1636, deleted: 0 }]]), [changed], [])).toEqual([])
+  })
+  it('builds the Must Bill list and Range progress for a month, and announces new Must Bill targets once', () => {
+    const mb = [{ 'Month Year': '2026-11-01 00:00:00', 'Parent SKU Code': 'P1', 'Parent SKU Descr': 'NIMBOOZ 345', Brand: '7UP', 'User Must Bill Qty': 0, 'System MB Qty': 40, 'Valid To': '2026-11-30' },
+      { 'Month Year': '2026-10-01 00:00:00', 'Parent SKU Code': 'P0', 'Parent SKU Descr': 'OLD' }, { 'Month Year': '2026-11-01 00:00:00', 'Parent SKU Code': 'P2', 'Parent SKU Descr': 'CREAMBELL', 'System MB Qty': 0 }]
+    const rg = [{ report_date: '2026-11-03', 'Parent SKU Code': 'P1', 'Parent SKU Desc': 'NIMBOOZ 345', 'DBR Parent MTD': 0, 'DBR Parent MTD OO': 100 },
+      { report_date: '2026-11-05', 'Parent SKU Code': 'P1', 'Parent SKU Desc': 'NIMBOOZ 345', 'DBR Parent MTD': 100, 'DBR Parent MTD OO': 200 }]
+    const rows = targetRows(mb, rg, '2026-11')
+    expect(rows.filter((r) => r.kind === 'must_bill').map((r) => [r.parent_sku_code, r.target_qty, r.valid_to])).toEqual([['P1', 40, '2026-11-30'], ['P2', 0, null]])
+    expect(rows.find((r) => r.kind === 'range')).toMatchObject({ parent_sku_code: 'P1', done_qty: 100, open_qty: 200 })
+    expect(targetNews(new Map(), rows).map((r) => r.parent_sku_code)).toEqual(['P1'])          // only targets that are set
+    expect(targetNews(new Map([['2026-11|P1', 40]]), rows)).toEqual([])                         // announced once
   })
   it('skips rows without an order or SKU', () => {
     expect(orderLines([r({ 'Requested Order Number': '' }), r({ 'Sku Code': 'nan' })])).toEqual([])

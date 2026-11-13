@@ -109,6 +109,7 @@ export default function PepsiPage() {
 interface Order { order_no: string; ordered_on: string | null; created_by: string | null; status: string | null; asked: number; corrected: number; allocated: number; invoiced: number; deleted: number; value_paise: number; invoiced_paise: number }
 interface InvLine { invoice_no: string; sku_code: string; description: string | null; invoiced_on: string | null; order_no: string | null; qty: number; value_paise: number }
 interface OrderLine { order_no: string; sku_code: string; kind: string; order_date: string | null; description: string | null; asked: number; corrected: number; allocated: number; invoiced: number; deleted: number; delete_reason: string | null }
+interface Target { kind: 'must_bill' | 'range'; month: string; parent_sku_code: string; description: string; target_qty: number; done_qty: number; open_qty: number; valid_to: string | null }
 interface Unbooked { invoice_no: string; on: string | null; qty: number; value_paise: number; lines: number }
 
 /** Pepsi's side of every order: what we asked for, what they changed it to, what they invoiced; plus invoices not yet entered as purchases. */
@@ -129,8 +130,27 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
     .select('order_no,delete_reason,reject_reason').or('delete_reason.not.is.null,reject_reason.not.is.null').limit(300)) })
   const reasonOf = (no: string) => [...new Set((reasons.data ?? []).filter((r) => r.order_no === no).flatMap((r) => [r.delete_reason, r.reject_reason]).filter(Boolean))].join(', ')
   const kindLabel = (k: string) => (k === 'near_expiry' ? t('pepsi.kindNearExpiry') : k === 'filler' ? t('pepsi.kindFiller') : t('pepsi.kindSpecificMrp'))
+  const targets = useQuery({ queryKey: ['oms_target'], queryFn: () => must<Target[]>(supabase.from('oms_target').select('kind,month,parent_sku_code,description,target_qty,done_qty,open_qty,valid_to').order('month', { ascending: false }).order('description').limit(80)) })
+  const tMonth = targets.data?.[0]?.month
+  const mbList = (targets.data ?? []).filter((x) => x.month === tMonth && x.kind === 'must_bill')
+  const rgList = (targets.data ?? []).filter((x) => x.month === tMonth && x.kind === 'range')
   return (
     <>
+      {!!(mbList.length || rgList.length) && (
+        <div className="card stack" style={{ gap: 8 }}>
+          <b>{t('pepsi.targets', { m: tMonth })}</b>
+          {!!mbList.length && (
+            <div className="stack" style={{ gap: 4 }}>
+              <span className="cell-sub"><b>{t('pepsi.mustBill')}</b> · {mbList.some((x) => x.target_qty > 0) ? t('pepsi.mbSet') : t('pepsi.mbNone')}</span>
+              {mbList.map((x) => <div key={x.parent_sku_code} className="row-between cell-sub"><span>{x.description}</span><span className="num">{x.target_qty > 0 ? `${x.target_qty} ${t('pepsi.cases')}` : '—'}</span></div>)}
+            </div>)}
+          {!!rgList.length && (
+            <div className="stack" style={{ gap: 4 }}>
+              <span className="cell-sub"><b>{t('pepsi.range')}</b></span>
+              {rgList.map((x) => <div key={x.parent_sku_code} className="row-between cell-sub"><span>{x.description}</span><span className="num">{t('pepsi.rangeNums', { done: x.done_qty, open: x.open_qty })}</span></div>)}
+            </div>)}
+          <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.targetsHow')}</p>
+        </div>)}
       {!!unbooked.length && <Alert msg={{ kind: 'warn', text: t('pepsi.unbooked', { n: unbooked.length, list: unbooked.map((u) => `${u.invoice_no} (${u.on ?? ''}, ${u.qty} ${t('pepsi.cases')})`).join(', ') }) }} />}
       <div className="card stack" style={{ gap: 8 }}>
         <b>{t('pepsi.orders')}</b>

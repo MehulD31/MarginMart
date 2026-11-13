@@ -1,7 +1,7 @@
 // Pepsi portal -> MarginMart sync (owner, 13 Nov 2026). READ-ONLY on the portal. Runs as MODE=oms and at the start of the
 // morning report. Writes oms_sku / oms_price_change / oms_map / oms_state, then tells Telegram what changed:
 // price changes on items we stock, a new order / invoice on the portal, and a failure (never silent).
-import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, orderChangeNews, unbookedInvoices } from './oms.mjs'
+import { omsLogin, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, orderChangeNews, targetRows, targetNews, unbookedInvoices } from './oms.mjs'
 import { item } from './format.mjs'
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -61,6 +61,14 @@ export async function syncOms({ db, say, env }) {
     const knownInv = new Set((await db('oms_invoice_line?select=invoice_no')).map((l) => l.invoice_no))
     if (ords.length) await db('oms_order?on_conflict=order_no', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(ords.map((o) => ({ ...o, updated_at: now }))) })
     if (lines.length) await db('oms_invoice_line?on_conflict=invoice_no,sku_code', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lines) })
+    // 3c. Pepsi's Must Bill list and Range progress for this month (own rows only)
+    const month = to.slice(0, 7)
+    const mine = (r) => [r['Ship To'], r['Ship to Party Code']].some((v) => String(v) === String(snap.node))
+    const [mbRows, rgRows] = await Promise.all([omsReport(s, 'must_bill_dbr_target_report', from, to).catch(() => []), omsReport(s, 'range_target_report', `${month}-01`, to).catch(() => [])])
+    const targets = targetRows(mbRows.filter(mine), rgRows.filter(mine), month)
+    const prevTargets = new Map((await db('oms_target?select=month,parent_sku_code,target_qty,kind&kind=eq.must_bill')).map((t) => [`${t.month}|${t.parent_sku_code}`, Number(t.target_qty) || 0]))
+    const targetAlerts = prevTargets.size ? targetNews(prevTargets, targets) : []      // first import: no announcements
+    if (targets.length) await db('oms_target?on_conflict=kind,month,parent_sku_code', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(targets.map((t) => ({ ...t, updated_at: now }))) })
     const oldLines = await db('oms_order_line?select=order_no,sku_code,kind,allocated,invoiced&limit=5000')
     const specials = oldLines.length ? specialNews(new Map(oldLines.map((l) => [`${l.order_no}|${l.sku_code}|${l.kind}`, Number(l.invoiced) || Number(l.allocated) || 0])), olines) : []   // first import: no announcements
     if (olines.length) await db('oms_order_line?on_conflict=order_no,sku_code,kind', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(olines.map((l) => ({ ...l, updated_at: now }))) })
@@ -73,6 +81,10 @@ export async function syncOms({ db, say, env }) {
 
     // 4. Telegram: only what matters, only when it changes
     if (orderNews.length) await say(orderNews.join('\n'), { parse_mode: 'HTML' })
+    if (targetAlerts.length) {
+      await say([`🎯 <b>Pepsi ne Must Bill target diya / badla</b> (${month})`, ...targetAlerts.map((t) => `▸ ${esc(t.description)}: <b>${t.target_qty}</b> peti`),
+        '<i>Isi mahine ke andar bill karna hai. Order me ye items dhyan se daalo.</i>'].join('\n'), { parse_mode: 'HTML' })
+    }
     const KIND = { near_expiry: '⏳ Near Expiry', specific_mrp: '🏷 Specific MRP', filler: '📦 Filler' }
     for (const o of specials) {
       await say([`⚠️ <b>Pepsi order ${esc(o.order_no)}</b> me Pepsi ne ye alag maal daala hai:`,
