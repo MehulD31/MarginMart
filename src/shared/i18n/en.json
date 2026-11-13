@@ -1731,6 +1731,7 @@
       "upi": "UPI",
       "credit": "Credit (khata)"
     },
-    "note": "Counter bills, truck bills and delivered route orders; cancelled bills left out. Amounts include GST as billed. Item amounts are before bill discounts. Margin = selling price − our buy price, before salaries, fuel and other costs (see Kharcha). The same PDF goes to the Telegram group every Monday (last week) and on the 1st (last month); type \"sales report\" in the group for one any time."
+    "note": "Counter bills, truck bills and delivered route orders; cancelled bills left out. Amounts include GST as billed. Item amounts are before bill discounts. Margin = selling price − our buy price, before salaries, fuel and other costs (see Kharcha). The same PDF goes to the Telegram group every Monday (last week) and on the 1st (last month); type \"sales report\" in the group for one any time.",
+    "sortBy": "Sort by"
   }
 }

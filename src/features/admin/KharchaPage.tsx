@@ -78,16 +78,16 @@ export default function KharchaPage() {
 
       <form className="card stack" onSubmit={(e) => { e.preventDefault(); add.mutate() }} data-testid="add-kharcha">
         <h2 style={{ margin: 0 }}>{t('kharcha.add')}</h2>
-        <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
-          <label className="field" style={{ minWidth: 130 }}><span>{t('kharcha.amount')}</span>
+        <div className="form-grid-2">
+          <label className="field"><span>{t('kharcha.amount')}</span>
             <input inputMode="decimal" required value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="800" /></label>
-          <label className="field" style={{ minWidth: 160 }}><span>{t('kharcha.category')}</span>
+          <label className="field"><span>{t('kharcha.category')}</span>
             <select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c} value={c}>{t(`kharcha.cat.${c}`)}</option>)}</select></label>
-          <label className="field" style={{ minWidth: 140 }}><span>{t('kharcha.date')}</span>
+          <label className="field"><span>{t('kharcha.date')}</span>
             <input type="date" value={f.spent_on} max={today} onChange={(e) => setF({ ...f, spent_on: e.target.value || today })} /></label>
-          <label className="field" style={{ minWidth: 120 }}><span>{t('kharcha.paidFrom')}</span>
+          <label className="field"><span>{t('kharcha.paidFrom')}</span>
             <select value={f.paid_from} onChange={(e) => setF({ ...f, paid_from: e.target.value })}>{['cash', 'upi', 'bank', 'partner'].map((p) => <option key={p} value={p}>{t(`kharcha.from.${p}`)}</option>)}</select></label>
-          <label className="field grow" style={{ minWidth: 200 }}><span>{t('kharcha.note')}</span>
+          <label className="field span-2"><span>{t('kharcha.note')}</span>
             <input value={f.note} maxLength={120} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder={t('kharcha.notePh')} /></label>
         </div>
         <button type="submit" className="primary" style={{ alignSelf: 'flex-start' }} disabled={add.isPending}><Plus size={18} aria-hidden="true" />{add.isPending ? t('common.loading') : t('kharcha.save')}</button>
@@ -140,9 +140,9 @@ function FixedEditor({ s, onSaved }: { s: KharchaSettings; onSaved: () => void }
       <h2 style={{ margin: 0 }}>{t('kharcha.fixedTitle')}</h2>
       <p className="cell-sub">{t('kharcha.fixedHint')}</p>
       {rows.map((r, i) => (
-        <div key={i} className="row" style={{ gap: 8 }}>
-          <input className="grow" value={r.label} aria-label={t('kharcha.lineName')} onChange={(e) => setRows(rows.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
-          <input style={{ width: 120 }} inputMode="numeric" value={r.rupees} aria-label={t('kharcha.amount')} onChange={(e) => setRows(rows.map((x, j) => j === i ? { ...x, rupees: e.target.value.replace(/\D/g, '') } : x))} />
+        <div key={i} className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <input style={{ flex: '1 1 140px', minWidth: 0, width: 'auto' }} value={r.label} aria-label={t('kharcha.lineName')} onChange={(e) => setRows(rows.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
+          <input style={{ flex: '0 1 120px', minWidth: 0, width: 'auto' }} inputMode="numeric" value={r.rupees} aria-label={t('kharcha.amount')} onChange={(e) => setRows(rows.map((x, j) => j === i ? { ...x, rupees: e.target.value.replace(/\D/g, '') } : x))} />
           <button type="button" className="icon-btn" aria-label={t('kharcha.removeLine')} onClick={() => setRows(rows.filter((_, j) => j !== i))}><Trash2 size={16} aria-hidden="true" /></button>
         </div>))}
       <button type="button" className="btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setRows([...rows, { label: '', rupees: '' }])}><Plus size={16} aria-hidden="true" />{t('kharcha.addLine')}</button>

@@ -78,15 +78,15 @@ export default function PepsiPage() {
       <Alert msg={msg} />
       <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <b>{t('pepsi.compare')}</b>
-        <label className="row" style={{ gap: 6 }}><input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} />{t('pepsi.onlyIssues')}</label>
+        <label className="chip"><input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} />{t('pepsi.onlyIssues')}</label>
       </div>
-      <div className="table-wrap table-scroll"><table className="dense" data-testid="pepsi-table">
+      <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="pepsi-table">
         <thead><tr><th scope="col">{t('pepsi.ours')}</th><th scope="col">{t('pepsi.theirs')}</th><th scope="col">{t('pepsi.price')}</th><th scope="col">{t('pepsi.cost')}</th><th scope="col">{t('pepsi.diff')}</th></tr></thead>
         <tbody>{shown.map((r) => (
           <tr key={r.id}>
-            <th scope="row">{r.label}<div className="cell-sub">MRP {r.mrp ? formatPaise(r.mrp) : '—'} · {t('pepsi.stock', { n: r.onHand })}</div></th>
+            <td className="lead"><b>{r.label}</b><div className="cell-sub">MRP {r.mrp ? formatPaise(r.mrp) : '—'} · {t('pepsi.stock', { n: r.onHand })}</div></td>
             <td>
-              <select className="input" style={{ minWidth: 220 }} value={r.map?.sku_code ?? ''} onChange={(e) => void setMap(r.id, e.target.value)} aria-label={t('pepsi.pick', { item: r.label })}>
+              <select className="input" style={{ minWidth: 0, width: '100%', maxWidth: 380 }} value={r.map?.sku_code ?? ''} onChange={(e) => void setMap(r.id, e.target.value)} aria-label={t('pepsi.pick', { item: r.label })}>
                 <option value="">{t('pepsi.none')}</option>
                 {priced.map((x) => <option key={x.sku_code} value={x.sku_code}>{x.description}{x.mrp_paise ? ` · MRP ${x.mrp_paise / 100}` : ''}</option>)}
               </select>
@@ -94,9 +94,9 @@ export default function PepsiPage() {
                 : r.map?.mrp_differs ? <span className="badge badge-amber">{t('pepsi.mrpDiffers', { m: r.sku.mrp_paise ? formatPaise(r.sku.mrp_paise) : '—' })}</span>
                 : r.map?.source === 'manual' ? t('pepsi.manual') : t('pepsi.auto')}</div>
             </td>
-            <td className="num">{r.sku?.price_paise ? formatPaise(r.sku.price_paise) : '—'}{r.sku?.tax_paise ? <div className="cell-sub">{t('pepsi.gst', { v: formatPaise(r.sku.tax_paise) })}</div> : null}</td>
-            <td className="num">{r.cost ? formatPaise(r.cost) : '—'}</td>
-            <td className="num">{r.diff == null ? '—' : r.diff === 0 ? '✓' : <b style={{ color: r.diff > 0 ? '#dc2626' : '#16a34a' }}>{r.diff > 0 ? '+' : ''}{formatPaise(r.diff)}</b>}</td>
+            <td className="num" data-label={t('pepsi.price')}>{r.sku?.price_paise ? formatPaise(r.sku.price_paise) : '—'}{r.sku?.tax_paise ? <span className="cell-sub"> · {t('pepsi.gst', { v: formatPaise(r.sku.tax_paise) })}</span> : null}</td>
+            <td className="num" data-label={t('pepsi.cost')}>{r.cost ? formatPaise(r.cost) : '—'}</td>
+            <td className="num" data-label={t('pepsi.diff')}>{r.diff == null ? '—' : r.diff === 0 ? '✓' : <b style={{ color: r.diff > 0 ? '#dc2626' : '#16a34a' }}>{r.diff > 0 ? '+' : ''}{formatPaise(r.diff)}</b>}</td>
           </tr>))}</tbody>
       </table></div>
       <p className="muted">{t('pepsi.how')}</p>
@@ -128,15 +128,15 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
       <div className="card stack" style={{ gap: 8 }}>
         <b>{t('pepsi.orders')}</b>
         {!orders.data?.length ? <span className="cell-sub">{t('pepsi.noOrders')}</span> : (
-          <div className="table-wrap table-scroll"><table className="dense" data-testid="pepsi-orders">
+          <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="pepsi-orders">
             <thead><tr><th scope="col">{t('pepsi.order')}</th><th scope="col">{t('pepsi.asked')}</th><th scope="col">{t('pepsi.corrected')}</th><th scope="col">{t('pepsi.invoicedQty')}</th><th scope="col">{t('pepsi.value')}</th><th scope="col">{t('pepsi.status')}</th></tr></thead>
             <tbody>{orders.data.map((o) => (
               <tr key={o.order_no}>
-                <th scope="row">{o.order_no}<div className="cell-sub">{o.ordered_on} · {o.created_by?.split('@')[0]}</div></th>
-                <td className="num">{o.asked}</td>
-                <td className="num">{o.corrected !== o.asked && o.corrected ? <b style={{ color: '#b45309' }}>{o.corrected}</b> : o.corrected || '—'}</td>
-                <td className="num">{o.invoiced || '—'}</td>
-                <td className="num">{formatPaise(o.invoiced_paise || o.value_paise)}</td>
+                <td className="lead"><b>{o.order_no}</b><div className="cell-sub">{o.ordered_on} · {o.created_by?.split('@')[0]}</div></td>
+                <td className="num" data-label={t('pepsi.asked')}>{o.asked}</td>
+                <td className="num" data-label={t('pepsi.corrected')}>{o.corrected !== o.asked && o.corrected ? <b style={{ color: '#b45309' }}>{o.corrected}</b> : o.corrected || '—'}</td>
+                <td className="num" data-label={t('pepsi.invoicedQty')}>{o.invoiced || '—'}</td>
+                <td className="num" data-label={t('pepsi.value')}>{formatPaise(o.invoiced_paise || o.value_paise)}</td>
                 <td>{o.deleted && !o.corrected ? <span className="badge badge-red">{t('pepsi.cancelled')}</span> : <span className="badge">{o.status ?? '—'}</span>}</td>
               </tr>))}</tbody>
           </table></div>)}
@@ -146,7 +146,7 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
         <b>{t('pepsi.invoices')}</b>
         {!invoices.length ? <span className="cell-sub">{t('pepsi.noInvoices')}</span> : invoices.map((v) => (
           <div key={v.no} className="stack" style={{ gap: 4 }}>
-            <button type="button" className="row-between" style={{ all: 'unset', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }} onClick={() => setOpen(open === v.no ? null : v.no)} aria-expanded={open === v.no}>
+            <button type="button" className="row-between" style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, minHeight: 44, width: '100%' }} onClick={() => setOpen(open === v.no ? null : v.no)} aria-expanded={open === v.no}>
               <span><b>{v.no}</b> · {v.on} {pending.has(v.no) ? <span className="badge badge-amber">{t('pepsi.notEntered')}</span> : <span className="badge badge-green">{t('pepsi.entered')}</span>}</span>
               <span className="num">{v.qty} {t('pepsi.cases')} · {formatPaise(v.value)}</span>
             </button>

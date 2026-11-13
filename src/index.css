@@ -146,7 +146,7 @@ label.button input[type='file'] { display: none; }
 .badge-amber { background: #fef3c7; color: var(--warn); }
 .badge-red { background: #fee2e2; color: var(--danger); }
 .badge-blue { background: #dbeafe; color: #1e40af; }
-.count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 
 /* ---------- page header / toolbar ---------- */
 .page-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
@@ -167,7 +167,8 @@ label.button input[type='file'] { display: none; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 /* ---------- tables (stack into cards on phones) ---------- */
-.table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+/* overflow-x: auto (not hidden): a table a little wider than its box scrolls instead of cutting the last column's buttons. */
+.table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; box-shadow: var(--shadow-sm); }
 table { width: 100%; border-collapse: collapse; font-size: 0.925rem; }
 th { text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: #f8fafc; }
 th, td { padding: 12px 14px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
@@ -177,7 +178,8 @@ td.actions { text-align: right; white-space: nowrap; }
 td.actions > * + * { margin-left: 8px; }
 .cell-title { font-weight: 600; color: var(--ink); }
 .cell-sub { color: var(--muted); font-size: 0.825rem; }
-@media (max-width: 719px) {
+/* Cards instead of columns up to 959px: below that the admin has the phone/tablet layout (bottom bar), and 5-6 column tables with action buttons are wider than the screen. */
+@media (max-width: 959px) {
   .table-stack thead { display: none; }
   .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; }
   .table-stack tr { padding: 14px 16px; border-bottom: 1px solid var(--line); }
@@ -226,7 +228,7 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 .mobile-header { position: sticky; top: 0; z-index: 20; height: var(--header-h); display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px 0 16px; background: rgb(255 255 255 / 0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .content { padding: 16px 16px calc(var(--bottom-nav-h) + var(--safe-bottom) + 24px); max-width: 1200px; margin: 0 auto; }
 .bottom-nav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; height: calc(var(--bottom-nav-h) + var(--safe-bottom)); padding-bottom: var(--safe-bottom); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgb(15 23 42 / 0.05); }
-.bottom-nav a, .bottom-nav button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 0; padding: 6px 2px; border: 0; border-radius: 0; background: none; color: var(--muted); font-size: 0.7rem; font-weight: 600; text-decoration: none; }
+.bottom-nav a, .bottom-nav button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 0; padding: 6px 2px; border: 0; border-radius: 0; background: none; color: var(--muted); font-size: 0.75rem; font-weight: 600; text-decoration: none; }
 .bottom-nav a.active { color: var(--brand-700); }
 .bottom-nav a.active::before { content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 3px; border-radius: 0 0 3px 3px; background: var(--brand-600); }
 .bottom-nav .count { position: absolute; top: 6px; left: calc(50% + 6px); }
@@ -241,7 +243,7 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
   .sidebar::-webkit-scrollbar { width: 6px; }
   .sidebar::-webkit-scrollbar-thumb { background: var(--sidebar-2); border-radius: 3px; }
   .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
-  .sidebar .nav-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; padding: 10px 12px 4px; }
+  .sidebar .nav-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; padding: 10px 12px 4px; }
   .sidebar nav a { display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-radius: 10px; color: #cbd5e1; text-decoration: none; font-weight: 500; font-size: 0.925rem; }
   .sidebar nav a:hover { background: var(--sidebar-2); color: #fff; }
   .sidebar nav a.active { background: rgb(34 197 94 / 0.14); color: #fff; box-shadow: inset 3px 0 0 var(--brand-500); }
@@ -296,11 +298,15 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 .variant .thumb { width: 100%; }
 
 /* ---------- stats ---------- */
-.stats { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 960px) { .stats { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
-.stat .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
-.stat .value { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
+/* minmax(0, 1fr): a plain 1fr will not shrink below its content, which pushed wide cards past the screen edge and got them cut. */
+.stats { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 359px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 960px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+.stat .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; overflow-wrap: break-word; }
+.stat .value { font-size: clamp(1.15rem, 5.6vw, 1.4rem); font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; overflow-wrap: break-word; }
+@media (min-width: 720px) { .stat .value { font-size: 1.4rem; } }
+.stat .cell-sub { overflow-wrap: break-word; }
 
 /* ---------- PIN reveal ---------- */
 .pin-reveal { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px; border-radius: var(--radius); background: var(--brand-50); border: 1px dashed var(--brand-200); }
@@ -589,7 +595,7 @@ details[open].card summary::before { content: '− '; }
 .trip-card { gap: 12px; }
 .trip-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
 .trip-nums > div { background: var(--line-2); border-radius: 10px; padding: 8px 4px; display: flex; flex-direction: column; gap: 2px; }
-.trip-nums span { font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+.trip-nums span { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
 .trip-nums strong { font-size: 1.15rem; }
 .trip-nums small { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
 .trip-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
@@ -647,7 +653,7 @@ html, body { overflow-x: clip; }
 .ins-shop-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; color: inherit; font-weight: 400; }
 .ins-shop-row:hover { border-color: var(--brand-200); }
 .ins-rank { width: 28px; height: 28px; flex-shrink: 0; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--line-2); font-size: 0.8rem; font-weight: 800; }
-.tab-n { margin-left: 4px; min-width: 18px; padding: 0 5px; border-radius: 999px; background: rgb(127 127 127 / 0.2); font-size: 0.7rem; }
+.tab-n { margin-left: 4px; min-width: 18px; padding: 0 5px; border-radius: 999px; background: rgb(127 127 127 / 0.2); font-size: 0.75rem; }
 /* AI advisor: thinking state */
 .ai-thinking { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: rgb(255 255 255 / 0.7); border: 1px dashed var(--brand-200); }
 .spinner { width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 3px solid var(--brand-100); border-top-color: var(--brand-700); animation: spin .8s linear infinite; }
@@ -657,7 +663,7 @@ html, body { overflow-x: clip; }
 /* ======================= Theme polish: captions, dates, files, photo tiles ======================= */
 /* Table captions sit inside the rounded card (which clips): same padding as the cells, so nothing is cut. */
 caption { caption-side: top; text-align: left; padding: 14px 14px 12px; font-weight: 700; font-size: 0.95rem; color: var(--ink); border-bottom: 1px solid var(--line-2); }
-@media (max-width: 719px) { .table-stack caption { display: block; padding: 14px 16px 12px; } }
+@media (max-width: 959px) { .table-stack caption { display: block; padding: 14px 16px 12px; } }
 
 /* Date / month / time pickers: one look on iPhone, Android and desktop.
    iOS Safari draws its own box (wide minimum width, centred text) that overflows narrow cards; appearance:none removes it.
@@ -735,7 +741,7 @@ button.date-field[aria-invalid='true'] { border-color: var(--danger); box-shadow
 .dp .dp-title:hover { background: var(--brand-50); color: var(--brand-800); }
 .dp-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .dp-row > span { display: flex; justify-content: center; }
-.dp-wd { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 4px 0 6px; }
+.dp-wd { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 4px 0 6px; }
 .dp .dp-day { width: 38px; height: 38px; border-radius: 999px; font-variant-numeric: tabular-nums; }
 .dp .dp-day:hover:not(:disabled) { background: var(--brand-50); color: var(--brand-800); }
 .dp .dp-day[aria-current='date'] { box-shadow: inset 0 0 0 1.5px var(--brand-600); color: var(--brand-800); font-weight: 700; }
@@ -766,13 +772,13 @@ button.date-field[aria-invalid='true'] { border-color: var(--danger); box-shadow
 .prod-ladder, .prod-trend { width: 100%; height: auto; display: block; overflow: visible; }
 .prod-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .prod-nums > div { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 10px; background: var(--line-2, #f1f5f9); }
-.prod-nums span { font-size: 11px; color: var(--muted, #64748b); }
+.prod-nums span { font-size: 12px; color: var(--muted, #64748b); }
 .prod-nums b { font-size: 15px; }
 @media (max-width: 420px) { .prod-nums { grid-template-columns: 1fr 1fr; } }
 .prod-advice { margin: 0; }
 .prod-meter { height: 12px; border-radius: 6px; background: var(--line-2, #f1f5f9); overflow: hidden; }
 .prod-meter > i { display: block; height: 100%; border-radius: 6px; transition: width .4s ease; }
-.prod-nums small { font-size: 11px; }
+.prod-nums small { font-size: 12px; }
 .prod-whatif { border-top: 1px dashed var(--line, #e2e8f0); padding-top: 8px; }
 .srep-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
 @media (min-width: 900px) { .srep-grid { grid-template-columns: 1fr 1fr; } }
@@ -780,3 +786,112 @@ button.date-field[aria-invalid='true'] { border-color: var(--danger); box-shadow
 .srep-bar > i { display: block; height: 100%; background: #22c55e; border-radius: 4px; }
 .th-sort { all: unset; cursor: pointer; font: inherit; text-transform: inherit; letter-spacing: inherit; }
 .th-sort:focus-visible { outline: 2px solid #16a34a; outline-offset: 2px; border-radius: 3px; }
+
+/* ======================= Mobile audit fixes (13 Nov 2026) =======================
+   Found by tests/mobile/audit.mjs. Root causes: grid columns that would not shrink (1fr), buttons used as cards that
+   cannot wrap (button { white-space: nowrap }), 36px buttons, text under 12px, tables clipped on tablets. */
+
+/* Grids: columns must be allowed to shrink below their content. */
+.form-grid, .pack-grid, .dash-grid, .ins-grid, .trip-grid, .prod-grid, .srep-grid, .variant-grid { min-width: 0; }
+.form-grid { grid-template-columns: minmax(0, 1fr); }
+.pack-grid, .dash-grid, .prod-grid, .srep-grid, .ins-grid { grid-template-columns: minmax(0, 1fr); }
+.trip-grid { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pack-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 720px) { .ins-grid { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); } .trip-grid { grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); } }
+@media (min-width: 900px) { .prod-grid, .srep-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .pack-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dash-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } }
+@media (min-width: 1400px) { .prod-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.variant-grid { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
+
+/* Buttons that are really cards (shop rows, pack cards, reorder rows) must wrap their text and may shrink inside rows. */
+.ins-shop-head, .ins-shop-row, .reorder, .pack-card, .route-card { white-space: normal; text-align: left; min-width: 0; }
+.ins-shop-head > *, .ins-shop-row > *, .pack-card > *, .stop > *, .stop .grow, .top-list .grow, .ledger li > .grow { min-width: 0; }
+.ins-shop-head .grow, .ins-shop-row .grow, .pack-card .grow { overflow-wrap: anywhere; }
+.cell-title, .cell-sub, .stat .label { overflow-wrap: break-word; }
+.page-header > * { min-width: 0; }
+.page-header h1 { overflow-wrap: anywhere; }
+.row > .grow, .row-between > :first-child { min-width: 0; }
+
+/* Phones and tablets */
+@media (max-width: 959px) {
+  /* 44px is the tap size we hold ourselves to (WCAG 2.2 asks for 24px). */
+  .btn-sm, .sync-chip { min-height: 44px; }
+  .btn-sm, .button { white-space: normal; text-align: center; line-height: 1.25; }
+  .segmented button, .bottom-nav button, .icon-btn, .stepper button, .sync-chip, .trip-steps button, .tab-n { white-space: nowrap; }
+  table.dense input, table.dense select { min-height: 44px; }
+  .th-sort { min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
+  .pager button { min-width: 44px; }
+  .stat button, .stat .button { align-self: stretch; }
+}
+@media (min-width: 960px) { .btn-sm { min-height: 36px; } }
+
+/* Badges with long text (item names on the dashboard) wrap instead of running off the screen. */
+.badge-wrap { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; flex-shrink: 1; }
+
+/* Dense tables keep their natural column widths and scroll inside their box: squeezing 7 columns into 320px made
+   headings wrap to 4 lines in 49px. The first column stays put (sticky) with a readable width. */
+table.dense { width: max-content; min-width: 100%; }
+table.dense th:not([scope='row']) { white-space: nowrap; }
+table.dense th[scope='row'] { min-width: 150px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 719px) { table.dense th[scope='row'] { min-width: 150px; } }
+@media (max-width: 959px) {
+  .btn-sm, .th-sort { min-width: 44px; }
+  .chip { min-height: 44px; }
+}
+
+/* A growing field in a wrapping row must wrap to its own line before it gets squeezed (the Money "account name" input was 26px wide in Hindi). */
+.field.grow { flex: 1 1 180px; min-width: min(180px, 100%); }
+.badge { flex-shrink: 0; }
+@media (max-width: 959px) { .ins-shop-head, .ins-shop-row { min-height: 44px; } }
+
+/* Loading: "127 / 120" must never split over two lines. */
+.trip-nums strong, .trip-nums small { white-space: nowrap; }
+
+/* Tables turned into cards on phones: a footer (totals) row becomes a card too, and a dropdown fills the card. */
+.only-phone { display: none; }
+@media (max-width: 959px) {
+  .only-phone { display: flex; }
+  .table-stack tfoot, .table-stack tfoot tr, .table-stack tfoot td { display: block; }
+  .table-stack tfoot tr { padding: 14px 16px; background: var(--line-2); }
+  .table-stack tfoot td { padding: 2px 0; border: 0; }
+  .table-stack tfoot td[data-label]::before { content: attr(data-label) ' · '; color: var(--muted); font-size: 0.8rem; }
+  .table-stack td.phone-hide { display: none; }
+  .table-stack td select { width: 100%; }
+  .table-stack td.num { text-align: left; }
+  .table-stack td.lead { overflow-wrap: anywhere; }
+  .segmented button[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .prod-whatif .cell-sub { flex-basis: 100%; }
+}
+
+/* Wide tables that scroll sideways show a soft shadow on the edge that has more, so nobody misses the columns off screen. */
+@media (max-width: 959px) {
+  .table-scroll {
+    background:
+      linear-gradient(to right, var(--surface) 30%, rgb(255 255 255 / 0)) 0 0 / 36px 100% no-repeat local,
+      linear-gradient(to left, var(--surface) 30%, rgb(255 255 255 / 0)) 100% 0 / 36px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgb(15 23 42 / 0.22), rgb(15 23 42 / 0)) 0 0 / 12px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgb(15 23 42 / 0.22), rgb(15 23 42 / 0)) 100% 0 / 12px 100% no-repeat scroll;
+    background-color: var(--surface);
+  }
+  .table-scroll table.dense:not(.table-stack) td { background: transparent; }
+}
+
+/* Short forms: one column on the smallest phones, two from 400px. Same-width fields instead of a ragged wrapping row. */
+.form-grid-2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 400px) { .form-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .form-grid-2 .span-2 { grid-column: 1 / -1; } }
+@media (min-width: 960px) { .form-grid-2 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .form-grid-2 .span-2 { grid-column: span 4; } }
+
+/* A table shown as cards fills its box (the dense "max-content" width made card titles and dropdowns run past the right edge). */
+@media (max-width: 959px) {
+  table.dense.table-stack { width: 100%; min-width: 0; }
+  .table-stack td { min-width: 0; overflow-wrap: anywhere; }
+  .table-stack td.lead b { overflow-wrap: anywhere; }
+}
+
+/* Very narrow screens (browser zoom 200% on a phone = ~195px): keep the logo mark, drop the name text so the language button fits. */
+@media (max-width: 259px) {
+  .mobile-header .brand-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .content { padding-left: 12px; padding-right: 12px; }
+}
+@media (max-width: 259px) { .trip-nums, .trip-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 259px) { button, .button, .badge { white-space: normal; max-width: 100%; } .segmented button { white-space: nowrap; } }

@@ -7,7 +7,7 @@ export function Brand({ size = 18 }: { size?: number }) {
     <span className="brand">
       {/* Placeholder mark until the real K.D. Foods logo arrives. */}
       <span className="brand-mark" aria-hidden="true" style={{ fontSize: size * 0.72, fontWeight: 800, letterSpacing: '-0.04em' }}>KD</span>
-      <span>K.D. <b>Foods</b></span>
+      <span className="brand-text">K.D. <b>Foods</b></span>
     </span>
   )
 }

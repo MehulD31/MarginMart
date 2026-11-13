@@ -181,8 +181,8 @@ function CallList({ a, onShop }: { a: Analysis; onShop: (s: ShopStat) => void })
         <p data-testid="call-why">{s.gap ? (s.lateBy! > 0 ? t('ins.call.whyLate', { g: Math.round(s.gap), count: s.since }) : t('ins.call.whyDue', { g: Math.round(s.gap), count: s.since })) : t('ins.call.whyOnce', { count: s.since })}</p>
         <p className="cell-sub">{t('ins.call.avg', { v: rs(s.avgBill) })} · {t('ins.call.usualLabel')}</p>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-          {(s.likely ?? []).slice(0, 3).map((l) => <span key={l.item} className="badge badge-green">{l.label} × {l.qty}</span>)}
-          {(s.recommend ?? []).slice(0, 1).map((r) => <span key={r.item} className="badge badge-blue">✨ {t('ins.call.try', { item: r.label })}</span>)}
+          {(s.likely ?? []).slice(0, 3).map((l) => <span key={l.item} className="badge badge-green badge-wrap">{l.label} × {l.qty}</span>)}
+          {(s.recommend ?? []).slice(0, 1).map((r) => <span key={r.item} className="badge badge-blue badge-wrap">✨ {t('ins.call.try', { item: r.label })}</span>)}
         </div>
         <ShopActions s={s} />
       </li>))}
@@ -239,7 +239,7 @@ function Items({ a }: { a: Analysis }) {
         <div className="card stack">
           <h2>{t('ins.items.dead', { n: a.deadStock.length })}</h2>
           <p className="cell-sub">{t('ins.items.deadHint')}</p>
-          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>{a.deadStock.slice(0, 15).map((i) => <span key={i.id} className="badge">{i.label}: {i.onHand}</span>)}</div>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>{a.deadStock.slice(0, 15).map((i) => <span key={i.id} className="badge badge-wrap">{i.label}: {i.onHand}</span>)}</div>
         </div>)}
     </div>
   )

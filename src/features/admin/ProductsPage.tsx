@@ -226,7 +226,7 @@ function Ladder({ x }: { x: Row }) {
       {x.avgSell != null && x.buy != null && <line x1={px(x.buy)} x2={px(x.avgSell)} y1={Y} y2={Y} stroke={C.sell} strokeWidth={3} strokeLinecap="round" opacity={0.55} />}
       {marks.filter((m) => m.v != null).map((m) => (
         <g key={m.k}><Mark c={m.c} shape={m.shape} x={px(m.v!)} y={Y} s={m.k === 'sell' ? 7.5 : 6} />
-          <text x={px(m.v!)} y={m.up ? 12 : H - 2} textAnchor="middle" fontSize={10} fill={m.c} fontWeight={700}>{r(m.v!)}</text></g>))}
+          <text x={px(m.v!)} y={m.up ? 13 : H - 2} textAnchor="middle" fontSize={12} fill={m.c} fontWeight={700}>{r(m.v!)}</text></g>))}
     </svg>)
 }
 

@@ -45,7 +45,8 @@ export default function PricingPage() {
       {volume.cases > cap && cap > 0 && <Alert msg={{ kind: 'warn', text: t('pricing.overCapacity', { n: cap.toLocaleString('en-IN') }) }} />}
       <p className="muted">{t('pricing.how')}</p>
 
-      <div className="table-wrap table-scroll"><table className="dense">
+      {/* Phones: one card per item (Minimum and Floor were off screen in an 8-column table). Laptop: the table. */}
+      <div className="table-wrap table-scroll"><table className="dense table-stack">
         <thead><tr>
           <th scope="col">{t('inventory.item')}</th><th scope="col">{t('pricing.buy')}</th><th scope="col">{t('pricing.trade')}</th><th scope="col">{t('pricing.margin')}</th>
           {steps.map((n, i) => <th key={n} scope="col">{i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n })}</th>)}
@@ -55,13 +56,13 @@ export default function PricingPage() {
           const room = x.trade - x.min
           return (
             <tr key={p.id}>
-              <th scope="row">{(hi && p.name_hi) || p.name_en}{list.scheme_value_paise > 0 && <div className="cell-sub">{t('pricing.scheme', { v: rs(list.scheme_value_paise) })}</div>}</th>
-              <td className="num">{rs(x.buy)}{!x.buyKnown && <span className="muted"> *</span>}</td>
-              <td className="num">{rs(x.trade)}</td>
-              <td className="num"><span className={`badge ${x.margin < cost.total ? 'badge-red' : room >= 3000 ? 'badge-green' : ''}`}>{rs(x.margin)}</span></td>
-              {steps.map((n) => <td key={n} className="num">{rs(Math.max(x.trade - slabOff(s, n, onSeason), x.min))}</td>)}
-              <td className="num"><strong>{rs(x.min)}</strong></td>
-              <td className="num">{rs(x.floor)}</td>
+              <td className="lead"><b>{(hi && p.name_hi) || p.name_en}</b>{list.scheme_value_paise > 0 && <div className="cell-sub">{t('pricing.scheme', { v: rs(list.scheme_value_paise) })}</div>}</td>
+              <td className="num" data-label={t('pricing.buy')}>{rs(x.buy)}{!x.buyKnown && <span className="muted"> *</span>}</td>
+              <td className="num" data-label={t('pricing.trade')}>{rs(x.trade)}</td>
+              <td className="num" data-label={t('pricing.margin')}><span className={`badge ${x.margin < cost.total ? 'badge-red' : room >= 3000 ? 'badge-green' : ''}`}>{rs(x.margin)}</span></td>
+              {steps.map((n, i) => <td key={n} className="num" data-label={i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n })}>{rs(Math.max(x.trade - slabOff(s, n, onSeason), x.min))}</td>)}
+              <td className="num" data-label={t('pricing.min')}><strong>{rs(x.min)}</strong></td>
+              <td className="num" data-label={t('pricing.floor')}>{rs(x.floor)}</td>
             </tr>)
         })}</tbody>
       </table></div>

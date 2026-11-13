@@ -82,16 +82,25 @@ export default function SalesReportPage() {
             <h2 style={{ margin: 0, fontSize: 17 }}>{t('srep.itemsSold')} ({items.length})</h2>
             <input className="input" style={{ maxWidth: 220 }} placeholder={t('srep.search')} aria-label={t('srep.search')} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <div className="table-wrap table-scroll"><table className="dense" data-testid="srep-items">
+          {/* Phones: sort chips + one card per item (a 8-column table left Amount off screen). Laptop: the table with sortable headers. */}
+          <div className="segmented only-phone" role="group" aria-label={t('srep.sortBy')}>
+            {([['cases', t('srep.cases')], ['amount_paise', t('srep.amount')], ['margin_paise', t('srep.marginCol')], ['shops', t('srep.shopsCol')], ['item', t('srep.item')]] as [SortKey, string][]).map(([k, label]) => (
+              <button key={k} type="button" className="btn-sm" aria-pressed={sort === k} onClick={() => setSort(k)}>{label}</button>))}
+          </div>
+          <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="srep-items">
             <thead><tr>{th('item', t('srep.item'), false)}{th('cases', t('srep.cases'))}<th scope="col" className="num">{t('srep.bottles')}</th>{th('amount_paise', t('srep.amount'))}
               <th scope="col" className="num">{t('srep.avgRate')}</th>{th('margin_paise', t('srep.marginCol'))}{th('shops', t('srep.shopsCol'))}<th scope="col" className="num">{t('srep.lastSold')}</th></tr></thead>
             <tbody>{items.map((i) => (
-              <tr key={i.item}><th scope="row">{itemName(i.item)}<div className="cell-sub">{i.brand}</div></th>
-                <td className="num"><b>{i.cases}</b></td><td className="num">{Number(i.units).toLocaleString('en-IN')}</td><td className="num">{rupees(i.amount_paise)}</td>
-                <td className="num">{rupees(i.avg_rate_paise)}</td><td className="num" style={{ color: Number(i.margin_paise) < 0 ? '#dc2626' : undefined }}>{rupees(i.margin_paise)}</td>
-                <td className="num">{i.shops}</td><td className="num">{niceDate(i.last_sold)}</td></tr>))}</tbody>
-            <tfoot><tr><th scope="row">{t('srep.total')}</th><td className="num"><b>{cases}</b></td><td className="num">{Number(tt!.units).toLocaleString('en-IN')}</td><td className="num">{rupees(tt!.gross_paise)}</td>
-              <td className="num">{rupees(Number(tt!.gross_paise) / Math.max(1, cases))}</td><td className="num">{rupees(Number(tt!.margin_paise) + Number(tt!.discount_paise))}</td><td /><td /></tr></tfoot>
+              <tr key={i.item}><td className="lead"><b>{itemName(i.item)}</b><div className="cell-sub">{i.brand}</div></td>
+                <td className="num" data-label={t('srep.cases')}><b>{i.cases}</b></td><td className="num" data-label={t('srep.bottles')}>{Number(i.units).toLocaleString('en-IN')}</td>
+                <td className="num" data-label={t('srep.amount')}><b>{rupees(i.amount_paise)}</b></td>
+                <td className="num" data-label={t('srep.avgRate')}>{rupees(i.avg_rate_paise)}</td>
+                <td className="num" data-label={t('srep.marginCol')} style={{ color: Number(i.margin_paise) < 0 ? '#dc2626' : undefined }}>{rupees(i.margin_paise)}</td>
+                <td className="num" data-label={t('srep.shopsCol')}>{i.shops}</td><td className="num" data-label={t('srep.lastSold')}>{niceDate(i.last_sold)}</td></tr>))}</tbody>
+            <tfoot><tr><td className="lead"><b>{t('srep.total')}</b></td><td className="num" data-label={t('srep.cases')}><b>{cases}</b></td><td className="num" data-label={t('srep.bottles')}>{Number(tt!.units).toLocaleString('en-IN')}</td>
+              <td className="num" data-label={t('srep.amount')}><b>{rupees(tt!.gross_paise)}</b></td>
+              <td className="num" data-label={t('srep.avgRate')}>{rupees(Number(tt!.gross_paise) / Math.max(1, cases))}</td>
+              <td className="num" data-label={t('srep.marginCol')}>{rupees(Number(tt!.margin_paise) + Number(tt!.discount_paise))}</td><td className="phone-hide" /><td className="phone-hide" /></tr></tfoot>
           </table></div>
         </div>
 

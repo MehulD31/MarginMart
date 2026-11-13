@@ -284,7 +284,7 @@ function TripBar({ plans }: { plans: Plan[] }) {
     <div className="stack">
       <div className="row" style={{ flexWrap: 'wrap' }}>
         {plans.map((p) => (
-          <label key={p.id} className="field card" style={{ minWidth: 220, padding: 12 }}>
+          <label key={p.id} className="field card" style={{ flex: '1 1 240px', minWidth: 0, padding: 12 }}>
             <span><Truck size={14} aria-hidden="true" /> {t('orders.tripVehicle', { route: p.route.name })}</span>
             <select value={p.vehicle_id ?? ''} disabled={p.status !== 'planning'} onChange={(e) => e.target.value && void set(p, e.target.value)}>
               <option value="">{usual?.[p.route_id] ? t('orders.usually', { v: vehicles.data?.find((v) => v.id === usual[p.route_id])?.name }) : t('orders.chooseAtLoading')}</option>
