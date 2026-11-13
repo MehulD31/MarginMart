@@ -243,6 +243,7 @@ type Invite = { id: string; name: string; owner_name: string | null; phone: stri
 function InviteShops() {
   const { t } = useTranslation()
   const [sent, setSent] = useState<Set<string>>(new Set())
+  const [failed, setFailed] = useState(false)
   const me = useAuth().profile?.name.split(' ')[0] ?? ''
   const q = useQuery({ queryKey: ['invite-batch'], queryFn: () => must<Invite[]>(supabase.rpc('invite_batch', { p_limit: 50 })) })
   const rows = q.data ?? []
@@ -254,12 +255,18 @@ function InviteShops() {
     const text = t(x.bought ? 'dash.invite.msgBuyer' : 'dash.invite.msgNew', { owner: x.owner_name || x.name, me: me || 'Mehul', link: GROUP_LINK })
     window.open(`https://wa.me/91${x.phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`, '_blank')
     setSent((s) => new Set(s).add(x.id))
-    void supabase.rpc('mark_invited', { p_shop: x.id })
+    setFailed(false)
+    // The request is only sent when something waits for it: `void supabase.rpc(...)` never sent it, so no invite was ever recorded (13 Nov).
+    must(supabase.rpc('mark_invited', { p_shop: x.id })).catch(() => {
+      setSent((s) => { const n = new Set(s); n.delete(x.id); return n })   // not recorded: show it again instead of pretending it was saved
+      setFailed(true)
+    })
   }
   return (
     <div className="stack" data-testid="invite-shops">
       <h2>{t('dash.invite.title', { n: left })}</h2>
       <p className="muted">{t('dash.invite.hint')}</p>
+      {failed && <p role="alert" className="muted" style={{ color: '#b91c1c' }}>{t('dash.invite.saveFailed')}</p>}
       {rows.length === 0 ? <p className="muted">{t('dash.invite.done')}</p> : (
         <div className="table-wrap"><table className="table-stack"><tbody>{pg.rows.map((x) => (
           <tr key={x.id}><td className="lead"><div className="row"><span className="avatar-sm" aria-hidden="true">{initials(x.name)}</span>

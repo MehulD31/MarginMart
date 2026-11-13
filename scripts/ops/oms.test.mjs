@@ -52,7 +52,7 @@ describe('priceChanges / orderEvents', () => {
   })
 })
 
-import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy, orderChangeNews, targetRows, targetNews, omsSession, OmsBusy } from './oms.mjs'
+import { invoiceLines, orderRows, unbookedInvoices, orderLines, lineKind, specialNews, orderWhy, orderChangeNews, targetRows, targetNews, omsSession, OmsBusy, withGst } from './oms.mjs'
 
 describe('orderLines', () => {
   const r = (o) => ({ 'Requested Order Number': 'RO9', 'Order Date': '2026-11-13', 'Sku Code': '1892', 'Sku Description': 'PEPSI COLA 1.25 L PET 15 Rs50 PROMO', 'Order Type Description Oms': 'General Order',
@@ -129,6 +129,15 @@ describe('orderLines', () => {
     expect((await omsSession('u', 'p', opt({ login: mk(9), force: true }))).token).toBe('T')
     expect(calls).toEqual([true])
     await expect(omsSession('u', 'p', opt({ login: async () => { throw new Error('OMS login failed: Invalid login credentials') } }))).rejects.toThrow('Invalid login')   // real failures still surface
+  })
+  it('adds the amount with GST to invoice lines from the portal price list, and keeps the old amount for an item that left the list', () => {
+    const items = [{ sku_code: '5550197', base_paise: 34900, price_paise: 48900 }, { sku_code: '4754', base_paise: 10400, price_paise: 11000 }]
+    const lines = [{ invoice_no: 'I1', sku_code: '5550197', value_paise: 349290 * 1 }, { invoice_no: 'I1', sku_code: '4754', value_paise: 10476 }, { invoice_no: 'I1', sku_code: '4068', value_paise: 262145 }, { invoice_no: 'I1', sku_code: '9999', value_paise: 100 }]
+    const r = withGst(lines, items, new Map([['I1|4068', 367000]]))
+    expect(r[0].incl_gst_paise).toBe(Math.round(349290 * 48900 / 34900))
+    expect(r[1].incl_gst_paise).toBe(Math.round(10476 * 11000 / 10400))
+    expect(r[2].incl_gst_paise).toBe(367000)       // no longer on the list: keep what we stored
+    expect(r[3].incl_gst_paise).toBeNull()
   })
   it('skips rows without an order or SKU', () => {
     expect(orderLines([r({ 'Requested Order Number': '' }), r({ 'Sku Code': 'nan' })])).toEqual([])

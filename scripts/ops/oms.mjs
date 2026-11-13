@@ -156,6 +156,16 @@ export function invoiceLines(e2e) {
   }
   return [...m.values()]
 }
+/** Adds incl_gst_paise to invoice lines. The invoice report gives the value before GST; the portal price list gives base and with-GST price per case,
+ * so with GST = value x price / base. A SKU that is no longer on the price list keeps the amount stored earlier (old: Map "invoice|sku" -> paise). */
+export function withGst(lines, items, old = new Map()) {
+  const ratio = new Map(items.filter((i) => i.price_paise > 0 && i.base_paise > 0).map((i) => [String(i.sku_code), i.price_paise / i.base_paise]))
+  return lines.map((l) => {
+    const r = ratio.get(String(l.sku_code))
+    return { ...l, incl_gst_paise: r ? Math.round(l.value_paise * r) : (old.get(`${l.invoice_no}|${l.sku_code}`) ?? null) }
+  })
+}
+
 /** Which kind of line is this? Pepsi writes the order type as text, sometimes several ("General Order, Range SKU Order").
  * Near Expiry and Filler win (they change what we receive), then Specific MRP, Must Bill, Range, Promo/Freebie, General. */
 export function lineKind(typeDesc) {
@@ -169,7 +179,7 @@ export function lineKind(typeDesc) {
   if (/general/.test(t)) return 'general'
   return 'other'
 }
-const clean = (x) => { const t = String(x ?? '').trim(); return !t || /^(nan|nat|none|null)$/i.test(t) ? null : t }
+const clean = (x) => { const t = String(x ?? '').trim(); return !t || /^(nan|nat|none|null|na|n\/a|-)$/i.test(t) ? null : t }   // Pepsi writes "NA" when there is no reason
 /** Lines of the End to End report grouped by order + SKU + kind: what we asked, what Pepsi corrected, allocated, invoiced and deleted, and why. */
 export function orderLines(e2e) {
   const m = new Map()

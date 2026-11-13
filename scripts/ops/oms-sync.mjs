@@ -1,7 +1,7 @@
 // Pepsi portal -> MarginMart sync (owner, 13 Nov 2026). READ-ONLY on the portal. Runs as MODE=oms and at the start of the
 // morning report. Writes oms_sku / oms_price_change / oms_map / oms_state, then tells Telegram what changed:
 // price changes on items we stock, a new order / invoice on the portal, and a failure (never silent).
-import { OmsBusy, omsSession, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, orderLines, specialNews, orderChangeNews, targetRows, targetNews, unbookedInvoices } from './oms.mjs'
+import { OmsBusy, omsSession, omsSnapshot, omsItems, matchSku, priceChanges, orderEvents, omsReport, orderRows, invoiceLines, withGst, orderLines, specialNews, orderChangeNews, targetRows, targetNews, unbookedInvoices } from './oms.mjs'
 import { item } from './format.mjs'
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -56,9 +56,10 @@ export async function syncOms({ db, say, env, quick = false }) {
     const [e2e, summary] = await Promise.all([
       omsReport(s, 'end_to_end_report', from, to, { ship_to_party: '', sales_office: '', sku_description: '', created_by_oms: '' }),
       omsReport(s, 'order_summary_report', from, to).catch(() => [])])
-    const ords = orderRows(e2e, summary), lines = invoiceLines(e2e), olines = orderLines(e2e)
+    const oldInv = await db('oms_invoice_line?select=invoice_no,sku_code,incl_gst_paise')
+    const ords = orderRows(e2e, summary), lines = withGst(invoiceLines(e2e), items, new Map(oldInv.filter((l) => l.incl_gst_paise != null).map((l) => [`${l.invoice_no}|${l.sku_code}`, Number(l.incl_gst_paise)]))), olines = orderLines(e2e)
     const oldOrders = new Map((await db('oms_order?select=order_no,status,corrected,invoiced,asked,deleted')).map((o) => [o.order_no, o]))
-    const knownInv = new Set((await db('oms_invoice_line?select=invoice_no')).map((l) => l.invoice_no))
+    const knownInv = new Set(oldInv.map((l) => l.invoice_no))
     if (ords.length) await db('oms_order?on_conflict=order_no', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(ords.map((o) => ({ ...o, updated_at: now }))) })
     if (lines.length) await db('oms_invoice_line?on_conflict=invoice_no,sku_code', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(lines) })
     // 3c. Pepsi's Must Bill list and Range progress for this month (own rows only)
@@ -87,13 +88,13 @@ export async function syncOms({ db, say, env, quick = false }) {
     }
     const KIND = { near_expiry: '⏳ Near Expiry', specific_mrp: '🏷 Specific MRP', filler: '📦 Filler' }
     for (const o of specials) {
-      await say([`⚠️ <b>Pepsi order ${esc(o.order_no)}</b> me Pepsi ne ye alag maal daala hai:`,
+      await say([`⚠️ <b>Pepsi order ${esc(o.order_no)}</b> me ye alag type ka maal hai:`,
         ...o.items.map((i) => `▸ ${KIND[i.kind]}: ${esc(i.description)}: <b>${i.qty}</b> peti`),
         '<i>Near Expiry peti aate hi expiry check karo aur pehle becho. Specific MRP ka MRP/rate alag ho sakta hai, purchase me dhyan se likho.</i>'].join('\n'), { parse_mode: 'HTML' })
     }
     for (const no of newInv) {
       const ls = lines.filter((l) => l.invoice_no === no)
-      await say([`🧾 <b>Pepsi invoice ${esc(no)}</b> · ${ls[0]?.invoiced_on ?? ''}`, `${ls.reduce((a, l) => a + l.qty, 0)} peti · ${rs(ls.reduce((a, l) => a + l.value_paise, 0))} (GST se pehle)`,
+      await say([`🧾 <b>Pepsi invoice ${esc(no)}</b> · ${ls[0]?.invoiced_on ?? ''}`, `${ls.reduce((a, l) => a + l.qty, 0)} peti · ${rs(ls.reduce((a, l) => a + l.value_paise, 0))} GST se pehle${ls.every((l) => l.incl_gst_paise != null) ? ` · <b>${rs(ls.reduce((a, l) => a + l.incl_gst_paise, 0))}</b> GST ke saath` : ''}`,
         ...ls.slice(0, 25).map((l) => `▸ ${esc(l.description)}: ${l.qty}`), '→ Maal aate hi website pe Purchases me ye invoice entry karo (Pepsi portal page pe bhi dikhega).'].join('\n'), { parse_mode: 'HTML' })
     }
     const mapped = new Map(maps.map((m) => [m.sku_code, m.variant_id]))

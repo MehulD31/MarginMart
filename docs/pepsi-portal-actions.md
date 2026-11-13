@@ -11,7 +11,7 @@ Price list, SKU master, credit, order history, End to End and Order Summary repo
 
 | # | Finding | Evidence |
 |---|---|---|
-| F1 | Pepsi adds lines to our orders: **Specific MRP** (type 5) and **Near Expiry (NS01)** (type 8). 30 Oct order had 15 cases of Pepsi 1.25 L PROMO as Near Expiry; 13 Nov order had 100 cases Specific MRP + 5 cases Near Expiry. We do not show or track this anywhere. | End to End report, "Order Type Description" per line |
+| F1 | Orders contain special-type lines (not proven that Pepsi adds them: they show an asked quantity, so they were on the order from the start): **Specific MRP** (type 5) and **Near Expiry (NS01)** (type 8). 30 Oct order had 15 cases of Pepsi 1.25 L PROMO as Near Expiry; 13 Nov order had 100 cases Specific MRP + 5 cases Near Expiry. We do not show or track this anywhere. | End to End report, "Order Type Description" per line |
 | F2 | Orders are sized to the **truck**: 8,000 kg truck (Default TL 8000), `filler_truck_threshold` 0.7 (below 70% full Pepsi adds Filler SKUs, order type 12). 13 Nov order = 684 cases = 8,049 kg = exactly 1 truck. 3 Nov: we asked 990 cases, Pepsi corrected to 1,636. | masters-data params, allocated-order rows (`gross_weight`, `truck_utl`), E2E |
 | F3 | Pepsi staff key in or correct our orders (created by kaman.patel@rjcorp.in, deepak.sharma8@rjcorp.in, and the shobhit login). | E2E "Created By Oms" |
 | F4 | Two 30 Oct orders were **Short Closed** (RO30102601544: asked 776, Pepsi corrected to 2,048, invoiced 0; RO30102601700: asked 2,105, deleted, reason code "PFA"). The portal's short-close reasons include **Invalid Credit**, Partial Truck Load, Extra SKU assigned. We do not know which applied. | oms_order, E2E "Delete Reason Oms", action_reason_masters |
@@ -29,7 +29,7 @@ Price list, SKU master, credit, order history, End to End and Order Summary repo
 
 ### P0, no owner decision needed
 - [x] **A1. Order lines table** (done 13 Nov: `oms_order_line`, 87 lines stored) (`oms_order_line`): per order and SKU, with order type (General / Specific MRP / Near Expiry / Range / Must Bill / Filler), asked, corrected, allocated, invoiced, delete or rejection reason. Foundation for A2 to A4. (F1, F2, F4)
-- [x] **A2. Telegram + Pepsi page: "Near Expiry / Specific MRP lines on your order"**: which SKUs, how many cases, "sell these first". (F1)
+- [x] **A2. Telegram + Pepsi page: special-type lines (Near Expiry / Specific MRP / Filler) in your orders**: which SKUs, how many cases, "sell these first". (F1)
 - [x] **A3. Why Pepsi changed or cut an order**: add the reason (deleted reason, SAP rejection reason, truck fill, filler added) to the existing change alert and the Pepsi page. (F2, F4)
 - [x] **A4. Credit check on the order card** (was already there, priced from portal prices incl. GST; now warns when some items fall back to our average cost): show "credit ₹X vs this order ₹Y, short by ₹Z" and a warning when credit is below the order value. (F5)
 - [x] **A5. Truck meter on the order card**: kg and % of an 8,000 kg truck for the suggested order (weights from allocated lines), warn under 70%. (F2)

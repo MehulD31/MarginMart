@@ -120,8 +120,10 @@ function Trend({ a }: { a: Analysis }) {
   const fc = metric === 'cases' ? a.forecast : []
   const all = [...days.map((d) => d[metric]), ...fc.map((f) => f.cases)]
   const max = Math.max(1, ...all)
-  const W = 100 / (days.length + fc.length)
   const dayLabel = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(loc, { day: 'numeric', month: 'short' })
+  const slots = [...days.map((d) => ({ day: d.day, v: d[metric], today: d.day === a.today, fc: false, bills: d.bills })), ...fc.map((f) => ({ day: f.day, v: f.cases, today: false, fc: true, bills: 0 }))]
+  const peak = Math.max(...days.map((d) => d[metric]), 0)
+  const label = (v: number) => (metric === 'cases' ? String(Math.round(v)) : short(v))
   const bestDow = [...a.weekday].sort((x, y) => y.cases - x.cases)[0]
   return (
     <div className="card stack">
@@ -132,15 +134,22 @@ function Trend({ a }: { a: Analysis }) {
           <button type="button" role="tab" className="btn-sm" aria-selected={metric === 'value'} onClick={() => setMetric('value')}>{t('ins.trend.value')}</button>
         </div>
       </div>
-      <svg className="ins-chart" viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label={t('ins.trend.aria')}>
-        {days.map((d, i) => { const h = (d[metric] / max) * 36; return (
-          <rect key={d.day} x={i * W + W * 0.15} y={38 - h} width={W * 0.7} height={Math.max(h, d[metric] ? 0.8 : 0.3)} rx={0.6}
-            className={d.day === a.today ? 'bar-today' : 'bar-past'}><title>{`${dayLabel(d.day)}: ${metric === 'cases' ? `${d.cases} ${t('ins.trend.cases')}` : rs(d.value)} · ${d.bills} ${t('ins.trend.bills')}`}</title></rect>) })}
-        {fc.map((f, i) => { const h = (f.cases / max) * 36; return (
-          <rect key={f.day} x={(days.length + i) * W + W * 0.15} y={38 - h} width={W * 0.7} height={Math.max(h, 0.3)} rx={0.6} className="bar-fc">
-            <title>{`${dayLabel(f.day)}: ~${f.cases} ${t('ins.trend.cases')} (${t('ins.trend.forecast')})`}</title></rect>) })}
-      </svg>
-      <div className="row-between cell-sub"><span>{dayLabel(days[0].day)}</span><span>{t('ins.trend.today')}</span>{fc.length > 0 && <span>{t('ins.trend.next7', { n: fc.reduce((s, f) => s + f.cases, 0) })}</span>}</div>
+      <div className="trend" role="img" aria-label={`${t('ins.trend.aria')}: ${t('ins.trend.next7', { n: fc.reduce((s, f) => s + f.cases, 0) })}`}>
+        <div className="trend-plot">
+          <div className="trend-grid" aria-hidden="true"><span>{label(max)}</span><span>{label(max / 2)}</span><span>0</span></div>
+          {slots.map((s, i) => (
+            <div key={s.day} className={`trend-col${s.fc && !slots[i - 1]?.fc ? ' trend-split' : ''}`}>
+              <div className="trend-bar-wrap">
+                {(s.v === peak || s.today) && s.v > 0 && <span className={`trend-val${s.today ? ' is-today' : ''}`}>{label(s.v)}</span>}
+                <div className={`trend-bar${s.fc ? ' fc' : s.today ? ' today' : s.v <= 0 ? ' zero' : ''}`} style={s.v > 0 ? { height: `${Math.max(4, (s.v / max) * 100)}%` } : undefined}
+                  title={`${dayLabel(s.day)}: ${s.fc ? `~${Math.round(s.v)} ${t('ins.trend.cases')} (${t('ins.trend.forecast')})` : `${label(s.v)}${metric === 'cases' ? ` ${t('ins.trend.cases')}` : ''} · ${s.bills} ${t('ins.trend.bills')}`}`} />
+              </div>
+              <span className={`trend-x${s.today ? ' today' : ''}`}>{new Date(`${s.day}T00:00:00`).toLocaleDateString(loc, { weekday: 'narrow' })}</span>
+            </div>))}
+        </div>
+        <div className="trend-axis cell-sub"><span>{dayLabel(days[0].day)}</span><span><b>{t('ins.trend.today')}</b> · {dayLabel(a.today)}</span>{fc.length > 0 && <span>{t('ins.trend.next7', { n: fc.reduce((s, f) => s + f.cases, 0) })}</span>}</div>
+        <div className="trend-legend cell-sub" aria-hidden="true"><span><i className="trend-dot" />{t('ins.trend.title')}</span><span><i className="trend-dot today" />{t('ins.trend.today')}</span>{fc.length > 0 && <span><i className="trend-dot fc" />{t('ins.trend.forecast')}</span>}</div>
+      </div>
       <p className="cell-sub">{a.spanDays >= 14 && bestDow?.cases ? t('ins.trend.bestDay', { d: t(`days.${bestDow.dow === 0 ? 7 : bestDow.dow}`), n: Math.round(bestDow.cases) }) : t('ins.trend.fcNote')}</p>
     </div>
   )

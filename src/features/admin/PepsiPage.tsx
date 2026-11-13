@@ -99,7 +99,7 @@ export default function PepsiPage() {
 }
 
 interface Order { order_no: string; ordered_on: string | null; created_by: string | null; status: string | null; asked: number; corrected: number; allocated: number; invoiced: number; deleted: number; value_paise: number; invoiced_paise: number }
-interface InvLine { invoice_no: string; sku_code: string; description: string | null; invoiced_on: string | null; order_no: string | null; qty: number; value_paise: number }
+interface InvLine { invoice_no: string; sku_code: string; description: string | null; invoiced_on: string | null; order_no: string | null; qty: number; value_paise: number; incl_gst_paise: number | null }
 interface OrderLine { order_no: string; sku_code: string; kind: string; order_date: string | null; description: string | null; asked: number; corrected: number; allocated: number; invoiced: number; deleted: number; delete_reason: string | null }
 interface Target { kind: 'must_bill' | 'range'; month: string; parent_sku_code: string; description: string; target_qty: number; done_qty: number; open_qty: number; valid_to: string | null }
 interface Unbooked { invoice_no: string; on: string | null; qty: number; value_paise: number; lines: number }
@@ -111,16 +111,28 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
   const lines = useQuery({ queryKey: ['oms_invoice_line'], queryFn: () => must<InvLine[]>(supabase.from('oms_invoice_line').select('*').order('invoiced_on', { ascending: false }).limit(500)) })
   const [open, setOpen] = useState<string | null>(null)
   const invoices = useMemo(() => {
-    const m = new Map<string, { no: string; on: string | null; qty: number; value: number; lines: InvLine[] }>()
-    for (const l of lines.data ?? []) { const x = m.get(l.invoice_no) ?? { no: l.invoice_no, on: l.invoiced_on, qty: 0, value: 0, lines: [] }; x.qty += l.qty; x.value += l.value_paise; x.lines.push(l); m.set(l.invoice_no, x) }
+    const m = new Map<string, { no: string; on: string | null; qty: number; value: number; incl: number | null; lines: InvLine[] }>()
+    for (const l of lines.data ?? []) { const x = m.get(l.invoice_no) ?? { no: l.invoice_no, on: l.invoiced_on, qty: 0, value: 0, incl: 0, lines: [] }; x.qty += l.qty; x.value += l.value_paise; x.incl = x.incl == null || l.incl_gst_paise == null ? null : x.incl + l.incl_gst_paise; x.lines.push(l); m.set(l.invoice_no, x) }
     return [...m.values()]
   }, [lines.data])
   const pending = new Set(unbooked.map((u) => u.invoice_no))
+  // orders that never reached us (cancelled or short-closed) stay out of the main list; each order shows its own invoices
+  const [showDead, setShowDead] = useState(false)
+  const isDead = (o: Order) => (!!o.deleted && !o.corrected) || /short closed|cancel/i.test(o.status ?? '')
+  const liveOrders = (orders.data ?? []).filter((o) => !isDead(o)), deadOrders = (orders.data ?? []).filter(isDead)
+  const invoicesOf = (no: string) => invoices.filter((v) => v.lines.some((l) => l.order_no === no))
+  const orderRows = showDead ? [...liveOrders, ...deadOrders] : liveOrders
+  // with GST when every invoice line has it (calculated from the portal price list), with the before-GST amount underneath
+  const valueOf = (o: Order) => {
+    const inv = invoicesOf(o.order_no)
+    const incl = inv.length && inv.every((v) => v.incl != null) ? inv.reduce((a, v) => a + (v.incl ?? 0), 0) : null
+    return incl != null ? <>{formatPaise(incl)}<div className="cell-sub">{t('pepsi.exGst', { v: formatPaise(o.invoiced_paise) })}</div></> : <>{formatPaise(o.invoiced_paise || o.value_paise)}</>
+  }
   const special = useQuery({ queryKey: ['oms_order_line_special'], queryFn: () => must<OrderLine[]>(supabase.from('oms_order_line').select('order_no,sku_code,kind,order_date,description,asked,corrected,allocated,invoiced,deleted,delete_reason')
     .in('kind', ['near_expiry', 'specific_mrp', 'filler']).order('order_date', { ascending: false }).limit(60)) })
   const reasons = useQuery({ queryKey: ['oms_order_line_reason'], queryFn: () => must<{ order_no: string; delete_reason: string | null; reject_reason: string | null }[]>(supabase.from('oms_order_line')
     .select('order_no,delete_reason,reject_reason').or('delete_reason.not.is.null,reject_reason.not.is.null').limit(300)) })
-  const reasonOf = (no: string) => [...new Set((reasons.data ?? []).filter((r) => r.order_no === no).flatMap((r) => [r.delete_reason, r.reject_reason]).filter(Boolean))].join(', ')
+  const reasonOf = (no: string) => [...new Set((reasons.data ?? []).filter((r) => r.order_no === no).flatMap((r) => [r.delete_reason, r.reject_reason]).filter((x): x is string => !!x && !/^(na|n\/a|-)$/i.test(x.trim())))].join(', ')
   const kindLabel = (k: string) => (k === 'near_expiry' ? t('pepsi.kindNearExpiry') : k === 'filler' ? t('pepsi.kindFiller') : t('pepsi.kindSpecificMrp'))
   const targets = useQuery({ queryKey: ['oms_target'], queryFn: () => must<Target[]>(supabase.from('oms_target').select('kind,month,parent_sku_code,description,target_qty,done_qty,open_qty,valid_to').order('month', { ascending: false }).order('description').limit(80)) })
   const tMonth = targets.data?.[0]?.month
@@ -134,12 +146,12 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
           {!!mbList.length && (
             <div className="stack" style={{ gap: 4 }}>
               <span className="cell-sub"><b>{t('pepsi.mustBill')}</b> · {mbList.some((x) => x.target_qty > 0) ? t('pepsi.mbSet') : t('pepsi.mbNone')}</span>
-              {mbList.map((x) => <div key={x.parent_sku_code} className="row-between cell-sub"><span>{x.description}</span><span className="num">{x.target_qty > 0 ? `${x.target_qty} ${t('pepsi.cases')}` : '—'}</span></div>)}
+              {mbList.filter((x) => x.target_qty > 0).map((x) => <div key={x.parent_sku_code} className="row-between cell-sub"><span>{x.description}</span><span className="num">{x.target_qty} {t('pepsi.cases')}</span></div>)}
             </div>)}
           {!!rgList.length && (
             <div className="stack" style={{ gap: 4 }}>
               <span className="cell-sub"><b>{t('pepsi.range')}</b></span>
-              {rgList.map((x) => <div key={x.parent_sku_code} className="row-between cell-sub"><span>{x.description}</span><span className="num">{t('pepsi.rangeNums', { done: x.done_qty, open: x.open_qty })}</span></div>)}
+              {rgList.map((x) => <div key={x.parent_sku_code} className="row-between cell-sub"><span>{x.description}</span><span className="num">{t('pepsi.rangeNums', { done: x.done_qty })}</span></div>)}
             </div>)}
           <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.targetsHow')}</p>
         </div>)}
@@ -149,17 +161,19 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
         {!orders.data?.length ? <span className="cell-sub">{t('pepsi.noOrders')}</span> : (
           <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="pepsi-orders">
             <thead><tr><th scope="col">{t('pepsi.order')}</th><th scope="col">{t('pepsi.asked')}</th><th scope="col">{t('pepsi.corrected')}</th><th scope="col">{t('pepsi.invoicedQty')}</th><th scope="col">{t('pepsi.value')}</th><th scope="col">{t('pepsi.status')}</th></tr></thead>
-            <tbody>{orders.data.map((o) => (
+            <tbody>{orderRows.map((o) => (
               <tr key={o.order_no}>
-                <td className="lead"><b>{o.order_no}</b><div className="cell-sub">{o.ordered_on} · {o.created_by?.split('@')[0]}</div></td>
+                <td className="lead"><b>{o.order_no}</b><div className="cell-sub">{o.ordered_on} · {o.created_by?.split('@')[0]}</div>
+                  {invoicesOf(o.order_no).map((v) => <div key={v.no} className="cell-sub">{t('pepsi.invoiceShort', { no: v.no.slice(-3), on: v.on ?? '', n: v.qty, v: formatPaise(v.value), g: v.incl != null ? formatPaise(v.incl) : '—' })}</div>)}</td>
                 <td className="num" data-label={t('pepsi.asked')}>{o.asked}</td>
                 <td className="num" data-label={t('pepsi.corrected')}>{o.corrected !== o.asked && o.corrected ? <b style={{ color: '#b45309' }}>{o.corrected}</b> : o.corrected || '—'}</td>
                 <td className="num" data-label={t('pepsi.invoicedQty')}>{o.invoiced || '—'}</td>
-                <td className="num" data-label={t('pepsi.value')}>{formatPaise(o.invoiced_paise || o.value_paise)}</td>
+                <td className="num" data-label={t('pepsi.value')}>{valueOf(o)}</td>
                 <td>{o.deleted && !o.corrected ? <span className="badge badge-red">{t('pepsi.cancelled')}</span> : <span className="badge">{o.status ?? '—'}</span>}
                   {!!reasonOf(o.order_no) && <div className="cell-sub">{t('pepsi.reason', { r: reasonOf(o.order_no) })}</div>}</td>
               </tr>))}</tbody>
           </table></div>)}
+        {!!deadOrders.length && <button type="button" className="btn btn-sm ghost" onClick={() => setShowDead(!showDead)} aria-expanded={showDead}>{showDead ? t('pepsi.deadHide') : t('pepsi.deadShow', { n: deadOrders.length })}</button>}
         <p className="cell-sub" style={{ margin: 0 }}>{t('pepsi.ordersHow')}</p>
       </div>
       <div className="card stack" style={{ gap: 8 }}>
@@ -183,7 +197,7 @@ function Orders({ unbooked }: { unbooked: Unbooked[] }) {
           <div key={v.no} className="stack" style={{ gap: 4 }}>
             <button type="button" className="row-between" style={{ all: 'unset', boxSizing: 'border-box', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, minHeight: 44, width: '100%' }} onClick={() => setOpen(open === v.no ? null : v.no)} aria-expanded={open === v.no}>
               <span><b>{v.no}</b> · {v.on} {pending.has(v.no) ? <span className="badge badge-amber">{t('pepsi.notEntered')}</span> : <span className="badge badge-green">{t('pepsi.entered')}</span>}</span>
-              <span className="num">{v.qty} {t('pepsi.cases')} · {formatPaise(v.value)}</span>
+              <span className="num">{v.qty} {t('pepsi.cases')} · {v.incl != null ? t('pepsi.invAmount', { g: formatPaise(v.incl), v: formatPaise(v.value) }) : formatPaise(v.value)}</span>
             </button>
             {open === v.no && v.lines.map((l) => <div key={l.sku_code} className="row-between cell-sub"><span>{l.description}</span><span className="num">{l.qty} · {formatPaise(l.value_paise)}</span></div>)}
           </div>))}
