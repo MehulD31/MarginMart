@@ -34,7 +34,8 @@
     "sales": "Counter sales",
     "money": "Money with partners",
     "kharcha": "Kharcha",
-    "products": "Products"
+    "products": "Products",
+    "pepsi": "Pepsi portal"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -1617,5 +1618,38 @@
       "costUp": "Latest stock cost {{v}} more, so at the same price each case will earn {{e}}.",
       "costDown": "Latest stock cost {{v}} less, so at the same price each case will earn {{e}}."
     }
+  },
+  "pepsi": {
+    "title": "Pepsi portal",
+    "sub": "Copied every morning from Varun Beverages’ distributor portal: your credit, Pepsi’s price for each item and your orders there. Read-only.",
+    "stale": "Not synced since {{at}}. The morning job retries; check the Telegram group for errors.",
+    "failed": "Last sync failed: {{e}}",
+    "credit": "Credit available",
+    "asOf": "portal figure, {{at}}",
+    "synced": "Last synced",
+    "items": "Items with a Pepsi price",
+    "itemsSub": "of {{n}} on the portal",
+    "matched": "Our items matched",
+    "matchedSub": "{{c}} to check · {{u}} not found",
+    "changes": "Pepsi price changes",
+    "compare": "Pepsi price vs our cost",
+    "onlyIssues": "Only show items to check",
+    "ours": "Our item",
+    "theirs": "Pepsi item (portal)",
+    "price": "Pepsi price / case",
+    "cost": "Our cost / case",
+    "diff": "Difference",
+    "stock": "{{n}} in stock",
+    "pick": "Pepsi item for {{item}}",
+    "none": "— not on portal —",
+    "unmatched": "Not found: pick it",
+    "mrpDiffers": "Check: portal MRP {{m}}",
+    "manual": "set by you",
+    "auto": "matched automatically",
+    "gst": "incl. GST {{v}}",
+    "saved": "Saved. The next sync keeps your choice.",
+    "how": "Our cost is the average of what we paid on purchases. A red difference means Pepsi now charges more than our recorded cost, so the next stock will cost more: check selling rates. Items marked “Check” have a different MRP on the portal and are not used for order costs until you confirm them.",
+    "orders": "Orders on the portal",
+    "noOrders": "No orders on the portal yet."
   }
 }

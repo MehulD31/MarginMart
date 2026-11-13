@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, BookOpen, Boxes, Calculator, Coins, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BarChart3, BookOpen, Boxes, Building2, Calculator, Coins, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { useStockWatch } from '../../shared/api/db'
 import { useMoneyHoldings } from './money'
@@ -31,6 +31,7 @@ import CounterSalesPage from './CounterSalesPage'
 import MoneyPage from './MoneyPage'
 import KharchaPage from './KharchaPage'
 import ProductsPage from './ProductsPage'
+import PepsiPage from './PepsiPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -71,7 +72,8 @@ export default function AdminApp() {
   const isAdmin = profile?.role === 'admin'
   const setup: Item[] = [
     { to: 'inventory', label: t('nav.inventory'), icon: Boxes, badge: lowStock },
-    ...(isAdmin ? [{ to: 'purchases', label: t('nav.purchases'), icon: ShoppingCart }, { to: 'pricing', label: t('nav.pricing'), icon: Calculator }] : []),
+    ...(isAdmin ? [{ to: 'purchases', label: t('nav.purchases'), icon: ShoppingCart }, { to: 'pricing', label: t('nav.pricing'), icon: Calculator },
+      { to: 'pepsi', label: t('nav.pepsi'), icon: Building2 }] : []),
     { to: 'schemes', label: t('nav.schemes'), icon: Gift },
     { to: 'shops', label: t('nav.shops'), icon: Store },
     { to: 'catalog', label: t('nav.catalog'), icon: Package },
@@ -139,6 +141,7 @@ export default function AdminApp() {
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="purchases" element={adminOnly(<PurchasesPage />)} />
           <Route path="pricing" element={adminOnly(<PricingPage />)} />
+          <Route path="pepsi" element={adminOnly(<PepsiPage />)} />
           <Route path="schemes" element={<SchemesPage />} />
           <Route path="shops" element={<ShopsPage />} />
           <Route path="catalog" element={<CatalogPage />} />

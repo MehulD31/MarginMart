@@ -5,7 +5,7 @@ name: ops
 on:
   workflow_dispatch:
     inputs:
-      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask | media | ads | order", required: true, default: watchdog }
+      mode: { description: "morning | night | weekly | events | month | watchdog | social | ask | media | ads | order | oms", required: true, default: watchdog }
       question: { description: "for mode=ask", required: false, default: "" }
       force: { description: "1 = send again even if already sent", required: false, default: "" }
       file: { description: "mode=media: Telegram file_id of the video/photo", required: false, default: "" }
@@ -65,6 +65,8 @@ jobs:
           META_USER_TOKEN: ${{ secrets.META_USER_TOKEN }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          OMS_USER: ${{ secrets.OMS_USER }}
+          OMS_PASS: ${{ secrets.OMS_PASS }}
           SITE_URL: ${{ vars.SITE_URL }}
           GH_TOKEN: ${{ github.token }}
         run: node scripts/ops/ops.mjs

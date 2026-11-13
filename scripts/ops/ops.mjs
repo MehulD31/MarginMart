@@ -9,6 +9,7 @@
 //   MODE=ask       QUESTION="..."  answers an owner's /ask from the live numbers (free Gemini key)
 // Every job writes public.ops_log (job, key). A re-run of the same thing sees the row and does nothing (FORCE=1 overrides).
 import { askJson, db, env, rs, say, tg, todayIST, addDays } from '../scheme-bot/lib.mjs'
+import { syncOms } from './oms-sync.mjs'
 import { idleLowText, item, monthRange, reorderCard, reorderText, remindText, toCsv, waLink } from './format.mjs'
 import { dayText, weekText, smartText } from './report.mjs'
 import { PHONE, RATE_PUBLIC, dmReply, needsAutoReply, rateDm, wantsRate, waShare } from './media.mjs'
@@ -48,8 +49,12 @@ async function tgDoc(filename, text, caption) {
   if (!r.ok) throw new Error(`telegram sendDocument: ${JSON.stringify(r).slice(0, 200)}`)
 }
 
+// Pepsi portal (oms.rjcorp.in): read prices, credit, orders. MODE=oms on demand / schedule; also run first thing in the morning.
+async function oms() { await syncOms({ db, say: (t, x) => say(t, x), env }) }
+
 async function morning() {
   if (await done('morning', today)) return console.log('morning already sent')
+  try { await oms() } catch (e) { console.log('oms sync failed (alerted)', e.message) }
   const [d, over, reorder, schemes] = await Promise.all([
     rpc('ops_daily', { p_day: today }), rpc('ops_overdue', { p_limit: 6 }), rpc('ops_reorder', { p_cover_days: 7 }), rpc('ops_schemes')])
   let plans = []
@@ -297,6 +302,20 @@ async function watchdog() {
       await mark('size-alert', today)
     }
   } catch (e) { alerts.push(`database check fail: ${e.message.slice(0, 100)}`) }
+  // 6b. Pepsi portal data fresh (synced in the last 26 h): retry once, then alert once a day
+  try {
+    if (env('OMS_USER', false)) {
+      const [st] = await db('oms_state?id=eq.1&select=synced_at,ok,error')
+      if (!st?.synced_at || Date.now() - Date.parse(st.synced_at) > 26 * 3600e3) {
+        try { await oms() } catch { /* syncOms already alerted */ }
+        const [again] = await db('oms_state?id=eq.1&select=synced_at,error')
+        if ((!again?.synced_at || Date.now() - Date.parse(again.synced_at) > 26 * 3600e3) && !(await done('oms-stale', today))) {
+          alerts.push(`Pepsi portal ka data purana hai (${again?.synced_at ? istTime(again.synced_at) : 'kabhi sync nahi hua'}): ${String(again?.error ?? '').slice(0, 100)}`)
+          await mark('oms-stale', today)
+        }
+      }
+    }
+  } catch (e) { console.log('oms check', e.message) }
   // 7. the event poller itself is alive (a run in the last 3 h)
   try {
     const runs = (await gh('actions/workflows/ops.yml/runs?per_page=30')).workflow_runs ?? []
@@ -658,7 +677,9 @@ async function diag() {
 // The Pepsi order as three messages: the owner's card (urgent first, cost, why), the clean text to forward, and the
 // low-stock items that did not sell (owner decides). Used by the morning plan and by MODE=order (on demand).
 async function sendOrder(reorder) {
-  const card = reorderCard(reorder, rs, hi(today)), forward = reorderText(reorder, hi(today))
+  let credit = null
+  try { const [st] = await db('oms_state?id=eq.1&select=credit_paise,credit_at,ok'); if (st?.credit_paise != null) credit = { paise: n(st.credit_paise), at: st.credit_at } } catch (e) { console.log('credit', e.message) }
+  const card = reorderCard(reorder, rs, hi(today), credit), forward = reorderText(reorder, hi(today))
   console.log('ORDER CARD >>>\n' + card + '\n<<<\nFORWARD >>>\n' + forward + '\n<<<')   // so the run log shows exactly what was sent
   await say(card, { parse_mode: 'HTML', disable_web_page_preview: true })
   await say(forward)
@@ -670,7 +691,7 @@ async function order() {
   await sendOrder(reorder)
 }
 
-const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads, audience, order }
+const jobs = { morning, night, weekly, events, month, watchdog, social, ask, diag, media, ads, audience, order, oms }
 if (!jobs[MODE]) throw new Error(`unknown MODE ${MODE}`)
 try { await jobs[MODE]() } catch (e) {
   console.error(e)

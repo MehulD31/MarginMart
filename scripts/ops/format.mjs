@@ -23,14 +23,16 @@ export const remindText = (shop, amountRupees) =>
   `Namaste ${shop}, K.D. Foods se. Aapka ${amountRupees} baki hai. Kripya jaldi bhej dein. Dhanyavaad. Rate aur offers ke liye MarginMart WhatsApp group join karein: https://chat.whatsapp.com/L2oweV0q01131uUae2RpLu`
 
 // A message the owner can forward to the Pepsi sales officer as-is.
+// Uses Pepsi's own SKU code + name from their portal when we know it, so their sales officer can enter it without guessing.
 export const reorderText = (rows, dateLabel) =>
-  `Pepsi order ${dateLabel}:\n` + rows.map((r) => `• ${item(r.item)}: ${r.need} peti`).join('\n')
+  `Pepsi order ${dateLabel}:\n` + rows.map((r) => `• ${r.pepsi_sku ? `${r.pepsi_sku} ${r.pepsi_name}` : item(r.item)}: ${r.need} peti`).join('\n')
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 // Owner-only card above the forwardable order (Telegram HTML): urgent items first, each with stock and days left,
 // then the total cost and what the numbers are based on.
-export const reorderCard = (rows, rs, dateLabel) => {
+// credit: { paise, at } from the Pepsi portal (optional) -> how much to pay Pepsi before this order can go.
+export const reorderCard = (rows, rs, dateLabel, credit = null) => {
   const line = (r) => {
     const out = Number(r.on_hand) <= 0
     const days = out || r.days_left == null ? '' : `~${Math.round(Number(r.days_left))} din chalega`
@@ -44,6 +46,9 @@ export const reorderCard = (rows, rs, dateLabel) => {
   return [
     `📝 <b>Pepsi Order${dateLabel ? ' · ' + esc(dateLabel) : ''}</b>`,
     `${rows.length} item${cost > 0 ? ` · kul ~<b>${rs(cost)}</b> ka maal` : ''}`,
+    credit && cost > 0 ? (credit.paise >= cost
+      ? `✅ Pepsi credit ${rs(credit.paise)} hai, order chal jayega`
+      : `💳 Pepsi credit sirf ${rs(credit.paise)}. Order se pehle ~<b>${rs(cost - credit.paise)}</b> Pepsi ko bhejna hoga`) : '',
     urgent.length ? `\n🔴 <b>Abhi chahiye</b> (delivery aane se pehle khatam)\n${urgent.map(line).join('\n')}` : '',
     rest.length ? `\n🟡 <b>Is hafte ke liye</b>\n${rest.map(line).join('\n')}` : '',
     '\n<i>Pichhle hafte ki bikri, trend, season aur delivery time ke hisaab se.</i>',
