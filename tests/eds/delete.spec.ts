@@ -135,11 +135,11 @@ test('Vehicle, login and catalogue flavour delete', async ({ page }) => {
 test('Order, purchase (stock goes back) and empty route delete', async ({ page }) => {
   const errors = watchErrors(page)
   const tag = String(Date.now()).slice(-5)
-  const cat = await rpc('counter_catalog', {}) as { variant_id: string; label: string; on_hand: number }[]
+  type Cat = { variant_id: string; label: string; on_hand: number }[]
   // order on the nearest planning trip, for the QA shop on that route, of the QA item (never a real shop or real stock)
   const plan = (await rest(`route_day_plan?select=id,route_id&status=eq.planning&date=gte.${TODAY}&order=date&limit=1`))[0]
   const qa = await qaFixture(rest, plan.route_id)
-  const sting = (await rpc('counter_catalog', {}) as typeof cat).find((c) => c.variant_id === qa.variantId)!
+  const sting = (await rpc('counter_catalog', {}) as Cat).find((c) => c.variant_id === qa.variantId)!
   const shop = qa.shop as { id: string; name: string }
   await rpc('save_order', { p_lines: [{ variant_id: sting.variant_id, qty: 1, price_paise: 50000 }], p_shop_id: shop.id, p_plan_id: plan.id })
   const order = (await rest(`orders?select=id&shop_id=eq.${shop.id}&route_day_plan_id=eq.${plan.id}`))[0]
@@ -147,7 +147,7 @@ test('Order, purchase (stock goes back) and empty route delete', async ({ page }
   // purchase of 1 case from a QA supplier
   const sup = (await rest('supplier', { method: 'POST', body: JSON.stringify({ name: `QA DEL Supplier ${tag}` }) }))[0]
   await rpc('record_purchase', { p_supplier_id: sup.id, p_invoice_no: `QA-${tag}`, p_date: TODAY, p_lines: [{ variant_id: sting.variant_id, qty: 1, cost_paise: 40000 }] })
-  expect((await rpc('counter_catalog', {}) as typeof cat).find((c) => c.variant_id === sting.variant_id)!.on_hand).toBe(sting.on_hand + 1)
+  expect((await rpc('counter_catalog', {}) as Cat).find((c) => c.variant_id === sting.variant_id)!.on_hand).toBe(sting.on_hand + 1)
   // empty route
   await rest('route', { method: 'POST', body: JSON.stringify({ name: `QA DEL Route ${tag}`, visit_days: [1] }) })
   await login(page)
@@ -161,7 +161,7 @@ test('Order, purchase (stock goes back) and empty route delete', async ({ page }
   await page.getByRole('row').filter({ hasText: `QA-${tag}` }).getByRole('button', { name: 'View' }).click()
   await deleteVia(page, `QA DEL Supplier ${tag} QA-${tag}`)
   await expect(page.getByRole('row').filter({ hasText: `QA-${tag}` })).toHaveCount(0, { timeout: 15_000 })
-  expect((await rpc('counter_catalog', {}) as typeof cat).find((c) => c.variant_id === sting.variant_id)!.on_hand).toBe(sting.on_hand)
+  expect((await rpc('counter_catalog', {}) as Cat).find((c) => c.variant_id === sting.variant_id)!.on_hand).toBe(sting.on_hand)
   // supplier is free again once its purchase is gone
   await page.getByRole('button', { name: /Suppliers/ }).click()
   await deleteVia(page, `QA DEL Supplier ${tag}`)
