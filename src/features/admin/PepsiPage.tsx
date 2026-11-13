@@ -25,7 +25,6 @@ export default function PepsiPage() {
   const changes = useQuery({ queryKey: ['oms_change'], queryFn: () => must<Change[]>(supabase.from('oms_price_change').select('*').order('seen_at', { ascending: false }).limit(20)) })
   const packs = usePacks(), variants = useVariants(), stock = useStock()
   const [msg, setMsg] = useState<Msg>(null)
-  const [onlyIssues, setOnlyIssues] = useState(false)
   const [openedAt] = useState(() => Date.now())
 
   const rows = useMemo(() => {
@@ -36,14 +35,14 @@ export default function PepsiPage() {
       const p = pk.get(v.pack_id)!, m = mp.get(v.id), s = m ? sk.get(m.sku_code) : undefined, cost = st.get(v.id)?.avg_cost_paise ?? 0
       const label = v.flavour_en === p.name_en ? p.name_en : `${v.flavour_en} ${p.name_en}`
       return { id: v.id, label, mrp: p.mrp_paise, onHand: st.get(v.id)?.on_hand ?? 0, map: m, sku: s, cost, diff: s?.price_paise && cost ? s.price_paise - cost : null }
-    }).sort((a, b) => Number(!!a.sku) - Number(!!b.sku) || Number(b.map?.mrp_differs ?? 0) - Number(a.map?.mrp_differs ?? 0) || a.label.localeCompare(b.label))
+    }).sort((a, b) => Number(!!a.sku) - Number(!!b.sku) || a.label.localeCompare(b.label))
   }, [variants.data, packs.data, maps.data, skus.data, stock.data])
 
   if (!state.data || !skus.data || !maps.data) return <Skeleton rows={6} />
   const s = state.data
   const stale = !s.synced_at || openedAt - Date.parse(s.synced_at) > 26 * 3600e3
-  const unmatched = rows.filter((r) => !r.sku).length, check = rows.filter((r) => r.map?.mrp_differs).length
-  const shown = onlyIssues ? rows.filter((r) => !r.sku || r.map?.mrp_differs || (r.diff != null && r.diff !== 0)) : rows
+  const unmatched = rows.filter((r) => !r.sku).length
+  const shown = rows.filter((r) => !r.sku)
   const priced = skus.data.filter((x) => x.price_paise)
 
   const setMap = async (variantId: string, sku: string) => {
@@ -64,7 +63,7 @@ export default function PepsiPage() {
         <div className="stat"><div className="label">{t('pepsi.credit')}</div><div className="value num">{s.credit_paise != null ? formatPaise(s.credit_paise) : '—'}</div><div className="cell-sub">{t('pepsi.asOf', { at: when(s.credit_at) })}</div></div>
         <div className="stat"><div className="label">{t('pepsi.synced')}</div><div className="value" style={{ fontSize: 18 }}>{when(s.synced_at)}</div><div className="cell-sub">{s.distributor_name} · {s.distributor_code}</div></div>
         <div className="stat"><div className="label">{t('pepsi.items')}</div><div className="value num">{priced.length}</div><div className="cell-sub">{t('pepsi.itemsSub', { n: skus.data.length })}</div></div>
-        <div className="stat"><div className="label">{t('pepsi.matched')}</div><div className="value num">{rows.length - unmatched}/{rows.length}</div><div className="cell-sub">{t('pepsi.matchedSub', { c: check, u: unmatched })}</div></div>
+        <div className="stat"><div className="label">{t('pepsi.matched')}</div><div className="value num">{rows.length - unmatched}/{rows.length}</div><div className="cell-sub">{t('pepsi.matchedSub', { u: unmatched })}</div></div>
       </div>
 
       {!!changes.data?.length && (
@@ -76,30 +75,25 @@ export default function PepsiPage() {
         </div>)}
 
       <Alert msg={msg} />
-      <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <b>{t('pepsi.compare')}</b>
-        <label className="chip"><input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} />{t('pepsi.onlyIssues')}</label>
-      </div>
-      <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="pepsi-table">
-        <thead><tr><th scope="col">{t('pepsi.ours')}</th><th scope="col">{t('pepsi.theirs')}</th><th scope="col">{t('pepsi.price')}</th><th scope="col">{t('pepsi.cost')}</th><th scope="col">{t('pepsi.diff')}</th></tr></thead>
-        <tbody>{shown.map((r) => (
-          <tr key={r.id}>
-            <td className="lead"><b>{r.label}</b><div className="cell-sub">MRP {r.mrp ? formatPaise(r.mrp) : '—'} · {t('pepsi.stock', { n: r.onHand })}</div></td>
-            <td>
-              <select className="input" style={{ minWidth: 0, width: '100%', maxWidth: 380 }} value={r.map?.sku_code ?? ''} onChange={(e) => void setMap(r.id, e.target.value)} aria-label={t('pepsi.pick', { item: r.label })}>
-                <option value="">{t('pepsi.none')}</option>
-                {priced.map((x) => <option key={x.sku_code} value={x.sku_code}>{x.description}{x.mrp_paise ? ` · MRP ${x.mrp_paise / 100}` : ''}</option>)}
-              </select>
-              <div className="cell-sub">{!r.sku ? <span className="badge badge-amber">{t('pepsi.unmatched')}</span>
-                : r.map?.mrp_differs ? <span className="badge badge-amber">{t('pepsi.mrpDiffers', { m: r.sku.mrp_paise ? formatPaise(r.sku.mrp_paise) : '—' })}</span>
-                : r.map?.source === 'manual' ? t('pepsi.manual') : t('pepsi.auto')}</div>
-            </td>
-            <td className="num" data-label={t('pepsi.price')}>{r.sku?.price_paise ? formatPaise(r.sku.price_paise) : '—'}{r.sku?.tax_paise ? <span className="cell-sub"> · {t('pepsi.gst', { v: formatPaise(r.sku.tax_paise) })}</span> : null}</td>
-            <td className="num" data-label={t('pepsi.cost')}>{r.cost ? formatPaise(r.cost) : '—'}</td>
-            <td className="num" data-label={t('pepsi.diff')}>{r.diff == null ? '—' : r.diff === 0 ? '✓' : <b style={{ color: r.diff > 0 ? '#dc2626' : '#16a34a' }}>{r.diff > 0 ? '+' : ''}{formatPaise(r.diff)}</b>}</td>
-          </tr>))}</tbody>
-      </table></div>
-      <p className="muted">{t('pepsi.how')}</p>
+      {!!unmatched && (
+        <div className="card stack" style={{ gap: 8 }}>
+          <b>{t('pepsi.unmatchedTitle', { n: unmatched })}</b>
+          <span className="cell-sub">{t('pepsi.unmatchedHelp')}</span>
+          <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="pepsi-table">
+            <thead><tr><th scope="col">{t('pepsi.ours')}</th><th scope="col">{t('pepsi.theirs')}</th></tr></thead>
+            <tbody>{shown.map((r) => (
+              <tr key={r.id}>
+                <td className="lead"><b>{r.label}</b><div className="cell-sub">MRP {r.mrp ? formatPaise(r.mrp) : '—'} · {t('pepsi.stock', { n: r.onHand })}</div></td>
+                <td>
+                  <select className="input" style={{ minWidth: 0, width: '100%', maxWidth: 380 }} value={r.map?.sku_code ?? ''} onChange={(e) => void setMap(r.id, e.target.value)} aria-label={t('pepsi.pick', { item: r.label })}>
+                    <option value="">{t('pepsi.none')}</option>
+                    {priced.map((x) => <option key={x.sku_code} value={x.sku_code}>{x.description}{x.mrp_paise ? ` · MRP ${x.mrp_paise / 100}` : ''}</option>)}
+                  </select>
+                </td>
+              </tr>))}</tbody>
+          </table></div>
+        </div>)}
+
 
       <Orders unbooked={s.unbooked ?? []} />
     </section>

@@ -37,7 +37,7 @@ export async function syncOms({ db, say, env, quick = false }) {
       const label = v.flavour_en === v.pack.name_en ? v.pack.name_en : `${v.flavour_en} ${v.pack.name_en}`
       const mrp = v.pack.mrp_paise ? v.pack.mrp_paise / 100 : null
       const m = matchSku(label, mrp, items)
-      if (m) maps.push({ variant_id: v.id, sku_code: m.sku_code, source: 'auto', mrp_differs: !!(m.mrp && mrp && Math.round(m.mrp) !== Math.round(mrp)), updated_at: now })
+      if (m) maps.push({ variant_id: v.id, sku_code: m.sku_code, source: 'auto', mrp_differs: false, updated_at: now })   // owner 13 Nov: an MRP change is normal (old stock keeps the old rate, new stock comes at the new rate), so it is not a flag
     }
     await db('oms_map?source=eq.auto', { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
     if (maps.length) await db('oms_map?on_conflict=variant_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(maps) })
