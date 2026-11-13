@@ -75,11 +75,11 @@ What matches: the 4 Nov purchase has the same 1,636 cases as the invoices (28 li
 |---|---|---|
 | D1 | **7UP 400 ml PET** was mapped by hand to the **750 ml** SKU 1778 (₹779). Pepsi invoiced 7UP Zero 400 ml (SKU 4057, ₹489). Made the "400ml PET" pack look like a ₹-249 margin item and priced the reorder at ₹779. | **Fixed** (mapped to 4057, manual) |
 | D2 | **300ml Soda** was mapped by hand to **Aquafina 500 ml water** (SKU 4736). Right item: Lehar Evervess Soda 300 ml RGB (SKU 2628, MRP ₹10, ₹166). Never bought, no stock. | **Fixed** (mapped to 2628, manual) |
-| D3 | **Invoice 5348045407** (13 Nov, 684 cases, ₹2,08,433 before GST) is not in Purchases, so the website stock is short by those cases if the goods arrived. | Needs owner: goods arrived? |
-| D4 | **330 ml Can** pack has only Pepsi and Pepsi Black. Pepsi invoiced 3 cases each of **Mirinda, 7UP, Mountain Dew 330 ml cans** on 13 Nov (SKUs 4060, 4062, 5550241). | Needs owner OK to add the three flavours |
-| D5 | **Pepsi Black 300 ml can**: our MRP 40, portal's current SKU 5550341 has MRP 50 (₹979). The 4 Nov invoice billed SKU 4068 at MRP 40 (₹734), a SKU no longer in the portal list. | Needs owner: which MRP is on the cans? |
-| D6 | **Mountain Dew 2.25 L**: our MRP 90, portal 100. | Needs owner |
-| D7 | **Tropicana 1 L**: we have 5 packs for 3 portal SKUs. MRP 105 and 115 both map to Apple (portal 105). Cranberry 140 and "Cranberry 120" both map to Cranberry (portal 140). | Needs owner: old MRPs or duplicates? |
-| D8 | **Sting Gold 180 ml can** is mapped to Pepsi's "Sting Classic 180 ml can" (SKU 5550221). Same product? | Needs owner |
-| D9 | **Pepsi 1.25 L**: mapped to the old PROMO SKU 1892; Pepsi invoices the current SKU 5550224. Same ₹630. | Proposed: switch to 5550224 |
+| D3 | **Invoice 5348045407** (13 Nov, 684 cases, ₹2,08,433 before GST) is not in Purchases, so the website stock is short by those cases if the goods arrived. | **Waiting**: owner will say when the goods arrive, then we enter the purchase |
+| D4 | **330 ml Can** pack has only Pepsi and Pepsi Black. Pepsi invoiced 3 cases each of **Mirinda, 7UP, Mountain Dew 330 ml cans** on 13 Nov (SKUs 4060, 4062, 5550241). | **Fixed** (Mirinda, 7UP, Mountain Dew added to "330ml Can", mapped to 4060, 4062, 5550241; same price list line as the pack; stock 0 until the 13 Nov purchase is entered) |
+| D5 | **Pepsi Black 300 ml can**: our MRP 40, portal's current SKU 5550341 has MRP 50 (₹979). The 4 Nov invoice billed SKU 4068 at MRP 40 (₹734), a SKU no longer in the portal list. | **Closed**: the 4 Nov invoice shows MRP ₹40 (SKU 4068), so our ₹40 is right. The portal now lists only the MRP-50 SKU, which we do not use for cost (flagged "Check", cost falls back to our average cost) |
+| D6 | **Mountain Dew 2.25 L**: our MRP 90, portal 100. | **Open**: not on either invoice. Flagged "Check"; check the MRP on the next invoice |
+| D7 | **Tropicana 1 L**: we have 5 packs for 3 portal SKUs. MRP 105 and 115 both map to Apple (portal 105). Cranberry 140 and "Cranberry 120" both map to Cranberry (portal 140). | **Open**: none of these are on either invoice. Left as they are; check the MRP on the next Tropicana invoice |
+| D8 | **Sting Gold 180 ml can** is mapped to Pepsi's "Sting Classic 180 ml can" (SKU 5550221). Same product? | **Open**: owner does not know; ask the Pepsi rep |
+| D9 | **Pepsi 1.25 L**: mapped to the old PROMO SKU 1892; Pepsi invoices the current SKU 5550224. Same ₹630. | **Fixed** (mapped to 5550224) |
 | D10 | Portal sells **37 priced SKUs** we have no item for (see Pepsi page, "Not matched"). Not an error; shows what we could stock. | Info |
