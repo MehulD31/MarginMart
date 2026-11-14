@@ -79,8 +79,32 @@ export default function AssistantPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
         body: JSON.stringify({ lang: i18n.language, messages: history.map(({ role, text: m }) => ({ role, text: m })), image: photo?.split(',')[1] }),
       })
-      const j = await r.json().catch(() => ({}))
-      setMsgs((s) => [...s, r.ok && j.text ? { role: 'ai', text: j.text, at: stamp() } : { role: 'ai', text: j.error ?? t('ask.failed'), error: true }])
+      if (!r.ok || !r.body) {
+        const j = await r.json().catch(() => ({}))
+        setMsgs((s) => [...s, { role: 'ai', text: j.error ?? t('ask.failed'), error: true }]); return
+      }
+      // the answer streams in: show words as they arrive (one JSON object per line)
+      const reader = r.body.getReader(), dec = new TextDecoder()
+      let buf = '', text = '', live = false, err: string | null = null
+      const show = (txt: string, final = false) => setMsgs((s) => {
+        const base = live ? s.slice(0, -1) : s
+        return [...base, { role: 'ai', text: txt, at: final ? stamp() : undefined }]
+      })
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        let n
+        while ((n = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, n).trim(); buf = buf.slice(n + 1)
+          if (!line) continue
+          const j = JSON.parse(line) as { t?: string; done?: boolean; text?: string; error?: string }
+          if (j.t) { text += j.t; show(text); live = true; setBusy(false) }
+          else if (j.done) { show(j.text || text, true); live = true }
+          else if (j.error) err = j.error
+        }
+      }
+      if (!text) setMsgs((s) => [...s, { role: 'ai', text: err ?? t('ask.failed'), error: true }])
     } catch { setMsgs((s) => [...s, { role: 'ai', text: t('ask.failed'), error: true }]) } finally { setBusy(false) }
   }
   const send = (e?: FormEvent, preset?: string) => {

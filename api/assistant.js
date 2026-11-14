@@ -81,45 +81,92 @@ export function systemPrompt(who, lang, data) {
 
 const clean = (t) => String(t).replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s*/gm, '').replace(/^\s*(?:[-*+])\s+/gm, '\u2022 ').replace(/\n{3,}/g, '\n\n').trim()
 
-async function gemini(system, messages, image) {
-  const deadline = Date.now() + 50_000
-  const contents = messages.slice(-12).map((m, i, a) => ({
+// Fastest first: the lite model answers in ~2-4 s (no "thinking"), the bigger one is the backup. A model that has not started
+// writing within its time box is dropped for the next one. Once words start, they are streamed straight to the phone.
+const MODELS = [['gemini-3.1-flash-lite', 7000], ['gemini-flash-lite-latest', 7000], ['gemini-3.5-flash', 14000]]
+
+/** Streams the answer: calls onText(piece) as words arrive. Returns { model, ms }. */
+async function gemini(system, messages, image, onText) {
+  const contents = messages.slice(-10).map((m, i, a) => ({
     role: m.role === 'ai' ? 'model' : 'user',
     parts: [{ text: String(m.text ?? '').slice(0, 2000) || '(photo)' }, ...(i === a.length - 1 && image ? [{ inline_data: { mime_type: 'image/jpeg', data: image } }] : [])],
   }))
-  for (const model of ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash']) {
-    if (Date.now() > deadline - 4000) break
+  const t0 = Date.now(), tried = []
+  for (const [model, firstByte] of MODELS) {
+    if (Date.now() - t0 > 45_000) break
+    const ctl = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), firstByte)
+    let started = false
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST', signal: AbortSignal.timeout(Math.max(3000, Math.min(30_000, deadline - Date.now()))),
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 4096 } }) })
-      const j = await r.json().catch(() => ({}))
-      const c = j?.candidates?.[0]
-      const t = c?.content?.parts?.filter((p) => !p.thought).map((p) => p.text ?? '').join('').trim()
-      if (t) return clean(t)
-      console.log('assistant', model, r.status, c?.finishReason, JSON.stringify(j).slice(0, 160))
-      if (r.status === 429) await new Promise((ok) => setTimeout(ok, 1500))
-    } catch (e) { console.log('assistant error', model, e.message) }
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`, {
+        method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: { temperature: 0.2, maxOutputTokens: 1500 } }) })
+      if (!r.ok || !r.body) { tried.push(`${model}:${r.status}`); clearTimeout(timer); continue }
+      const dec = new TextDecoder(); let buf = ''
+      for await (const chunk of r.body) {
+        buf += dec.decode(chunk, { stream: true })
+        let n
+        while ((n = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, n).trim(); buf = buf.slice(n + 1)
+          if (!line.startsWith('data:')) continue
+          let j; try { j = JSON.parse(line.slice(5)) } catch { continue }
+          const piece = (j?.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join('')
+          if (piece) { if (!started) { started = true; clearTimeout(timer) } onText(piece) }
+        }
+      }
+      clearTimeout(timer)
+      if (started) return { model, ms: Date.now() - t0, tried }
+      tried.push(`${model}:empty`)
+    } catch (e) {
+      clearTimeout(timer)
+      if (started) return { model, ms: Date.now() - t0, tried, cut: true }   // already showing words: keep what came
+      tried.push(`${model}:${e.name === 'AbortError' ? 'slow' : 'err'}`)
+    }
   }
-  throw new Error('AI abhi busy hai, 1 minute baad dobara poochho.')
+  throw Object.assign(new Error('AI abhi busy hai, 1 minute baad dobara poochho.'), { tried })
+}
+
+// The business numbers change slowly: keep them 60 s per login, so a follow-up question skips the database round.
+const cache = new Map()
+async function factsFor(tok) {
+  const hit = cache.get(tok)
+  if (hit && Date.now() - hit.at < 60_000) return hit.data
+  const data = await facts(tok)
+  if (cache.size > 50) cache.clear()
+  cache.set(tok, { at: Date.now(), data })
+  return data
 }
 
 for (const ev of ['unhandledRejection', 'uncaughtException']) process.on(ev, (e) => console.error('assistant', ev, e))
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
+  const t0 = Date.now()
   try {
     const tok = String(req.headers.authorization ?? '').replace(/^Bearer\s+/i, '')
-    const who = await caller(tok)
-    if (!who) return res.status(401).json({ error: 'Login dobara karo (sirf admin/manager).' })
     const b = typeof req.body === 'string' ? JSON.parse(req.body) : req.body ?? {}
     const messages = Array.isArray(b.messages) ? b.messages.filter((m) => m && (m.role === 'user' || m.role === 'ai')) : []
     if (!messages.length || messages[messages.length - 1].role !== 'user') return res.status(400).json({ error: 'Sawal likho' })
     const image = typeof b.image === 'string' && b.image.length < 6_000_000 ? b.image : undefined
-    const text = await gemini(systemPrompt(who, b.lang, await facts(tok)), messages, image)
-    return res.status(200).json({ text })
+    // login check and data load at the same time (the data is only used once the login is confirmed)
+    const [who, data] = await Promise.all([caller(tok), factsFor(tok).catch(() => null)])
+    if (!who) return res.status(401).json({ error: 'Login dobara karo (sirf admin/manager).' })
+    if (!data) return res.status(503).json({ error: 'Data load nahi hua, dobara poochho.' })
+    const dataMs = Date.now() - t0
+    // stream: one JSON object per line ({"t": text} pieces, then {"done": true} or {"error": ...})
+    res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' })
+    let all = ''
+    try {
+      const out = await gemini(systemPrompt(who, b.lang, data), messages, image, (piece) => { all += piece; res.write(JSON.stringify({ t: piece }) + '\n') })
+      res.write(JSON.stringify({ done: true, text: clean(all), model: out.model, ms: Date.now() - t0 }) + '\n')
+      console.log('assistant ok', JSON.stringify({ data_ms: dataMs, total_ms: Date.now() - t0, model: out.model, tried: out.tried }))
+    } catch (e) {
+      res.write(JSON.stringify({ error: String(e?.message ?? 'AI error').slice(0, 200) }) + '\n')
+      console.log('assistant fail', JSON.stringify({ data_ms: dataMs, total_ms: Date.now() - t0, tried: e.tried }))
+    }
+    return res.end()
   } catch (e) {
     console.error('assistant', e?.message)
+    if (res.headersSent) { res.write(JSON.stringify({ error: 'AI error' }) + '\n'); return res.end() }
     return res.status(503).json({ error: String(e?.message ?? 'AI error').slice(0, 200) })
   }
 }
