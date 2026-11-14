@@ -485,6 +485,10 @@ async function ads() {
   if (!tok) return console.log('ads: no META_ADS_TOKEN yet')
   const A = ADS.ACCOUNT
   const get = async (p) => { const j = await (await fetch(`${G}/${p}${p.includes('?') ? '&' : '?'}access_token=${tok}`)).json(); if (j.error) throw new Error(j.error.message); return j }
+  // Owner, 14 Nov 2026: ads off (₹308 got 1 chat). While no ad set is switched on, this job does nothing: it never
+  // resumes an ad, never creates one and never asks about new ones. Turning an ad set on in Ads Manager wakes it up again.
+  const sets = (await get(`${A}/adsets?fields=id,effective_status&limit=50`)).data ?? []
+  if (!sets.some((s) => s.effective_status === 'ACTIVE')) return console.log('ads: all ad sets paused (owner: ads off), nothing to do')
   const acct = await get(`${A}?fields=account_status,funding_source_details,is_prepay_account,balance,amount_spent`)
   const list = (await get(`${A}/ads?fields=id,name,effective_status&limit=100`)).data ?? []
   const ins = async (preset) => new Map(((await get(`${A}/insights?level=ad&date_preset=${preset}&fields=ad_id,spend,actions&limit=500`)).data ?? []).map((r) => [r.ad_id, r]))
