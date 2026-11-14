@@ -84,6 +84,8 @@ export function systemPrompt(who, lang, data) {
     'Never show field names from DATA (like shop_ts_now_rs or pepsi_portal_price_rs): say "shop ka TS", "hamara buy rate" etc.',
     'Answer the question first in one line, then only the details that matter. Stock is in peti (cases).',
     'For sales questions use SALES_TOTALS (already added up): always give both ₹ and peti. Never add numbers yourself when a total is given.',
+    'For "what to order from Pepsi" questions: list suggested_pepsi_order first, item by item with the cases to order (need) and why (stock, days left).',
+    'This list is the app\'s own order plan, so lead with it; mention other low items only after it. If the list is empty, say nothing urgent is needed.',
     `Reply in ${language}. Short: max 150 words, plain text, bullets start with "• ", rupees as ₹ with Indian commas. No markdown headings, no bold.`,
     `DATA (live, money in rupees): ${JSON.stringify(data).slice(0, 30000)}`,
   ].join('\n')
