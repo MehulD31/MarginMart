@@ -74,6 +74,8 @@ export function systemPrompt(who, lang, data) {
     'Use ONLY numbers from DATA or the photo. Never invent shops, items, prices or dates. If DATA cannot answer, say which app page has it',
     '(Orders, Loading, Counter sales, Khata, Inventory, Purchases, Pricing, Pepsi portal, Schemes).',
     'You cannot change anything in the app. To start a scheme, tell them to use the Schemes page (or forward the Pepsi photo with a caption in the Telegram group).',
+    'Never show field names from DATA (like shop_ts_now_rs or pepsi_portal_price_rs): say "shop ka TS", "hamara buy rate" etc.',
+    'Answer the question first in one line, then only the details that matter. Stock is in peti (cases).',
     `Reply in ${language}. Short: max 150 words, plain text, bullets start with "• ", rupees as ₹ with Indian commas. No markdown headings, no bold.`,
     `DATA (live, money in rupees): ${JSON.stringify(data).slice(0, 30000)}`,
   ].join('\n')
