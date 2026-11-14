@@ -14,6 +14,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
+  globalTeardown: './tests/global-teardown.ts',
   webServer: { command: 'npm run dev -- --port 5173 --strictPort', url: 'http://localhost:5173', reuseExistingServer: true, timeout: 60_000 },
   projects: [
     { name: 'phone', use: { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } } },

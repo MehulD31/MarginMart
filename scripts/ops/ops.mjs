@@ -298,6 +298,11 @@ async function watchdog() {
   // 6. free-tier limits: Supabase free = 500 MB database, 1 GB storage (alert at 80%, once a day)
   try {
     const h = await rpc('ops_health')
+    // test data (QA shops, vans, routes, items) must never stay on the live site: clean it and say so
+    if (n(h.qa_left) > 0) {
+      const r = await rpc('qa_cleanup')
+      alerts.push(`Test data (QA) live site par mila, hata diya: ${r?.shops ?? 0} shops, ${r?.vehicles ?? 0} gaadi, ${r?.routes ?? 0} route.`)
+    }
     const dbMb = n(h.db_bytes) / 1048576, stMb = n(h.storage_bytes) / 1048576
     if ((dbMb > 400 || stMb > 800) && !(await done('size-alert', today))) {
       alerts.push(`Supabase free limit paas: database ${dbMb.toFixed(0)}/500 MB, storage ${stMb.toFixed(0)}/1024 MB`)

@@ -29,7 +29,14 @@ let pass = 0, fail = 0
 export function check(cond, label, extra) {
   if (cond) { pass++; console.log('  ok  ', label) } else { fail++; console.log('  FAIL', label, extra === undefined ? '' : JSON.stringify(extra)) }
 }
-export function done() { console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0) }
+/** Removes every QA/TEST record from the live database (shops, vans, routes, the test item). Test data must never stay. */
+export async function cleanupQA() {
+  try {
+    const r = await call('qa_cleanup', {}, await login('8871565551', '1234'))
+    console.log('  qa cleanup', r.status < 300 ? JSON.stringify(r.body) : `FAILED ${JSON.stringify(r.body)}`)
+  } catch (e) { console.log('  qa cleanup FAILED', e.message) }
+}
+export async function done() { console.log(`\n${pass} passed, ${fail} failed`); await cleanupQA(); process.exit(fail ? 1 : 0) }
 
 /**
  * Test-only product and shop (owner rule: tests never write to real stock or real shops).
@@ -38,16 +45,10 @@ export function done() { console.log(`\n${pass} passed, ${fail} failed`); proces
  * only QA records ever touch them. `req(path, init)` is a REST call that returns parsed JSON.
  */
 export async function qaFixture(req, routeId) {
-  let pack = (await req('pack?select=id&name_en=eq.QA%20Test%20Drink'))[0]
-  if (!pack) {
-    const brand = (await req('brand?select=id&limit=1'))[0]
-    pack = (await req('pack', { method: 'POST', body: JSON.stringify({ brand_id: brand.id, name_en: 'QA Test Drink', units_per_case: 24, mrp_paise: 2000, active: false }) }))[0]
-  }
-  let variant = (await req(`variant?select=id&pack_id=eq.${pack.id}`))[0]
-  if (!variant) variant = (await req('variant', { method: 'POST', body: JSON.stringify({ pack_id: pack.id, flavour_en: 'QA Test Drink' }) }))[0]
-  const list = (await req('price_list?select=id&status=eq.active'))[0]
-  if (list && !(await req(`price_list_item?select=pack_id&pack_id=eq.${pack.id}&price_list_id=eq.${list.id}`)).length)
-    await req('price_list_item', { method: 'POST', body: JSON.stringify({ price_list_id: list.id, pack_id: pack.id, trade_price_paise: 50000 }) })
+  // created (with its price, which normal logins cannot write) by the qa_fixture() function; qa_cleanup() removes it again
+  const made = await req('rpc/qa_fixture', { method: 'POST', body: '{}' })
+  if (!made?.pack_id) throw new Error(`qa_fixture failed: ${JSON.stringify(made)}`)
+  const pack = { id: made.pack_id }, variant = { id: made.variant_id }
   let shop = null
   if (routeId) {
     shop = (await req(`shop?select=id,name&name=eq.QA%20Test%20Shop&route_id=eq.${routeId}`))[0]

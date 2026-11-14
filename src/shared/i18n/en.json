@@ -912,7 +912,7 @@
     "min": "Minimum",
     "floor": "Floor",
     "scheme": "Scheme {{v}} (admin only, extra profit)",
-    "legend": "* Buy price not recorded yet; assumed trade price minus {{m}}. Import a Pepsi invoice to use the real cost. Red margin: below cost per case. Green: room to discount.",
+    "legend": "Buy price = your real purchase cost, or the Pepsi portal price if not bought yet. * Not on the portal either: assumed trade price minus {{m}}. Red margin: below cost per case. Green: room to discount.",
     "costName": "Expense",
     "perMonthRs": "₹ per month",
     "addCost": "Add expense",
