@@ -331,6 +331,16 @@ async function watchdog() {
     // no scheduled run at all yet = the schedule is new (GitHub can take a while to start it), not dead
     if (sched.length && !recent && !(await done('poller-dead', today))) { alerts.push('10-min check 3 ghante se nahi chala (GitHub schedule ruk gaya?)'); await mark('poller-dead', today) }
   } catch (e) { console.log('poller check', e.message) }
+  // 8. the 19:30 post: an approved post still queued late at night means the evening trigger missed: post it now, once, and say so
+  try {
+    const queued = await db('social_post?status=eq.queued&select=id,kind&limit=1')
+    const reelToday = await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T00:00:00%2B05:30&select=id&limit=1`)
+    if (queued.length && m >= 21 * 60 && !reelToday.length && !(await done('social-late', today))) {
+      await mark('social-late', today)
+      await gh('actions/workflows/ops.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { mode: 'social' } }) })
+      alerts.push('Aaj ka Reel 7:30 pe nahi gaya tha, abhi post kar raha hun.')
+    }
+  } catch (e) { console.log('social check', e.message) }
   console.log('watchdog', alerts)
   if (alerts.length) await say('🛠 Watchdog:\n' + alerts.map((a) => '• ' + a).join('\n'))
   await mark('watchdog', `${today}-${m < 15 * 60 ? 'am' : 'pm'}`, { alerts })
@@ -620,9 +630,12 @@ async function rateComments() {
 async function social() {
   const id = process.env.POST_ID
   // Reels go out one per evening (oldest approved first) so a batch that became 3 Reels fills 3 days, not one feed burst
+  // The evening job is triggered several times (19:30, then two retries), so a Reel already posted today stops the next one:
+  // exactly one Reel per evening, and a missed 19:30 still goes out later the same night.
+  const reelToday = id ? [] : await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T00:00:00%2B05:30&select=id&limit=1`)
   const list = id ? await db(`social_post?id=eq.${id}&status=eq.queued&select=*`) : [
     ...await db('social_post?status=eq.queued&kind=neq.reel&order=created_at&limit=5&select=*'),
-    ...await db('social_post?status=eq.queued&kind=eq.reel&order=created_at&limit=1&select=*')]
+    ...(reelToday.length ? [] : await db('social_post?status=eq.queued&kind=eq.reel&order=created_at&limit=1&select=*'))]
   if (!list.length) return console.log('nothing queued')
   let failed = null
   for (const p of list) { try { await postOne(p) } catch (e) { console.log('post failed', p.id, e.message); failed = e } }

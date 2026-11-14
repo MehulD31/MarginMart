@@ -14,9 +14,11 @@ export default async function handler(req, res) {
   if (!r.ok) return res.status(r.status === 400 || r.status === 401 ? 401 : 502).json({ error: (await r.text()).slice(0, 200) })
   const due = await r.json()
   const force = req.query?.force === '1'
-  if (!due && !force) return res.status(200).json({ started: false })
+  // Timed jobs (pg_cron calls this at the exact minute; GitHub's own schedule runs hours late): ?mode=social starts that ops job.
+  const timed = ['morning', 'night', 'weekly', 'watchdog', 'social'].includes(String(req.query?.mode)) ? String(req.query.mode) : null
+  if (!due && !force && !timed) return res.status(200).json({ started: false })
   const g = await fetch(`https://api.github.com/repos/${env.GH_REPO}/actions/workflows/ops.yml/dispatches`, {
     method: 'POST', headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ref: 'main', inputs: { mode: 'events' } }) })
-  return res.status(200).json({ started: g.ok, due, force, github: g.status })
+    body: JSON.stringify({ ref: 'main', inputs: { mode: timed ?? 'events' } }) })
+  return res.status(200).json({ started: g.ok, due, force, mode: timed ?? 'events', github: g.status })
 }
