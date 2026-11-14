@@ -1323,7 +1323,8 @@
       "confirmDeliver": "Confirm delivery",
       "title": "Bills from this truck ({{n}})",
       "none": "No bills yet.",
-      "editHint": "To fix a bill, open Counter sales and tap Edit."
+      "editHint": "Wrong item, cases, rate or shop? Tap Edit on the bill. Bills can be changed until the trip is closed.",
+      "updated": "Bill {{n}} updated."
     },
     "close": {
       "unloadFirst": "Unload the truck first, then close the trip.",

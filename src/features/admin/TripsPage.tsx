@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Check, History, CheckCheck, ClipboardCheck, PackageCheck, PackageOpen, Plus, Printer, Receipt, Truck, Undo2, X } from 'lucide-react'
+import { ArrowLeft, Check, History, CheckCheck, ClipboardCheck, PackageCheck, PackageOpen, Pencil, Plus, Printer, Receipt, Truck, Undo2, X } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
@@ -15,7 +15,7 @@ import { useDraft } from '../../shared/ui/draft'
 import { DraftNote } from '../../shared/ui/DraftNote'
 import { useConfirm } from '../../shared/ui/confirm'
 import { addDays, todayIST, useDrivers, useLocaleDate } from './opsData'
-import { CounterSaleForm } from './CounterSaleForm'
+import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
 import { refreshTrips, stageOf, useTripHistory, sumBy, useTripBoard, useTripDetail, type Stage, type TripCard, type TripDetail, type TripOrder } from './trips'
 
 type Step = 'load' | 'unload' | 'bills' | 'close'
@@ -511,6 +511,16 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
   const out = d.plan.status === 'loaded' || d.plan.status === 'out'
   const left = sumBy(d.items, (i) => Math.max(0, i.left))
   const pgBills = usePaged(d.bills, 20)
+  // Edit a truck bill in place (wrong qty, rate, shop, cash/UPI): the full bill comes from the same list the Counter sales page uses.
+  const [editing, setEditing] = useState<string | null>(null)
+  const closed = d.plan.status === 'closed'
+  const dayBills = useQuery({
+    queryKey: ['counter-sales', d.plan.date, d.plan.date, 'trip'],
+    queryFn: () => must<CounterBill[] | null>(supabase.rpc('counter_sales', { p_from: d.plan.date, p_to: d.plan.date })).then((r) => r ?? []),
+    enabled: !!editing, staleTime: 0, refetchOnMount: 'always',
+  })
+  // never open the form on an old copy of the bill (a second edit must start from the saved numbers)
+  const editBill = editing && !dayBills.isFetching ? dayBills.data?.find((b) => b.id === editing) : undefined
   const pending = d.orders.filter((o) => o.status === 'placed' || o.status === 'locked')
   const doneOrders = d.orders.filter((o) => o.status === 'delivered' || o.status === 'partially_delivered')
 
@@ -572,8 +582,12 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
             <li key={b.id} className="card row-between" data-testid="trip-bill">
               <div><div className="cell-title">{b.number} · {b.shop}{b.owner ? ` · ${b.owner}` : ''}</div>
                 <div className="cell-sub">{new Date(b.at).toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit' })} · {t('trip.load.cases', { n: b.cases })}</div></div>
-              <div style={{ textAlign: 'right' }}><strong className="num">{formatPaise(b.total_paise)}</strong>{' '}
-                <span className={`badge ${b.mode === 'upi' ? 'badge-blue' : 'badge-green'}`}>{b.mode === 'upi' ? 'UPI' : t('driver.cash')}</span></div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div style={{ textAlign: 'right' }}><strong className="num">{formatPaise(b.total_paise)}</strong>{' '}
+                  <span className={`badge ${b.mode === 'upi' ? 'badge-blue' : 'badge-green'}`}>{b.mode === 'upi' ? 'UPI' : t('driver.cash')}</span></div>
+                {!closed && <button type="button" className="btn-sm" data-testid="edit-trip-bill" onClick={() => { setEditing(b.id); void dayBills.refetch() }}>
+                  <Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>}
+              </div>
             </li>))}</ul>)}
         <Pager p={pgBills} />
         {d.bills.length > 0 && <p className="cell-sub">{t('trip.bills.editHint')}</p>}
@@ -589,6 +603,15 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
             setFormKey((k) => k + 1)
           }} />
         </div>}
+      </Sheet>
+      <Sheet open={!!editing} wide title={editBill ? t('sales.editTitle', { n: editBill.number }) : t('common.edit')} onClose={() => setEditing(null)}>
+        {editing && (!editBill ? (dayBills.isError ? <Alert msg={{ kind: 'error', text: errorMessage(t, dayBills.error) }} /> : <Skeleton rows={4} />)
+          : <CounterSaleForm key={editBill.id} bill={editBill} onDone={(number) => {
+              setEditing(null)
+              if (!number) return
+              refreshTrips(qc); void qc.invalidateQueries({ queryKey: ['counter-sales'] })
+              setMsg({ kind: 'success', text: t('trip.bills.updated', { n: number }) })
+            }} />)}
       </Sheet>
       <Sheet open={!!delivering} wide title={delivering ? `${delivering.shop}${delivering.owner ? ` · ${delivering.owner}` : ''}` : ''} onClose={() => setDelivering(null)}>
         {delivering && <DeliverForm key={delivering.id} order={delivering} planId={d.plan.id} onDone={(m) => { setDelivering(null); if (m) setMsg(m) }} />}

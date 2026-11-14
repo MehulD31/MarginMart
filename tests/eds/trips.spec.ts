@@ -108,6 +108,17 @@ test('Vehicle trip: load, deliver, bill from truck, unload, close with shortage'
   const number = (await saved.innerText()).match(/KD-\d+/)![0]
   await sheet.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByTestId('trip-bill').filter({ hasText: number })).toBeVisible()
+  // edit the truck bill right here: 2 -> 1 case, and the truck count follows (then back to 2)
+  await page.getByTestId('trip-bill').filter({ hasText: number }).getByTestId('edit-trip-bill').click()
+  const edit = page.locator('dialog[open]')
+  await edit.getByTestId('sale-line').getByRole('button', { name: /^One less/ }).click()
+  await edit.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByText(`Bill ${number} updated.`)).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByTestId('left-total')).toHaveText('4')
+  await page.getByTestId('trip-bill').filter({ hasText: number }).getByTestId('edit-trip-bill').click()
+  await page.locator('dialog[open]').getByTestId('sale-line').getByRole('button', { name: /^One more/ }).click()
+  await page.locator('dialog[open]').getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByTestId('left-total')).toHaveText('3', { timeout: 20_000 })
   await expect(page.getByTestId('left-total')).toHaveText('3')
 
   // --- unload: everything came back, then 1 Nimbooz less (it was broken)
