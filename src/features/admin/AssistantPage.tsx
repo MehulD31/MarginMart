@@ -54,16 +54,25 @@ export default function AssistantPage() {
     const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--ask-bar', `${el.offsetHeight}px`))
     ro.observe(el); return () => { ro.disconnect(); document.documentElement.style.removeProperty('--ask-bar') }
   }, [])
-  const toEnd = useCallback((smooth = true) => end.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' }), [])
+  // The true bottom of the page (the page keeps space under the last message for the composer, so "scroll the last message
+  // into view" would stop short of it and pull the page back up while you scroll down).
+  const toEnd = useCallback((smooth = true) => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: smooth ? 'smooth' : 'auto' }), [])
+  // Follow new words only while the reader is at the bottom. A ref, not state: reaching the bottom must never cause a scroll.
+  const follow = useRef(true)
   // open at the newest message (after the composer height is known)
   useEffect(() => {
     const go = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' })
     const ids = [0, 150, 400].map((ms) => setTimeout(go, ms))     // fonts and the composer settle after the first paint
     return () => ids.forEach(clearTimeout)
   }, [])
-  useEffect(() => { if (atEnd) toEnd() }, [msgs, busy, atEnd, toEnd])
+  // only when the chat itself changes (a new message, words streaming in), never because the reader scrolled
+  useEffect(() => { if (follow.current) toEnd(false) }, [msgs, busy, toEnd])
   useEffect(() => {
-    const on = () => setAtEnd(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160)
+    const on = () => {
+      const bottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 120
+      follow.current = bottom
+      setAtEnd(bottom)
+    }
     window.addEventListener('scroll', on, { passive: true }); return () => window.removeEventListener('scroll', on)
   }, [])
   // "thinking" text moves on, so a 20-second wait does not look stuck
@@ -72,7 +81,7 @@ export default function AssistantPage() {
   useLayoutEffect(() => { const el = box.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 132)}px` }, [text])
 
   const ask = async (history: Msg[], photo?: string) => {
-    setStep(0); setBusy(true); setAtEnd(true)
+    setStep(0); setBusy(true); setAtEnd(true); follow.current = true
     try {
       const { data } = await supabase.auth.getSession()
       const r = await fetch('/api/assistant', {
@@ -184,7 +193,7 @@ export default function AssistantPage() {
         </div>
       )}
 
-      {!atEnd && msgs.length > 0 && <button type="button" className="ask-jump" onClick={() => { setAtEnd(true); toEnd() }} aria-label={t('ask.latest')}><ArrowDown size={18} /></button>}
+      {!atEnd && msgs.length > 0 && <button type="button" className="ask-jump" onClick={() => { follow.current = true; setAtEnd(true); toEnd() }} aria-label={t('ask.latest')}><ArrowDown size={18} /></button>}
 
       <form ref={bar} className="ask-bar" onSubmit={send}>
         {img && <div className="ask-preview"><img src={img} alt={t('ask.photo')} /><span className="cell-sub grow">{t('ask.photoReady')}</span>
