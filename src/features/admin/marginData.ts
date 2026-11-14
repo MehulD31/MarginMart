@@ -64,13 +64,16 @@ export function useMargin() {
     const avg = new Map<string, number[]>()
     const cost0 = new Map(stock.data.map((x) => [x.variant_id, x.avg_cost_paise]))
     for (const v of variants.data) { const c = cost0.get(v.id); if (c) avg.set(v.pack_id, [...(avg.get(v.pack_id) ?? []), c]) }
-    // No purchase cost for a pack yet: the Pepsi portal's own price per case is the real cost, better than a guess.
+    // Buy price = what the next case costs: the Pepsi portal's price per case (median over the pack's flavours, so one odd
+    // flavour does not move it). A one-off cheaper invoice must not set the price for every case after it. Without a portal
+    // price, fall back to what we paid for stock (average).
     const fromPortal = new Map<string, number[]>()
-    for (const v of variants.data) { const c = portal.data?.get(v.id); if (c && !avg.has(v.pack_id)) fromPortal.set(v.pack_id, [...(fromPortal.get(v.pack_id) ?? []), c]) }
+    for (const v of variants.data) { const c = portal.data?.get(v.id); if (c) fromPortal.set(v.pack_id, [...(fromPortal.get(v.pack_id) ?? []), c]) }
+    const median = (xs: number[]) => { const a = [...xs].sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2) }
     const byPack = new Map<string, PackPrice>()
     for (const i of prices.data) {
-      const a = avg.get(i.pack_id) ?? fromPortal.get(i.pack_id)
-      byPack.set(i.pack_id, packPrice(s, i.trade_price_paise, a ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null, cost))
+      const p = fromPortal.get(i.pack_id), a = avg.get(i.pack_id)
+      byPack.set(i.pack_id, packPrice(s, i.trade_price_paise, p ? median(p) : a ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null, cost))
     }
     const packOf = new Map(variants.data.map((v) => [v.id, v.pack_id]))
     const trucks = (vehicles.data ?? []).filter((v) => v.active).length

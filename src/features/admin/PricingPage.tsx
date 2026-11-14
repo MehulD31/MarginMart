@@ -19,15 +19,39 @@ export default function PricingPage() {
   const { t, i18n } = useTranslation()
   const isAdmin = useAuth().profile?.role === 'admin'
   const m = useMargin()
-  const pg = usePaged(m ? m.packs.filter((p) => p.active && m.byPack.has(p.id)) : [])
   const [edit, setEdit] = useState(false)
-  if (!m) return <Skeleton rows={6} />
-  const { s, cost, volume, onSeason } = m
+  const [q, setQ] = useState('')
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: 'name', dir: 1 })
   const hi = i18n.language === 'hi'
-  const slabs = onSeason ? s.slabs.on : s.slabs.off
+  const onSeason = m?.onSeason ?? false
+  const slabs = m ? (onSeason ? m.s.slabs.on : m.s.slabs.off) : []
   const steps = [1, ...slabs.map((x) => x.min)]
-  const rows = m.packs.filter((p) => p.active && m.byPack.has(p.id)).map((p) => ({ p, x: m.byPack.get(p.id)!, list: m.prices.find((i) => i.pack_id === p.id)! }))
+  const nameOf = (p: { name_en: string; name_hi: string | null }) => (hi && p.name_hi) || p.name_en
+  // Search by name, then sort (A to Z by default; click a column heading to sort by it, again to reverse).
+  const rows = (m ? m.packs.filter((p) => p.active && m.byPack.has(p.id)).map((p) => ({ p, x: m.byPack.get(p.id)!, list: m.prices.find((i) => i.pack_id === p.id)! })) : [])
+    .filter((r) => nameOf(r.p).toLowerCase().includes(q.trim().toLowerCase()))
+  const valueOf = (r: (typeof rows)[number], key: string): number => {
+    if (key === 'buy') return r.x.buy
+    if (key === 'trade') return r.x.trade
+    if (key === 'margin') return r.x.margin
+    if (key === 'min') return r.x.min
+    if (key === 'floor') return r.x.floor
+    if (key.startsWith('s') && m) return suggestedPrice(r.x, r.x.trade, slabOff(m.s, steps[Number(key.slice(1))] ?? 1, onSeason))
+    return 0
+  }
+  const byName = (a: (typeof rows)[number], b: (typeof rows)[number]) => nameOf(a.p).localeCompare(nameOf(b.p), hi ? 'hi' : 'en', { sensitivity: 'base', numeric: true })
+  const sorted = [...rows].sort((a, b) => (sort.key === 'name' ? byName(a, b) * sort.dir : (valueOf(a, sort.key) - valueOf(b, sort.key)) * sort.dir || byName(a, b)))
+  const pg = usePaged(sorted)
+  if (!m) return <Skeleton rows={6} />
+  const { s, cost, volume } = m
   const cap = capacityCases(s, m.trucks)
+  const slabLabel = (n: number, i: number) => (i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n }))
+  const cols: { key: string; label: string }[] = [
+    { key: 'name', label: t('inventory.item') }, { key: 'buy', label: t('pricing.buy') }, { key: 'trade', label: t('pricing.trade') }, { key: 'margin', label: t('pricing.margin') },
+    ...steps.map((n, i) => ({ key: `s${i}`, label: slabLabel(n, i) })), { key: 'min', label: t('pricing.min') }, { key: 'floor', label: t('pricing.floor') },
+  ]
+  const toggle = (key: string) => setSort((o) => (o.key === key ? { key, dir: o.dir === 1 ? -1 : 1 } : { key, dir: 1 }))
+  const mark = (key: string) => (sort.key === key ? (sort.dir === 1 ? ' ▲' : ' ▼') : '')
 
   return (
     <section className="stack-lg">
@@ -45,27 +69,38 @@ export default function PricingPage() {
       {volume.cases > cap && cap > 0 && <Alert msg={{ kind: 'warn', text: t('pricing.overCapacity', { n: cap.toLocaleString('en-IN') }) }} />}
       <p className="muted">{t('pricing.how')}</p>
 
+      <div className="row pricing-tools" style={{ flexWrap: 'wrap' }}>
+        <input type="search" aria-label={t('pricing.search')} placeholder={t('pricing.search')} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 360 }} />
+        {/* Phones show items as cards (no column headings), so the same sorting is a dropdown there */}
+        <label className="row" style={{ gap: 8 }}><span className="cell-sub">{t('pricing.sortBy')}</span>
+          <select value={sort.key} onChange={(e) => setSort({ key: e.target.value, dir: 1 })} style={{ width: 'auto', minWidth: 160 }}>
+            {cols.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select></label>
+        <button type="button" onClick={() => setSort((o) => ({ ...o, dir: o.dir === 1 ? -1 : 1 }))} aria-label={t('pricing.reverse')}>{sort.dir === 1 ? '▲' : '▼'}</button>
+      </div>
+
       {/* Phones: one card per item (Minimum and Floor were off screen in an 8-column table). Laptop: the table. */}
       <div className="table-wrap table-scroll"><table className="dense table-stack">
         <thead><tr>
-          <th scope="col">{t('inventory.item')}</th><th scope="col">{t('pricing.buy')}</th><th scope="col">{t('pricing.trade')}</th><th scope="col">{t('pricing.margin')}</th>
-          {steps.map((n, i) => <th key={n} scope="col">{i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n })}</th>)}
-          <th scope="col">{t('pricing.min')}</th><th scope="col">{t('pricing.floor')}</th>
+          {cols.map((c) => (
+            <th key={c.key} scope="col" aria-sort={sort.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+              <button type="button" className="th-sort" onClick={() => toggle(c.key)}>{c.label}{mark(c.key)}</button></th>))}
         </tr></thead>
-        <tbody>{rows.filter((r) => pg.rows.includes(r.p)).map(({ p, x, list }) => {
+        <tbody>{pg.rows.map(({ p, x, list }) => {
           const room = x.trade - x.min
           return (
             <tr key={p.id}>
               <td className="lead"><b>{(hi && p.name_hi) || p.name_en}</b>{list.scheme_value_paise > 0 && <div className="cell-sub">{t('pricing.scheme', { v: rs(list.scheme_value_paise) })}</div>}</td>
               <td className="num" data-label={t('pricing.buy')}>{rs(x.buy)}{!x.buyKnown && <span className="muted"> *</span>}</td>
               <td className="num" data-label={t('pricing.trade')}>{rs(x.trade)}</td>
-              <td className="num" data-label={t('pricing.margin')}><span className={`badge ${x.margin < cost.total ? 'badge-red' : room >= 3000 ? 'badge-green' : ''}`}>{rs(x.margin)}</span></td>
+              <td className="num" data-label={t('pricing.margin')}><span className={`badge ${x.margin < cost.variable ? 'badge-red' : x.margin < cost.total ? 'badge-amber' : room >= 3000 ? 'badge-green' : ''}`}>{rs(x.margin)}</span></td>
               {steps.map((n, i) => <td key={n} className="num" data-label={i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n })}>{rs(suggestedPrice(x, x.trade, slabOff(s, n, onSeason)))}</td>)}
               <td className="num" data-label={t('pricing.min')}><strong>{rs(x.min)}</strong></td>
               <td className="num" data-label={t('pricing.floor')}>{rs(x.floor)}</td>
             </tr>)
         })}</tbody>
       </table></div>
+      {!sorted.length && <p className="muted">{t('common.noMatches')}</p>}
       <Pager p={pg} />
       <p className="muted">{t('pricing.legend', { m: rs(s.default_margin_paise) })}</p>
 
