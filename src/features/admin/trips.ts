@@ -11,9 +11,13 @@ export interface TripCard {
   loaded_at: string | null; unloaded_at: string | null; closed_at: string | null
   short_cases: number | null; close_note: string | null
   orders: number; ordered_cases: number; loaded: number; returned: number; sold: number; left: number; sales_paise: number
+  /** cases waiting on this truck from its last trip / cases this trip kept on the truck */
+  carry?: number; kept?: number
 }
 export interface TripItem {
   variant_id: string; label: string; brand: string | null; pack_sort: number; godown: number
+  /** leftover on this truck from its last trip (only before loading) / what this load took over from the truck */
+  carry?: number; carry_in?: number
   ordered: number; loaded: number; returned: number; delivered: number; billed: number; left: number
 }
 export interface TripOrder {
@@ -26,6 +30,7 @@ export interface TripDetail {
   plan: {
     id: string; date: string; status: PlanStatus; route: string; vehicle_id: string | null; vehicle: string | null; capacity: number | null
     driver_id: string | null; driver: string | null; unloaded_at: string | null; closed_at: string | null; short_cases: number | null; close_note: string | null
+    carry_date?: string | null; kept?: boolean
   }
   items: TripItem[]; orders: TripOrder[]; bills: TripBill[]
 }

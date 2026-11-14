@@ -150,7 +150,10 @@ function Board({ date, onOpen }: { date: string; onOpen: (planId: string, step: 
                 <span className={`badge ${short ? 'badge-red' : look.badge}`}>{short ? t('trip.closedShort', { n: c.short_cases }) : t(`trip.stage.${stage}`)}</span>
               </div>
               {stage === 'load' ? (
+<>
                 <p className="cell-sub">{c.orders ? t('trip.ordersWaiting', { count: c.orders, cases: c.ordered_cases }) : t('trip.noOrders')}</p>
+                {(c.carry ?? 0) > 0 && <p className="cell-sub text-warn" data-testid="card-carry"><Truck size={14} aria-hidden="true" /> {t('trip.carry.card', { n: c.carry })}</p>}
+                </>
               ) : (
                 <>
                   <div className="trip-nums">
@@ -160,6 +163,7 @@ function Board({ date, onOpen }: { date: string; onOpen: (planId: string, step: 
                     <div><span>{t('trip.left')}</span><strong className={`num ${c.left > 0 && stage !== 'onRoad' ? 'text-warn' : ''}`}>{c.left}</strong></div>
                   </div>
                   <div className="row-between cell-sub"><span>{t('trip.sales')}</span><strong className="num">{formatPaise(c.sales_paise)}</strong></div>
+                  {(c.kept ?? 0) > 0 && <p className="cell-sub" data-testid="card-kept"><Truck size={14} aria-hidden="true" /> {t('trip.carry.cardKept', { n: c.kept })}</p>}
                   {short && c.close_note && <p className="cell-sub text-danger">{t('trip.reasonWas', { r: c.close_note })}</p>}
                 </>
               )}
@@ -235,11 +239,20 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
   const qc = useQueryClient()
   const confirm = useConfirm()
   const drivers = useDrivers()
+  const fmt = useLocaleDate()
   const isLoaded = d.plan.status === 'loaded'
   const started = d.plan.status !== 'planning' && (d.plan.status !== 'loaded' || !!d.plan.unloaded_at || d.items.some((i) => i.billed || i.delivered || i.returned))
   // What the godown can give: its stock, plus what is on the truck now when the load is being changed.
-  const cap = (i: TripDetail['items'][number]) => i.godown + (isLoaded ? i.loaded : 0)
-  const [qty, setQty] = useState<Record<string, number>>(() => Object.fromEntries(d.items.map((i) => [i.variant_id, isLoaded ? i.loaded : Math.min(i.ordered, i.godown)])))
+  // Leftover still on this truck from its last trip: the loader confirms the count before loading.
+  const carryItems = isLoaded ? [] : d.items.filter((i) => (i.carry ?? 0) > 0)
+  const [carryOk, setCarryOk] = useState<Record<string, number>>(() => Object.fromEntries(carryItems.map((i) => [i.variant_id, i.carry ?? 0])))
+  const [carryChecked, setCarryChecked] = useState(false)
+  const onTruck = (i: TripDetail['items'][number]) => carryOk[i.variant_id] ?? 0
+  const cap = (i: TripDetail['items'][number]) => i.godown + (isLoaded ? i.loaded : onTruck(i))
+  const [qty, setQty] = useState<Record<string, number>>(() => Object.fromEntries(d.items.map((i) => {
+    const c = isLoaded ? 0 : (i.carry ?? 0)
+    return [i.variant_id, isLoaded ? i.loaded : c + Math.min(Math.max(0, i.ordered - c), i.godown)]
+  })))
   const [driver, setDriver] = useState(d.plan.driver_id ?? '')
   const [q, setQ] = useState('')
   const [brand, setBrand] = useState<string>('')
@@ -263,7 +276,8 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
     setBusy(true); setMsg(null)
     try {
       await must(supabase.rpc('trip_load', { p_plan: d.plan.id, p_driver: driver || null,
-        p_lines: Object.entries(qty).filter(([, n]) => n > 0).map(([variant_id, n]) => ({ variant_id, qty: n })) }))
+        p_lines: Object.entries(qty).filter(([, n]) => n > 0).map(([variant_id, n]) => ({ variant_id, qty: n })),
+        p_carry: carryItems.length ? carryItems.map((i) => ({ variant_id: i.variant_id, qty: onTruck(i) })) : null }))
       refreshTrips(qc)
       onDone({ kind: 'success', text: t('trip.load.done', { v: d.plan.vehicle, n: total }) })
     } catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
@@ -302,8 +316,32 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
       </div>
     )
   }
+  const carryTotal = sumBy(carryItems, onTruck)
+  const releaseCarry = async () => {
+    if (!d.plan.vehicle_id || !(await confirm({ title: t('trip.carry.release'), body: t('trip.carry.releaseBody', { n: sumBy(carryItems, (i) => i.carry ?? 0) }), confirm: t('trip.carry.release') }))) return
+    setBusy(true); setMsg(null)
+    try { await must(supabase.rpc('truck_carry_release', { p_vehicle: d.plan.vehicle_id })); refreshTrips(qc) }
+    catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
+  }
   return (
     <div className="stack-lg">
+      {carryItems.length > 0 && (
+        <div className="card stack carry-card" data-testid="carry-card">
+          <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
+            <div><div className="cell-title">{t('trip.carry.title', { n: sumBy(carryItems, (i) => i.carry ?? 0) })}</div>
+              <div className="cell-sub">{t('trip.carry.sub', { date: d.plan.carry_date ? fmt(d.plan.carry_date, true) : '' })}</div></div>
+            <button type="button" className="btn-sm" disabled={busy} onClick={() => void releaseCarry()}>{t('trip.carry.release')}</button>
+          </div>
+          <ul className="plain-list trip-list">{carryItems.map((i) => (
+            <li key={i.variant_id} data-testid="carry-row"><div className="grow"><div className="cell-title">{i.label}</div>
+              {onTruck(i) < (i.carry ?? 0) && <div className="cell-sub text-warn">{t('trip.carry.missing', { n: (i.carry ?? 0) - onTruck(i) })}</div>}</div>
+              <Stepper value={onTruck(i)} max={i.carry ?? 0} showZero label={`${t('trip.carry.onTruck')}: ${i.label}`}
+                onChange={(v) => { const n = clamp(v, i.carry ?? 0); setCarryOk((s) => ({ ...s, [i.variant_id]: n })); setCarryChecked(false)
+                  setQty((s) => ({ ...s, [i.variant_id]: Math.min(s[i.variant_id] ?? 0, i.godown + n) })) }} />
+            </li>))}</ul>
+          <label className="chip"><input type="checkbox" checked={carryChecked} onChange={(e) => setCarryChecked(e.target.checked)} data-testid="carry-ok" />
+            {t('trip.carry.confirm', { n: carryTotal })}</label>
+        </div>)}
       {d.orders.length > 0 && <Alert msg={{ kind: 'success', text: t('trip.load.prefilled', { count: d.orders.length }) }} />}
       <label className="field" style={{ maxWidth: 360 }}><span>{t('trip.load.driver')}</span>
         <select value={driver} onChange={(e) => setDriver(e.target.value)}>
@@ -327,7 +365,7 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
               <li key={i.variant_id} className={max === 0 && n === 0 ? 'dim' : ''} data-testid="load-row">
                 <div className="grow">
                   <div className="cell-title">{i.label}</div>
-                  <div className="cell-sub num">{t('trip.load.godown', { n: max })}{i.ordered > 0 && <> · <span className={i.ordered > n ? 'text-warn' : 'text-ok'}>{t('trip.load.ordered', { n: i.ordered })}</span></>}</div>
+                  <div className="cell-sub num">{onTruck(i) > 0 ? t('trip.carry.rowSub', { t: onTruck(i), g: i.godown }) : t('trip.load.godown', { n: max })}{i.ordered > 0 && <> · <span className={i.ordered > n ? 'text-warn' : 'text-ok'}>{t('trip.load.ordered', { n: i.ordered })}</span></>}</div>
                 </div>
                 {max === 0 && n === 0 ? <span className="badge">{t('trip.load.noStock')}</span>
                   : <Stepper value={n} max={max} label={i.label} onChange={(v) => setQty((s) => ({ ...s, [i.variant_id]: clamp(v, max) }))} />}
@@ -344,7 +382,8 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
           {total > capacity && capacity > 0 && <span className="cell-sub">{t('trip.load.over', { n: total - capacity })}</span>}
         </div>
         {isLoaded && <button type="button" onClick={() => setEditing(false)}>{t('common.cancel')}</button>}
-        <button type="button" className="primary" disabled={busy || total === 0} onClick={() => void save()}>
+        {carryItems.length > 0 && !carryChecked && <span className="cell-sub text-warn">{t('trip.carry.checkFirst')}</span>}
+        <button type="button" className="primary" disabled={busy || total === 0 || (carryItems.length > 0 && !carryChecked)} onClick={() => void save()}>
           <PackageCheck size={18} aria-hidden="true" />{busy ? t('common.loading') : isLoaded ? t('trip.load.saveChange') : t('trip.load.loadBtn', { v: d.plan.vehicle })}</button>
       </div>
     </div>
@@ -362,6 +401,9 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
   const [msg, setMsg] = useState<Msg>(null)
   const closed = d.plan.status === 'closed'
   const revert = useRevert()
+  // Our own truck: what came back stays on it for its next trip (default), or goes into the godown.
+  const canKeep = !!d.plan.vehicle_id
+  const [keep, setKeep] = useState(d.plan.unloaded_at ? !!d.plan.kept : true)
 
   if (d.plan.status === 'planning') return <div className="card"><Empty icon={<PackageOpen size={26} />} title={t('trip.unload.notLoaded')} /></div>
   const totalBack = Object.values(back).reduce((a, n) => a + n, 0)
@@ -373,9 +415,10 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
   const save = async () => {
     setBusy(true); setMsg(null)
     try {
-      await must(supabase.rpc('trip_unload', { p_plan: d.plan.id, p_returned: items.map((i) => ({ variant_id: i.variant_id, qty: back[i.variant_id] ?? 0 })) }))
+      await must(supabase.rpc('trip_unload', { p_plan: d.plan.id, p_returned: items.map((i) => ({ variant_id: i.variant_id, qty: back[i.variant_id] ?? 0 })), p_keep: canKeep && keep }))
       refreshTrips(qc)
-      onDone({ kind: 'success', text: toBill > 0 ? t('trip.unload.doneBill', { n: totalBack, b: toBill }) : t('trip.unload.done', { n: totalBack }) })
+      const kept = canKeep && keep && totalBack > 0
+      onDone({ kind: 'success', text: (toBill > 0 ? t('trip.unload.doneBill', { n: totalBack, b: toBill }) : t('trip.unload.done', { n: totalBack })) + (kept ? ' ' + t('trip.carry.keptNote', { n: totalBack }) : '') })
     } catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
   }
 
@@ -413,8 +456,15 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
       <Alert msg={msg} />
       {!closed && d.plan.unloaded_at && <button type="button" className="danger btn-sm" style={{ alignSelf: 'flex-start' }} disabled={revert.busy || busy} data-testid="undo-unload" title={t('trip.unload.undoHint')}
         onClick={() => void revert.run('trip_undo_unload', d.plan.id, t('trip.revert.unload'), t('trip.revert.unloadBody', { n: savedBack }), t('trip.revert.unloadDone'), setMsg)}>{t('trip.revert.unload')}</button>}
+      {!closed && canKeep && totalBack > 0 && (
+        <div className="segmented" role="radiogroup" aria-label={t('trip.carry.where')} data-testid="keep-choice">
+          <button type="button" role="radio" className="btn-sm" aria-checked={keep} aria-selected={keep} onClick={() => setKeep(true)}>
+            <Truck size={16} aria-hidden="true" />{t('trip.carry.keep')}</button>
+          <button type="button" role="radio" className="btn-sm" aria-checked={!keep} aria-selected={!keep} onClick={() => setKeep(false)}>
+            <PackageOpen size={16} aria-hidden="true" />{t('trip.carry.toGodown')}</button>
+        </div>)}
       {!closed && <div className="trip-bar trip-bar-compact">
-        <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: totalBack })}</strong><span className="cell-sub">{t('trip.unload.toGodown')}</span></div>
+        <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: totalBack })}</strong><span className="cell-sub">{canKeep && keep ? t('trip.carry.keepHint') : t('trip.unload.toGodown')}</span></div>
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}><Undo2 size={18} aria-hidden="true" />
           {busy ? t('common.loading') : d.plan.unloaded_at ? t('trip.unload.saveFix') : t('trip.unload.btn', { n: totalBack })}</button>
       </div>}

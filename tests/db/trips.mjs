@@ -10,6 +10,7 @@ const made = await fnc('admin-users', { action: 'create', role: 'manager', name:
 const manager = await login(mPhone, made.pin)
 const driver = await login('1111111111', '1111')
 const err = (r) => r.body?.message
+const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10)
 const cat = (await call('counter_catalog', {}, admin)).body
 const STING = cat.find((c) => c.label === 'Sting PET 250ml (Red)').variant_id
 const NIMBOOZ = cat.find((c) => /^Nimbooz/.test(c.label)).variant_id
@@ -96,6 +97,26 @@ check(err(await call('void_cash_sale', { p_id: b2.id, p_reason: 'qa' }, admin)) 
 const day = (await call('bot_day', { p_key: env.KD_BOT_KEY, p_day: today })).body
 const t = (day.trucks ?? []).find((x) => x.vehicle === 'QA Van')
 check(t?.short_cases === 1 && /broken/.test(t.close_note ?? ''), 'nightly report data has the shortage + reason', t)
+
+console.log('[leftover stays on the truck]')
+// the unload above kept 2 Sting on QA Van (default): stock still counts them, other trucks cannot take them
+board = (await call('trip_board', { p_date: today }, manager)).body
+check(board.find((b) => b.vehicle_id === van.id).kept === 2, 'board: 2 cases kept on QA Van')
+const plan2 = (await call('trip_open', { p_vehicle: van.id, p_date: addDays(today, 1) }, manager)).body
+d = (await call('trip_detail', { p_plan: plan2 }, manager)).body
+check(it(STING).carry === 2 && d.plan.carry_date === today, 'next trip of the same truck sees 2 Sting waiting on it', it(STING))
+const sK = await stockOf(STING)
+r = await call('trip_load', { p_plan: plan2, p_driver: null, p_lines: [{ variant_id: STING, qty: 2 }] }, manager)
+check(err(r) === 'CARRY_CHECK_REQUIRED', 'loading without confirming the leftover is refused')
+r = await call('trip_load', { p_plan: plan2, p_driver: null, p_lines: [{ variant_id: STING, qty: 2 }], p_carry: [{ variant_id: STING, qty: 3 }] }, manager)
+check(err(r) === 'MORE_THAN_ON_TRUCK', 'cannot confirm more than was kept')
+r = await call('trip_load', { p_plan: plan2, p_driver: null, p_lines: [{ variant_id: STING, qty: 2 }], p_carry: [{ variant_id: STING, qty: 2 }] }, manager)
+check(r.status === 200 && r.body.carry_short === 0 && (await stockOf(STING)) === sK - 2, 'confirmed 2 on truck, loaded 2: stock moves as a normal load', r.body)
+r = await call('trip_undo_load', { p_plan: plan2 }, manager)
+board = (await call('trip_board', { p_date: addDays(today, 1) }, manager)).body
+check(r.status === 200 && (await stockOf(STING)) === sK && board.find((b) => b.vehicle_id === van.id).carry === 2, 'undo load: stock back and the 2 are on the truck again')
+r = await call('truck_carry_release', { p_vehicle: van.id }, manager)
+check(r.body?.cases === 2 && (await stockOf(STING)) === sK, 'unload leftover to godown: no stock change, truck empty')
 
 console.log('[old counter sale still works]')
 const sc = await stockOf(STING)
