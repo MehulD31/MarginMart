@@ -28,9 +28,9 @@ async function dispatch(inputs, workflow = 'scheme.yml') {
 }
 
 // Send a pasted Pepsi message (or a correction of one) to the scheme reader (GitHub, ~1 min).
-async function sendScheme(chat, text, who) {
-  await tg('sendMessage', { chat_id: chat, text: '⏳ Pepsi message samajh raha hun, 1 minute…' })
-  await dispatch({ mode: 'explain', task: text.slice(0, 1900), who })
+async function sendScheme(chat, text, who, photo = '') {
+  await tg('sendMessage', { chat_id: chat, text: photo ? '⏳ Photo padh raha hun, 1-2 minute…' : '⏳ Pepsi message samajh raha hun, 1 minute…' })
+  await dispatch({ mode: 'explain', task: text.slice(0, 1900), who, photo })
 }
 
 const allowed = (from, chatId) =>
@@ -68,6 +68,13 @@ export default async function handler(req, res) {
       }
       await tg('sendMessage', { chat_id: msg.chat.id, reply_to_message_id: msg.message_id, text: `📥 ${media.type === 'video' ? 'Video' : 'Photo'} library me save. Aur photo/video bhejne hain to abhi bhej do, sab milake ek Reel banega. Edit hoke ~5 minute me preview aayega.` })
       await dispatch({ mode: 'media', file: media.file_id, mtype: media.type, note: media.note.slice(0, 500), who: msg.from.first_name ?? '' }, 'ops.yml')
+      return res.status(200).end()
+    }
+    // Photo WITH a caption that is not about posting (e.g. a forwarded Pepsi scheme sheet + "Plan karo", or "ye kya hai?"):
+    // the scheme reader reads the picture itself and explains it.
+    const pic = msg.photo?.length ? msg.photo[msg.photo.length - 1] : String(msg.document?.mime_type ?? '').startsWith('image/') ? msg.document : null
+    if (pic && String(msg.caption ?? '').trim()) {
+      await sendScheme(msg.chat.id, String(msg.caption).trim(), msg.from.first_name ?? '', pic.file_id)
       return res.status(200).end()
     }
     // Voice note: "maruti kirana sting 50 crate 495" -> heard, parsed, same confirm screen as a typed /sale.

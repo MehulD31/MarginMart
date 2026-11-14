@@ -2,9 +2,11 @@
 // Env (plus lib.mjs): TASK = the message text, WHO = Telegram name.  Run: node scripts/scheme-bot/explain.mjs
 import fs from 'node:fs'
 import { execFileSync } from 'node:child_process'
-import { addDays, askJson, db, env, hiDate, rs, say, tgPhoto, todayIST, upload } from './lib.mjs'
+import { addDays, askJson, db, env, hiDate, rs, say, tgImage, tgPhoto, todayIST, upload } from './lib.mjs'
 
-const task = env('TASK').slice(0, 2000)
+// PHOTO = Telegram file id of a picture the Pepsi salesman sent (e.g. a scheme sheet); TASK is then its caption.
+const photoId = process.env.PHOTO ?? ''
+const task = (process.env.TASK ?? '').slice(0, 2000) || (photoId ? '(sirf photo bheji, koi text nahi)' : env('TASK'))
 const who = process.env.WHO ?? ''
 const today = todayIST()
 
@@ -24,8 +26,11 @@ try {
   }))
 
   // ---- AI reads the message. It only extracts facts; every number we show is computed below. ----
-  const facts = await askJson(`You help K.D. Foods, a Pepsi beverages dealer in Bhilai, India (drinks, water and milk drinks, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks). A Pepsi salesman sent this message (Hindi/Hinglish):
+  const image = photoId ? await tgImage(photoId) : undefined
+  const facts = await askJson(`You help K.D. Foods, a Pepsi beverages dealer in Bhilai, India (drinks, water and milk drinks, no snacks: Pepsi, 7UP, Mirinda, Mountain Dew, Sting, Slice, Tropicana, Nimbooz, Aquafina, Gatorade, plus Creambell milk drinks). Our Pepsi distributor code is 198626 (Fortifit Nutrition Pvt Ltd). A Pepsi salesman sent this message (Hindi/Hinglish)${image ? ' WITH THE ATTACHED PICTURE (read the picture carefully: it is usually a table with pack, trade spend / TS, start and end date; the text is only its caption)' : ''}:
 """${task}"""
+"Plan karo" from a salesman means: plan your orders and sales for this offer.
+"Trade Spend" in a Pepsi sheet = TS.
 Today is ${today} (IST). "TS" = trade scheme = the shop's total margin per case (MRP value of the case minus price paid).
 "₹80 TS" on a pack whose current TS is ₹70 means ₹10 extra per case. "N din ke liye" = valid N days starting today unless a date is given (last day = today + N - 1).
 Our catalogue (JSON): ${JSON.stringify(catalog)}
@@ -35,7 +40,7 @@ Return ONLY JSON:
  "pepsi_pays": true/false/null (true if Pepsi funds it, which is normal for TS/scheme messages),
  "matlab": "2-3 short Hinglish lines explaining the message simply, no invented numbers",
  "questions": ["Hinglish questions to ask the Pepsi salesman about anything unclear (who pays, exact dates, which flavours)"]}
-Never invent a pack, amount or date that the message does not support; use null and add a question instead.`)
+Never invent a pack, amount or date that the message does not support; use null and add a question instead.`, image)
 
   if (!facts.is_scheme) { await say(`🤔 Ye scheme message nahi laga.\n\n${facts.matlab ?? ''}`); process.exit(0) }
 

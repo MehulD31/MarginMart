@@ -36,8 +36,19 @@ export async function tgPhoto(file, caption, keyboard) {
 export const say = (text, extra = {}) => tg('sendMessage', { chat_id: env('KD_CHAT_ID'), text: text.slice(0, 4000), ...extra })
 
 // ---------- AI: Gemini free key first, Groq as backup ----------
-export async function askJson(prompt) {
+/** A Telegram photo as base64 JPEG (bots can download files up to 20 MB). */
+export async function tgImage(fileId) {
+  const f = await tg('getFile', { file_id: fileId })
+  if (!f?.file_path) throw new Error('photo download failed')
+  const r = await fetch(`https://api.telegram.org/file/bot${env('KD_BOT_TOKEN')}/${f.file_path}`)
+  if (!r.ok) throw new Error(`photo download ${r.status}`)
+  return Buffer.from(await r.arrayBuffer()).toString('base64')
+}
+
+/** `image` (base64 JPEG, optional): Gemini reads the picture too. Groq (text only) is used only without a picture. */
+export async function askJson(prompt, image) {
   const key = env('GEMINI_FREE_KEY', false)
+  if (!key && image) throw new Error('photo padhne ke liye Gemini key chahiye')
   if (key) {
     // Google retires models often (2.0 and 2.5 flash are already gone) and a model can be 'busy' (503) for minutes, so several are tried in turn.
     for (const model of ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest']) {
@@ -45,7 +56,7 @@ export async function askJson(prompt) {
         try {
           const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2 } }) })
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, ...(image ? [{ inline_data: { mime_type: 'image/jpeg', data: image } }] : [])] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2 } }) })
           const j = await r.json()
           const text = j?.candidates?.[0]?.content?.parts?.[0]?.text
           if (text) return JSON.parse(text)
@@ -57,6 +68,7 @@ export async function askJson(prompt) {
     }
   }
   const g = env('GROQ_API_KEY', false)
+  if (image) throw new Error('Gemini abhi busy hai, photo nahi padh paya. 5 minute baad dobara bhejo.')
   if (!g) throw new Error('AI unavailable (no working Gemini or Groq key)')
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${g}` },
