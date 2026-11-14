@@ -466,7 +466,7 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
       {!closed && <div className="trip-bar trip-bar-compact">
         <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: totalBack })}</strong><span className="cell-sub">{canKeep && keep ? t('trip.carry.keepHint') : t('trip.unload.toGodown')}</span></div>
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}><Undo2 size={18} aria-hidden="true" />
-          {busy ? t('common.loading') : d.plan.unloaded_at ? t('trip.unload.saveFix') : t('trip.unload.btn', { n: totalBack })}</button>
+          {busy ? t('common.loading') : d.plan.unloaded_at ? t('trip.unload.saveFix') : canKeep && keep ? t('trip.unload.btnKeep', { n: totalBack }) : t('trip.unload.btn', { n: totalBack })}</button>
       </div>}
     </div>
   )
