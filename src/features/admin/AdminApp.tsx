@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BarChart3, Bot, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { useStockWatch } from '../../shared/api/db'
 import { useMoneyHoldings } from './money'
@@ -32,6 +32,7 @@ import MoneyPage from './MoneyPage'
 import KharchaPage from './KharchaPage'
 import ProductsPage from './ProductsPage'
 import PepsiPage from './PepsiPage'
+import AssistantPage from './AssistantPage'
 import SalesReportPage from './SalesReportPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
@@ -59,6 +60,7 @@ export default function AdminApp() {
   const moneyLate = (useMoneyHoldings().data ?? []).filter((h) => h.kind === 'personal' && h.holding_paise > 0 && (h.oldest_days ?? 0) > 7).length
   const ops: Item[] = [
     { to: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'ask', label: t('nav.ask'), icon: Bot }] : []),
     { to: 'orders', label: t('nav.orders'), icon: ClipboardList },
     { to: 'loading', label: t('nav.loading'), icon: Truck },
     { to: 'live', label: t('nav.live'), icon: Radio },
@@ -129,7 +131,8 @@ export default function AdminApp() {
         <Routes>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="orders" element={<OrdersPage />} />
+          <Route path="ask" element={<AssistantPage />} />
+        <Route path="orders" element={<OrdersPage />} />
           <Route path="loading" element={<TripsPage />} />
           <Route path="live" element={<LivePage />} />
           <Route path="sales" element={<CounterSalesPage />} />

@@ -18,6 +18,7 @@
   "functions": {
     "api/scheme-tg.js": { "maxDuration": 60 },
     "api/voice-sale.js": { "maxDuration": 60 },
-    "api/insights-ai.js": { "maxDuration": 60 }
+    "api/insights-ai.js": { "maxDuration": 60 },
+    "api/assistant.js": { "maxDuration": 60 }
   }
 }

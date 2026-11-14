@@ -4,7 +4,26 @@
     "tagline": "Order from your distributor",
     "billFooter": "K.D. Foods\n141/20 Matoshree Complex, Maharaja Chowk, Mukt Nagar, Durg\nPh. 9630012636"
   },
+  "ask": {
+    "title": "Ask AI",
+    "sub": "Stock, prices, TS, sales, dues: ask anything. Add a photo from the Pepsi salesman too.",
+    "hello": "Namaste! Ask anything about the business, or add a photo of a Pepsi scheme, and I'll explain it with our stock and prices.",
+    "ex1": "Aaj kitna bika?",
+    "ex2": "Nimbooz ka stock aur TS kitna hai?",
+    "ex3": "Pepsi ko kya mangana hai?",
+    "ex4": "Sabse zyada udhaar kiska hai?",
+    "placeholder": "Type a question or add a photo…",
+    "send": "Send",
+    "addPhoto": "Add photo",
+    "removePhoto": "Remove photo",
+    "photo": "Photo",
+    "photoOnly": "Is photo ka matlab batao",
+    "thinking": "Thinking… (10-30 seconds)",
+    "failed": "No answer came. Ask again.",
+    "clear": "Clear chat"
+  },
   "nav": {
+    "ask": "Ask AI",
     "shop": "Shop",
     "driver": "Driver",
     "admin": "Admin",

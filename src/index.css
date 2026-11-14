@@ -1004,3 +1004,19 @@ dialog::backdrop { background: rgb(15 23 42 / 0.45); backdrop-filter: blur(3px);
   a.card:hover, .stat:hover, .sidebar nav a:hover { transform: none; }
 }
 @media print { .content > * { animation: none; } .stat .value { color: var(--ink); background: none; } }
+
+/* ---------- Ask AI chat ---------- */
+.ask-log { display: flex; flex-direction: column; gap: 12px; min-height: 40vh; max-height: calc(100dvh - 330px); overflow-y: auto; }
+.ask-msg { display: flex; gap: 8px; align-items: flex-end; max-width: 100%; }
+.ask-msg.user { justify-content: flex-end; }
+.ask-bubble { max-width: min(560px, 85%); padding: 10px 14px; border-radius: 16px; background: var(--line-2); color: var(--ink); overflow-wrap: anywhere; font-size: 0.95rem; line-height: 1.5; }
+.ask-msg.user .ask-bubble { background: var(--grad-brand); color: #fff; border-bottom-right-radius: 4px; }
+.ask-msg.ai .ask-bubble { border-bottom-left-radius: 4px; }
+.ask-msg.error .ask-bubble { background: var(--danger-50); color: var(--danger); }
+.ask-avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--brand-100); color: var(--brand-800); }
+.ask-img { display: block; max-width: 100%; max-height: 260px; border-radius: 10px; margin-bottom: 6px; }
+.ask-bar { position: sticky; bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 8px); display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); z-index: 5; }
+@media (min-width: 960px) { .ask-bar { bottom: 16px; } }
+.ask-bar textarea { resize: none; }
+.ask-preview { display: flex; align-items: center; gap: 8px; }
+.ask-preview img { height: 64px; border-radius: 8px; }
