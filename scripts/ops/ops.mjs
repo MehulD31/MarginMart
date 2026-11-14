@@ -632,6 +632,8 @@ async function social() {
   // Reels go out one per evening (oldest approved first) so a batch that became 3 Reels fills 3 days, not one feed burst
   // The evening job is triggered several times (19:30, then two retries), so a Reel already posted today stops the next one:
   // exactly one Reel per evening, and a missed 19:30 still goes out later the same night.
+  // Only in the evening window (19:00 to 23:30 IST). A late trigger (GitHub or a retry) must never post at midnight or in the morning.
+  if (!id && (istMinutes() < 19 * 60 || istMinutes() > 23 * 60 + 30)) return console.log('social: outside the 19:00-23:30 window, not posting')
   const reelToday = id ? [] : await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T00:00:00%2B05:30&select=id&limit=1`)
   const list = id ? await db(`social_post?id=eq.${id}&status=eq.queued&select=*`) : [
     ...await db('social_post?status=eq.queued&kind=neq.reel&order=created_at&limit=5&select=*'),
