@@ -1005,18 +1005,81 @@ dialog::backdrop { background: rgb(15 23 42 / 0.45); backdrop-filter: blur(3px);
 }
 @media print { .content > * { animation: none; } .stat .value { color: var(--ink); background: none; } }
 
-/* ---------- Ask AI chat ---------- */
-.ask-log { display: flex; flex-direction: column; gap: 12px; min-height: 40vh; max-height: calc(100dvh - 330px); overflow-y: auto; }
-.ask-msg { display: flex; gap: 8px; align-items: flex-end; max-width: 100%; }
+/* ---------- Ask AI chat (phone first: WhatsApp / ChatGPT-style thread, composer pinned above the bottom bar and the keyboard) ---------- */
+.ask-page { display: flex; flex-direction: column; gap: 14px; max-width: 760px; margin: 0 auto; padding-bottom: calc(var(--ask-bar, 120px) + 16px); }
+.ask-head { display: flex; align-items: center; gap: 12px; }
+.ask-head h1 { font-size: 1.25rem; }
+.ask-avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--brand-100), var(--brand-200)); color: var(--brand-800); }
+.ask-avatar.lg { width: 40px; height: 40px; }
+.ask-avatar.xl { width: 64px; height: 64px; box-shadow: 0 10px 24px -12px rgb(21 128 61 / 0.7); }
+
+/* empty state: what it can do, one tap to start */
+.ask-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 12px 0 4px; }
+.ask-empty h2 { font-size: 1.2rem; }
+.ask-empty > p { max-width: 460px; }
+.ask-photo-card { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; padding: 14px; min-height: 64px; border-radius: var(--radius);
+  border: 1.5px dashed var(--brand-200); background: var(--brand-50); color: var(--ink); }
+.ask-photo-card:hover { background: var(--brand-100); border-color: var(--brand-500); }
+.ask-photo-card .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; white-space: normal; }
+.ask-photo-card, .ask-starter { white-space: normal; }
+/* the page fade-in leaves a transform on the page, which would pin the "fixed" composer to the page instead of the screen */
+.content > .ask-page { animation: none; transform: none; }
+.ask-starters { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 359px) { .ask-starters { grid-template-columns: minmax(0, 1fr); } }
+.ask-starter { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 12px 14px; min-height: 88px;
+  border-radius: var(--radius); white-space: normal; }
+.ask-starter svg { color: var(--brand-700); }
+.ask-starter b { font-size: 0.9rem; }
+.ask-starter span { font-weight: 400; color: var(--muted); font-size: 0.85rem; line-height: 1.35; }
+
+/* thread */
+.ask-log { display: flex; flex-direction: column; gap: 14px; }
+.ask-msg { display: flex; gap: 8px; align-items: flex-start; }
 .ask-msg.user { justify-content: flex-end; }
-.ask-bubble { max-width: min(560px, 85%); padding: 10px 14px; border-radius: 16px; background: var(--line-2); color: var(--ink); overflow-wrap: anywhere; font-size: 0.95rem; line-height: 1.5; }
-.ask-msg.user .ask-bubble { background: var(--grad-brand); color: #fff; border-bottom-right-radius: 4px; }
-.ask-msg.ai .ask-bubble { border-bottom-left-radius: 4px; }
-.ask-msg.error .ask-bubble { background: var(--danger-50); color: var(--danger); }
-.ask-avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--brand-100); color: var(--brand-800); }
-.ask-img { display: block; max-width: 100%; max-height: 260px; border-radius: 10px; margin-bottom: 6px; }
-.ask-bar { position: sticky; bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 8px); display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); z-index: 5; }
-@media (min-width: 960px) { .ask-bar { bottom: 16px; } }
-.ask-bar textarea { resize: none; }
-.ask-preview { display: flex; align-items: center; gap: 8px; }
-.ask-preview img { height: 64px; border-radius: 8px; }
+.ask-body { display: flex; flex-direction: column; gap: 4px; max-width: min(600px, 86%); min-width: 0; }
+.ask-msg.user .ask-body { align-items: flex-end; }
+.ask-bubble { padding: 10px 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); color: var(--ink);
+  overflow-wrap: anywhere; font-size: 1rem; line-height: 1.55; box-shadow: var(--shadow-sm); }
+.ask-msg.ai .ask-bubble { border-top-left-radius: 6px; }
+.ask-msg.user .ask-bubble { background: var(--grad-brand); color: #fff; border-color: transparent; border-top-right-radius: 6px; }
+.ask-msg.error .ask-bubble { background: var(--danger-50); color: var(--danger); border-color: #fecaca; }
+.ask-text { white-space: pre-wrap; }
+.ask-img { display: block; width: 100%; max-height: 280px; object-fit: contain; border-radius: 12px; margin-bottom: 8px; background: rgb(0 0 0 / 0.04); }
+.ask-meta { display: flex; align-items: center; gap: 10px; font-size: 0.75rem; color: var(--muted); padding: 0 6px; min-height: 20px; }
+.ask-tool { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border: 0; background: none; box-shadow: none;
+  color: var(--muted); font-size: 0.8rem; font-weight: 600; border-radius: 8px; }
+.ask-tool:hover { background: var(--line-2); color: var(--ink); }
+@media (max-width: 959px) { .ask-tool { min-height: 44px; } }
+.ask-wait { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.ask-dots { display: inline-flex; gap: 4px; }
+.ask-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--brand-600); animation: ask-dot 1.2s infinite ease-in-out; }
+.ask-dots i:nth-child(2) { animation-delay: .15s; } .ask-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes ask-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+
+/* composer: fixed on phones (above the bottom bar, and above the keyboard on iPhone), sticky on laptops */
+.ask-bar { position: fixed; z-index: 25; left: 8px; right: 8px; bottom: calc(max(var(--bottom-nav-h) + var(--safe-bottom), var(--kb, 0px)) + 8px);
+  display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 22px; background: rgb(255 255 255 / 0.96);
+  backdrop-filter: saturate(180%) blur(14px); border: 1px solid var(--line); box-shadow: 0 10px 30px -10px rgb(15 23 42 / 0.25); }
+@media (min-width: 960px) {
+  .ask-bar { position: sticky; left: auto; right: auto; bottom: 16px; }
+  .ask-page { padding-bottom: 16px; }
+}
+.ask-row { display: flex; align-items: flex-end; gap: 6px; }
+.ask-row textarea { flex: 1; min-height: 44px; max-height: 132px; resize: none; border: 0; background: transparent; box-shadow: none;
+  padding: 11px 6px; font-size: 16px; line-height: 1.4; }
+.ask-row textarea:focus { box-shadow: none; }
+.ask-icon { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; border: 0; background: var(--line-2); box-shadow: none; color: var(--ink-2); flex-shrink: 0; }
+.ask-icon:hover { background: var(--line); }
+.ask-send { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; flex-shrink: 0; border: 0; color: #fff; background: var(--grad-brand);
+  box-shadow: 0 6px 14px -6px rgb(21 128 61 / 0.7); }
+.ask-send:disabled { background: var(--line); color: var(--muted); box-shadow: none; opacity: 1; }
+.ask-preview { display: flex; align-items: center; gap: 10px; padding: 4px 4px 0; }
+.ask-preview img { width: 56px; height: 56px; object-fit: cover; border-radius: 12px; }
+.ask-note { margin: 0; text-align: center; font-size: 0.75rem; color: var(--muted); }
+.ask-jump { position: fixed; z-index: 26; left: 50%; transform: translateX(-50%); bottom: calc(max(var(--bottom-nav-h) + var(--safe-bottom), var(--kb, 0px)) + var(--ask-bar, 70px) + 16px);
+  width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; box-shadow: var(--shadow); background: rgb(255 255 255 / 0.95); }
+@media (min-width: 960px) { .ask-jump { position: sticky; left: auto; transform: none; align-self: center; bottom: calc(var(--ask-bar, 70px) + 28px); } }
+.ask-row textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 479px) { .ask-hide-sm { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) { .ask-dots i { animation: none; opacity: .7; } }

@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bot, ImagePlus, Send, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bot, Boxes, Camera, Check, Copy, IndianRupee, RotateCcw, ShoppingCart, SquarePen, TrendingUp, X } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
-import { PageHeader } from '../../shared/ui/kit'
 
-interface Msg { role: 'user' | 'ai'; text: string; img?: string; error?: boolean }
+interface Msg { role: 'user' | 'ai'; text: string; img?: string; error?: boolean; at?: number }
 const KEY = 'kd-assistant-chat'
+const stamp = () => Date.now()
 
 /** Phone photos are big: shrink to 1600 px JPEG before sending (well under the server's limit, still readable). */
 async function shrink(file: File): Promise<string> {
@@ -19,76 +19,161 @@ async function shrink(file: File): Promise<string> {
   } finally { URL.revokeObjectURL(url) }
 }
 
-/** Ask chat: questions in plain words about stock, prices, TS, sales and dues; photos from the Pepsi salesman are read too. */
+/** iPhone Safari does not shrink the page when the keyboard opens: lift the composer by the keyboard's height. */
+function useKeyboardInset() {
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const set = () => document.documentElement.style.setProperty('--kb', `${Math.max(0, window.innerHeight - vv.height - vv.offsetTop)}px`)
+    set(); vv.addEventListener('resize', set); vv.addEventListener('scroll', set)
+    return () => { vv.removeEventListener('resize', set); vv.removeEventListener('scroll', set); document.documentElement.style.removeProperty('--kb') }
+  }, [])
+}
+
+/** Ask AI: a phone-first chat. Questions in plain words; photos from the Pepsi salesman are read and explained with our numbers. */
 export default function AssistantPage() {
   const { t, i18n } = useTranslation()
   const [msgs, setMsgs] = useState<Msg[]>(() => { try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') as Msg[] } catch { return [] } })
   const [text, setText] = useState('')
   const [img, setImg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [step, setStep] = useState(0)
+  const [atEnd, setAtEnd] = useState(true)
+  const [copied, setCopied] = useState<number | null>(null)
   const file = useRef<HTMLInputElement>(null)
+  const box = useRef<HTMLTextAreaElement>(null)
+  const bar = useRef<HTMLFormElement>(null)
   const end = useRef<HTMLDivElement>(null)
+  useKeyboardInset()
 
   // keep the chat between visits (photos are not stored: too big for the phone's storage)
-  useEffect(() => { localStorage.setItem(KEY, JSON.stringify(msgs.slice(-40).map(({ img: _i, ...m }) => ({ ...m, ...(_i ? { text: `📷 ${m.text}` } : {}) })))) }, [msgs])
-  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [msgs, busy])
+  useEffect(() => { localStorage.setItem(KEY, JSON.stringify(msgs.filter((m) => !m.error).slice(-40).map(({ img: i, ...m }) => (i ? { ...m, text: `📷 ${m.text}` } : m)))) }, [msgs])
+  // the page leaves room for the composer, whatever its height (photo preview, several lines)
+  useLayoutEffect(() => {
+    const el = bar.current; if (!el) return
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--ask-bar', `${el.offsetHeight}px`))
+    ro.observe(el); return () => { ro.disconnect(); document.documentElement.style.removeProperty('--ask-bar') }
+  }, [])
+  const toEnd = useCallback((smooth = true) => end.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' }), [])
+  // open at the newest message (after the composer height is known)
+  useEffect(() => {
+    const go = () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' })
+    const ids = [0, 150, 400].map((ms) => setTimeout(go, ms))     // fonts and the composer settle after the first paint
+    return () => ids.forEach(clearTimeout)
+  }, [])
+  useEffect(() => { if (atEnd) toEnd() }, [msgs, busy, atEnd, toEnd])
+  useEffect(() => {
+    const on = () => setAtEnd(window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160)
+    window.addEventListener('scroll', on, { passive: true }); return () => window.removeEventListener('scroll', on)
+  }, [])
+  // "thinking" text moves on, so a 20-second wait does not look stuck
+  useEffect(() => { if (!busy) return; const id = setInterval(() => setStep((s) => Math.min(s + 1, 3)), 4000); return () => clearInterval(id) }, [busy])
+  // the box grows with the text, up to ~5 lines
+  useLayoutEffect(() => { const el = box.current; if (!el) return; el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 132)}px` }, [text])
 
-  const send = async (e?: FormEvent, preset?: string) => {
-    e?.preventDefault()
-    const q = (preset ?? text).trim()
-    if ((!q && !img) || busy) return
-    const mine: Msg = { role: 'user', text: q || t('ask.photoOnly'), img: img ?? undefined }
-    const next = [...msgs.filter((m) => !m.error), mine]
-    setMsgs(next); setText(''); setImg(null); setBusy(true)
+  const ask = async (history: Msg[], photo?: string) => {
+    setStep(0); setBusy(true); setAtEnd(true)
     try {
       const { data } = await supabase.auth.getSession()
       const r = await fetch('/api/assistant', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token ?? ''}` },
-        body: JSON.stringify({ lang: i18n.language, messages: next.map(({ role, text: m }) => ({ role, text: m })), image: mine.img?.split(',')[1] }),
+        body: JSON.stringify({ lang: i18n.language, messages: history.map(({ role, text: m }) => ({ role, text: m })), image: photo?.split(',')[1] }),
       })
       const j = await r.json().catch(() => ({}))
-      setMsgs((s) => [...s, r.ok && j.text ? { role: 'ai', text: j.text } : { role: 'ai', text: j.error ?? t('ask.failed'), error: true }])
+      setMsgs((s) => [...s, r.ok && j.text ? { role: 'ai', text: j.text, at: stamp() } : { role: 'ai', text: j.error ?? t('ask.failed'), error: true }])
     } catch { setMsgs((s) => [...s, { role: 'ai', text: t('ask.failed'), error: true }]) } finally { setBusy(false) }
   }
+  const send = (e?: FormEvent, preset?: string) => {
+    e?.preventDefault()
+    const q = (preset ?? text).trim()
+    if ((!q && !img) || busy) return
+    const mine: Msg = { role: 'user', text: q || t('ask.photoOnly'), img: img ?? undefined, at: stamp() }
+    const next = [...msgs.filter((m) => !m.error), mine]
+    setMsgs(next); setText(''); setImg(null)
+    void ask(next, mine.img)
+  }
+  const retry = () => {
+    const clean = msgs.filter((m) => !m.error)
+    const last = clean[clean.length - 1]
+    if (!last || last.role !== 'user' || busy) return
+    setMsgs(clean); void ask(clean, last.img)
+  }
+  const pick = async (f?: File) => { if (f) { setImg(await shrink(f)); box.current?.focus() } if (file.current) file.current.value = '' }
+  const copy = async (i: number, s: string) => { try { await navigator.clipboard.writeText(s); setCopied(i); setTimeout(() => setCopied(null), 1500) } catch { /* no clipboard */ } }
+  const time = (n?: number) => (n ? new Date(n).toLocaleTimeString(i18n.language === 'hi' ? 'hi-IN' : 'en-IN', { hour: 'numeric', minute: '2-digit' }) : '')
 
-  const pick = async (f?: File) => { if (f) setImg(await shrink(f)); if (file.current) file.current.value = '' }
-  const examples = [t('ask.ex1'), t('ask.ex2'), t('ask.ex3'), t('ask.ex4')]
+  const starters = [
+    { icon: Boxes, title: t('ask.s1'), q: t('ask.ex2') },
+    { icon: TrendingUp, title: t('ask.s2'), q: t('ask.ex1') },
+    { icon: ShoppingCart, title: t('ask.s3'), q: t('ask.ex3') },
+    { icon: IndianRupee, title: t('ask.s4'), q: t('ask.ex4') },
+  ]
 
   return (
-    <section className="stack-lg ask-page">
-      <PageHeader title={t('ask.title')} sub={t('ask.sub')}
-        actions={msgs.length > 0 && <button type="button" className="btn-sm" onClick={() => setMsgs([])}><Trash2 size={16} aria-hidden="true" />{t('ask.clear')}</button>} />
-      <div className="card ask-log" aria-live="polite">
-        {!msgs.length && (
-          <div className="stack" style={{ gap: 10 }}>
-            <p className="muted">{t('ask.hello')}</p>
-            <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-              {examples.map((x) => <button key={x} type="button" className="btn-sm" onClick={() => void send(undefined, x)}>{x}</button>)}
-            </div>
-          </div>)}
-        {msgs.map((m, i) => (
-          <div key={i} className={`ask-msg ${m.role}${m.error ? ' error' : ''}`}>
-            {m.role === 'ai' && <span className="ask-avatar" aria-hidden="true"><Bot size={16} /></span>}
-            <div className="ask-bubble">
-              {m.img && <img src={m.img} alt={t('ask.photo')} className="ask-img" />}
-              <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-            </div>
-          </div>))}
-        {busy && <div className="ask-msg ai"><span className="ask-avatar" aria-hidden="true"><Bot size={16} /></span><div className="ask-bubble muted">{t('ask.thinking')}</div></div>}
-        <div ref={end} />
-      </div>
-      <form className="ask-bar" onSubmit={(e) => void send(e)}>
-        {img && <div className="ask-preview"><img src={img} alt={t('ask.photo')} />
-          <button type="button" className="btn-sm ghost" aria-label={t('ask.removePhoto')} onClick={() => setImg(null)}><X size={16} /></button></div>}
-        <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
-          <input ref={file} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0])} />
-          <button type="button" aria-label={t('ask.addPhoto')} title={t('ask.addPhoto')} onClick={() => file.current?.click()} disabled={busy}><ImagePlus size={20} aria-hidden="true" /></button>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder={t('ask.placeholder')} aria-label={t('ask.placeholder')}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
-            onPaste={(e) => { const f = [...e.clipboardData.files].find((x) => x.type.startsWith('image/')); if (f) { e.preventDefault(); void pick(f) } }}
-            style={{ minHeight: 46, flex: 1 }} />
-          <button type="submit" className="primary" disabled={busy || (!text.trim() && !img)} aria-label={t('ask.send')}><Send size={18} aria-hidden="true" /></button>
+    <section className="ask-page">
+      <header className="ask-head">
+        <span className="ask-avatar lg" aria-hidden="true"><Bot size={20} /></span>
+        <div className="grow"><h1>{t('ask.title')}</h1><p className="cell-sub">{busy ? t('ask.typing') : t('ask.online')}</p></div>
+        {msgs.length > 0 && <button type="button" className="btn-sm ghost" onClick={() => { setMsgs([]); setText(''); setImg(null) }}
+          aria-label={t('ask.clear')} title={t('ask.clear')}><SquarePen size={18} aria-hidden="true" /><span className="ask-hide-sm">{t('ask.clear')}</span></button>}
+      </header>
+
+      {!msgs.length ? (
+        <div className="ask-empty">
+          <span className="ask-avatar xl" aria-hidden="true"><Bot size={30} /></span>
+          <h2>{t('ask.hi')}</h2>
+          <p className="muted">{t('ask.hello')}</p>
+          <button type="button" className="ask-photo-card" onClick={() => file.current?.click()}>
+            <span className="icon-tile" aria-hidden="true"><Camera size={20} /></span>
+            <span className="grow"><b>{t('ask.photoCard')}</b><span className="cell-sub">{t('ask.photoCardSub')}</span></span>
+          </button>
+          <div className="ask-starters">
+            {starters.map((s) => (
+              <button key={s.q} type="button" className="ask-starter" onClick={() => send(undefined, s.q)}>
+                <s.icon size={18} aria-hidden="true" /><b>{s.title}</b><span>{s.q}</span></button>))}
+          </div>
         </div>
+      ) : (
+        <div className="ask-log" aria-live="polite">
+          {msgs.map((m, i) => (
+            <div key={i} className={`ask-msg ${m.role}${m.error ? ' error' : ''}`}>
+              {m.role === 'ai' && <span className="ask-avatar" aria-hidden="true"><Bot size={16} /></span>}
+              <div className="ask-body">
+                <div className="ask-bubble">
+                  {m.img && <img src={m.img} alt={t('ask.photo')} className="ask-img" />}
+                  <div className="ask-text">{m.text}</div>
+                </div>
+                <div className="ask-meta">
+                  {m.at && <span>{time(m.at)}</span>}
+                  {m.role === 'ai' && !m.error && <button type="button" className="ask-tool" onClick={() => void copy(i, m.text)} aria-label={t('ask.copy')}>
+                    {copied === i ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}{copied === i ? t('ask.copied') : t('ask.copy')}</button>}
+                  {m.error && i === msgs.length - 1 && <button type="button" className="ask-tool" onClick={retry}><RotateCcw size={14} aria-hidden="true" />{t('ask.retry')}</button>}
+                </div>
+              </div>
+            </div>))}
+          {busy && (
+            <div className="ask-msg ai">
+              <span className="ask-avatar" aria-hidden="true"><Bot size={16} /></span>
+              <div className="ask-body"><div className="ask-bubble ask-wait"><span className="ask-dots" aria-hidden="true"><i /><i /><i /></span>{t(`ask.wait${step}`)}</div></div>
+            </div>)}
+          <div ref={end} />
+        </div>
+      )}
+
+      {!atEnd && msgs.length > 0 && <button type="button" className="ask-jump" onClick={() => { setAtEnd(true); toEnd() }} aria-label={t('ask.latest')}><ArrowDown size={18} /></button>}
+
+      <form ref={bar} className="ask-bar" onSubmit={send}>
+        {img && <div className="ask-preview"><img src={img} alt={t('ask.photo')} /><span className="cell-sub grow">{t('ask.photoReady')}</span>
+          <button type="button" className="ask-icon" aria-label={t('ask.removePhoto')} onClick={() => setImg(null)}><X size={18} /></button></div>}
+        <div className="ask-row">
+          <input ref={file} type="file" accept="image/*" hidden onChange={(e) => void pick(e.target.files?.[0])} />
+          <button type="button" className="ask-icon" aria-label={t('ask.addPhoto')} title={t('ask.addPhoto')} onClick={() => file.current?.click()} disabled={busy}><Camera size={20} aria-hidden="true" /></button>
+          <textarea ref={box} value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder={t('ask.placeholder')} aria-label={t('ask.placeholder')}
+            enterKeyHint="send" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(min-width: 960px)').matches) { e.preventDefault(); send() } }}
+            onPaste={(e) => { const f = [...e.clipboardData.files].find((x) => x.type.startsWith('image/')); if (f) { e.preventDefault(); void pick(f) } }} />
+          <button type="submit" className="ask-send" disabled={busy || (!text.trim() && !img)} aria-label={t('ask.send')}><ArrowUp size={20} aria-hidden="true" /></button>
+        </div>
+        {!msgs.length && <p className="ask-note">{t('ask.note')}</p>}
       </form>
     </section>
   )
