@@ -30,6 +30,9 @@ describe('margin', () => {
     expect(slabOff(s, 12, true)).toBe(1500)
     const p = packPrice(s, 14000, 13000, costPerCase(s, 10000))
     expect(suggestedPrice(p, 13500, 1000)).toBe(13500)
+    // the trade price is the most a shop pays: even when the minimum is higher, the price is never above it
+    expect(suggestedPrice(p, p.min - 5000, 0)).toBe(p.min - 5000)
+    expect(suggestedPrice(p, p.min - 5000, 1000)).toBe(p.min - 5000)
   })
 })
 

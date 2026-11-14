@@ -903,7 +903,7 @@
     "costPerCase": "Cost per case",
     "costSplit": "{{fixed}} expenses + {{variable}} loading & cash discount",
     "overCapacity": "Planned volume is more than your trucks can carry ({{n}} cases a month). Add a truck or more trips.",
-    "how": "Minimum = buy price + cost per case: below it you lose money once expenses are counted. Floor = buy price + loading and cash discount: only to fill empty truck space. Slab prices never go below the minimum.",
+    "how": "Minimum = buy price + cost per case: below it you lose money once expenses are counted. Floor = buy price + loading and cash discount: only to fill empty truck space. The trade price is the most a shop pays, so the case columns never go above it. A discount is given only while the price stays at or above the minimum. If the minimum is higher than the trade price, no discount is possible and you sell at the trade price (a loss after expenses).",
     "buy": "Buy",
     "trade": "Trade price",
     "margin": "Margin",

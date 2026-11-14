@@ -6,7 +6,7 @@ import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise, rupeesToPaise } from '../../shared/money'
-import { capacityCases, fixedTotal, slabOff, type BusinessSettings, type Slab } from '../../shared/margin'
+import { capacityCases, fixedTotal, slabOff, suggestedPrice, type BusinessSettings, type Slab } from '../../shared/margin'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { useMargin } from './marginData'
@@ -60,7 +60,7 @@ export default function PricingPage() {
               <td className="num" data-label={t('pricing.buy')}>{rs(x.buy)}{!x.buyKnown && <span className="muted"> *</span>}</td>
               <td className="num" data-label={t('pricing.trade')}>{rs(x.trade)}</td>
               <td className="num" data-label={t('pricing.margin')}><span className={`badge ${x.margin < cost.total ? 'badge-red' : room >= 3000 ? 'badge-green' : ''}`}>{rs(x.margin)}</span></td>
-              {steps.map((n, i) => <td key={n} className="num" data-label={i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n })}>{rs(Math.max(x.trade - slabOff(s, n, onSeason), x.min))}</td>)}
+              {steps.map((n, i) => <td key={n} className="num" data-label={i === 0 ? t('pricing.slabFirst', { n: (steps[1] ?? 2) - 1 }) : t('pricing.slabFrom', { n })}>{rs(suggestedPrice(x, x.trade, slabOff(s, n, onSeason)))}</td>)}
               <td className="num" data-label={t('pricing.min')}><strong>{rs(x.min)}</strong></td>
               <td className="num" data-label={t('pricing.floor')}>{rs(x.floor)}</td>
             </tr>)
