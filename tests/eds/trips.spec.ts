@@ -115,6 +115,11 @@ test('Vehicle trip: load, deliver, bill from truck, unload, close with shortage'
   await page.getByRole('button', { name: 'Everything came back' }).click()
   await page.getByRole('button', { name: `One less Came back: ${nimbooz.label}` }).click()
   await expect(page.getByTestId('unload-summary')).toContainText('Sold, parchi still to enter1')
+  // money next to the cases: loaded 7 cases worth ₹ at trade price, and the 1 case without a parchi is worth one Nimbooz case
+  const nimboozRate = cat.find((c) => c.variant_id === nimbooz.variant_id)!.trade_paise
+  await expect(page.getByTestId('tobill-worth')).toContainText(`₹${(nimboozRate / 100).toLocaleString('en-IN')}`)
+  await expect(page.getByTestId('truck-counts').getByTestId('worth').first()).toContainText('₹')
+  await page.screenshot({ path: `scratch/trip-money-${test.info().project.name}.png`, fullPage: true })
   // the choice is visible (not under the bottom bar); keep on truck is the default
   await expect(page.getByTestId('keep-choice')).toBeInViewport()
   await expect(page.getByRole('radio', { name: 'Keep on truck' })).toHaveAttribute('aria-checked', 'true')

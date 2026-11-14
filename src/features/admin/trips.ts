@@ -16,6 +16,8 @@ export interface TripCard {
 }
 export interface TripItem {
   variant_id: string; label: string; brand: string | null; pack_sort: number; godown: number
+  /** trade price per case (₹ value of the truck) */
+  price_paise?: number
   /** leftover on this truck from its last trip (only before loading) / what this load took over from the truck */
   carry?: number; carry_in?: number
   ordered: number; loaded: number; returned: number; delivered: number; billed: number; left: number

@@ -1297,6 +1297,7 @@
     },
     "bills": {
       "leftToBill": "{{n}} cases on the truck have no parchi yet",
+      "money": "Billed {{billed}} · no parchi yet {{left}} (at trade price)",
       "allBilled": "Every case is billed or back in the godown",
       "newSale": "New sale from {{v}}",
       "saved": "Bill {{n}} saved. Enter the next parchi, or Cancel when done.",

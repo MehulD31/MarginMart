@@ -32,6 +32,8 @@ function useRevert() {
   } }
 }
 const clamp = (n: number, max: number) => Math.max(0, Math.min(max, Math.floor(n) || 0))
+/** ₹ value of some cases of each item at the trade price (what the truck's stock is worth). */
+const valueOf = (items: TripDetail['items'], qty: (i: TripDetail['items'][number]) => number) => items.reduce((a, i) => a + qty(i) * (i.price_paise ?? 0), 0)
 
 /** Loading: morning load, evening unload, parchis billed from the truck, then close. One trip per vehicle per day. */
 export default function TripsPage() {
@@ -220,14 +222,18 @@ function TruckCounts({ d }: { d: TripDetail }) {
   const { t } = useTranslation()
   const n = (f: (i: TripDetail['items'][number]) => number) => sumBy(d.items, f)
   const left = n((i) => Math.max(0, i.left))
+  const billed = sumBy(d.bills, (b) => b.total_paise) + sumBy(d.orders, (o) => o.delivered_paise)
+  const worth = (paise: number) => <div className="cell-sub num" data-testid="worth">{formatPaise(paise)}</div>
   return (
     <div className="stats" data-testid="truck-counts">
-      <div className="stat"><div className="label">{t('trip.loaded')}</div><div className="value num">{n((i) => i.loaded)}</div></div>
-      <div className="stat"><div className="label">{t('trip.billedDelivered')}</div><div className="value num">{n((i) => i.billed + i.delivered)}</div></div>
-      <div className="stat"><div className="label">{t('trip.cameBack')}</div><div className="value num">{n((i) => i.returned)}</div></div>
+      <div className="stat"><div className="label">{t('trip.loaded')}</div><div className="value num">{n((i) => i.loaded)}</div>{worth(valueOf(d.items, (i) => i.loaded))}</div>
+      {/* what the parchis really billed (after discounts), not the list value */}
+      <div className="stat"><div className="label">{t('trip.billedDelivered')}</div><div className="value num">{n((i) => i.billed + i.delivered)}</div>{worth(billed)}</div>
+      <div className="stat"><div className="label">{t('trip.cameBack')}</div><div className="value num">{n((i) => i.returned)}</div>{worth(valueOf(d.items, (i) => i.returned))}</div>
       {/* before unload it is stock still on the truck; after unload nothing is on the truck, it is sold with the parchi not entered yet */}
       <div className="stat"><div className="label">{t(d.plan.unloaded_at ? 'trip.parchiDue' : 'trip.onTruckNow')}</div>
         <div className="value num" style={left > 0 ? { color: 'var(--warn)' } : undefined} data-testid="left-total">{left}</div>
+        {worth(valueOf(d.items, (i) => Math.max(0, i.left)))}
         {d.plan.unloaded_at && left > 0 && <div className="cell-sub">{t('trip.parchiDueSub')}</div>}</div>
     </div>
   )
@@ -459,10 +465,12 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
         })}</ul>
       </div>
       <div className="card stack" style={{ gap: 6 }} data-testid="unload-summary">
-        <div className="row-between"><span>{t('trip.loaded')}</span><strong className="num">{loaded}</strong></div>
-        <div className="row-between"><span>{t('trip.billedDelivered')}</span><strong className="num">− {sold}</strong></div>
-        <div className="row-between"><span>{t('trip.cameBack')}</span><strong className="num">− {totalBack}</strong></div>
-        <div className="row-between total-row"><span>{t('trip.unload.parchisToEnter')}</span><strong className={`num ${toBill > 0 ? 'text-warn' : 'text-ok'}`}>{toBill}</strong></div>
+        {/* cases and their ₹ value at the trade price; "came back" follows the numbers being typed */}
+        <div className="row-between"><span>{t('trip.loaded')}</span><span className="num"><strong>{loaded}</strong> <span className="cell-sub">· {formatPaise(valueOf(items, (i) => i.loaded))}</span></span></div>
+        <div className="row-between"><span>{t('trip.billedDelivered')}</span><span className="num"><strong>− {sold}</strong> <span className="cell-sub">· {formatPaise(valueOf(items, (i) => i.delivered + i.billed))}</span></span></div>
+        <div className="row-between"><span>{t('trip.cameBack')}</span><span className="num"><strong>− {totalBack}</strong> <span className="cell-sub" data-testid="back-worth">· {formatPaise(valueOf(items, (i) => back[i.variant_id] ?? 0))}</span></span></div>
+        <div className="row-between total-row"><span>{t('trip.unload.parchisToEnter')}</span><span className="num"><strong className={toBill > 0 ? 'text-warn' : 'text-ok'}>{toBill}</strong>
+          <span className="cell-sub" data-testid="tobill-worth"> · {formatPaise(valueOf(items, (i) => Math.max(0, i.loaded - i.delivered - i.billed - (back[i.variant_id] ?? 0))))}</span></span></div>
       </div>
       <Alert msg={msg} />
       {!closed && d.plan.unloaded_at && <button type="button" className="danger btn-sm" style={{ alignSelf: 'flex-start' }} disabled={revert.busy || busy} data-testid="undo-unload" title={t('trip.unload.undoHint')}
@@ -507,11 +515,13 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
     <div className="stack-lg">
       <div className="card stack" data-testid="bill-progress">
         <div className="row-between">
-          <strong>{left > 0 ? t('trip.bills.leftToBill', { n: left }) : t('trip.bills.allBilled')}</strong>
+          <div><strong>{left > 0 ? t('trip.bills.leftToBill', { n: left }) : t('trip.bills.allBilled')}</strong>
+            {/* money: billed so far, and what the cases without a parchi are worth at the trade price */}
+            <div className="cell-sub num" data-testid="bill-money">{t('trip.bills.money', { billed: formatPaise(sumBy(d.bills, (b) => b.total_paise) + sumBy(d.orders, (o) => o.delivered_paise)), left: formatPaise(valueOf(d.items, (i) => Math.max(0, i.left))) })}</div></div>
           {out && <button type="button" className="primary" disabled={left === 0} onClick={() => { setSaved(null); setFormKey((k) => k + 1); setSelling(true) }}>
             <Plus size={18} aria-hidden="true" />{t('trip.bills.newSale', { v: d.plan.vehicle })}</button>}
         </div>
-        {left > 0 && <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{d.items.filter((i) => i.left > 0).map((i) => <span key={i.variant_id} className="badge badge-amber">{i.label}: {i.left}</span>)}</div>}
+        {left > 0 && <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{d.items.filter((i) => i.left > 0).map((i) => <span key={i.variant_id} className="badge badge-amber">{i.label}: {i.left}{i.price_paise ? ` · ${formatPaise(i.left * i.price_paise)}` : ''}</span>)}</div>}
         {left === 0 && out && <button type="button" style={{ alignSelf: 'flex-start' }} onClick={onGoClose}><ClipboardCheck size={18} aria-hidden="true" />{t('trip.closeTrip')}</button>}
       </div>
       <Alert msg={msg} />
