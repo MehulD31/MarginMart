@@ -113,12 +113,15 @@ test('Vehicle trip: load, deliver, bill from truck, unload, close with shortage'
   // --- unload: everything came back, then 1 Nimbooz less (it was broken)
   await steps.getByRole('button', { name: /Came back/ }).click()
   await page.getByRole('button', { name: 'Everything came back' }).click()
-  await expect(page.getByLabel(`All of ${sting.label} came back`)).toBeChecked()
   await page.getByRole('button', { name: `One less Came back: ${nimbooz.label}` }).click()
-  await expect(page.getByLabel(`All of ${nimbooz.label} came back`)).not.toBeChecked()
   await expect(page.getByTestId('unload-summary')).toContainText('Sold, parchi still to enter1')
+  // the choice is visible (not under the bottom bar); keep on truck is the default
+  await expect(page.getByTestId('keep-choice')).toBeInViewport()
+  await expect(page.getByRole('radio', { name: 'Keep on truck' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('button', { name: 'Save: 2 stay on truck' })).toBeVisible()
+  await page.getByRole('radio', { name: 'Unload to godown' }).click()
   await page.getByRole('button', { name: 'Unload 2 → godown' }).click()
-  await expect(page.getByText('2 cases are back in the godown.', { exact: false })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('2 cases came back.', { exact: false })).toBeVisible({ timeout: 20_000 })
   items = (await rpc('trip_detail', { p_plan: plan })).items as Item[]
   expect(items.find((i) => i.variant_id === sting.variant_id)).toMatchObject({ returned: 1, delivered: 2, billed: 2, left: 0, godown: sting.godown - 4 })
   expect(items.find((i) => i.variant_id === nimbooz.variant_id)).toMatchObject({ returned: 1, left: 1, godown: nimbooz.godown - 1 })

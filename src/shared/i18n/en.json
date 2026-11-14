@@ -200,6 +200,7 @@
     "NOT_ENOUGH_STOCK": "The godown does not have that much. Lower the quantity.",
     "TRIP_STARTED": "Selling or unloading has started on this trip, so the load can no longer change.",
     "MORE_THAN_ON_TRUCK": "More came back than was left on the truck. Check the numbers.",
+    "CARRY_USED": "This truck's next trip has already taken this leftover, so the unload can't be changed now.",
     "CARRY_CHECK_REQUIRED": "This truck still has yesterday's leftover. Open the page again and confirm its count.",
     "UNLOAD_FIRST": "Unload the truck first.",
     "REASON_REQUIRED": "Write the reason for the shortage.",

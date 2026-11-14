@@ -48,7 +48,7 @@ console.log('[truck bills]')
 const line = (v, qty) => ({ variant_id: v, qty, price_paise: 50000 })
 r = await call('counter_sale_save_into', { p_id: null, p_action: randomUUID(), p_shop: shop.id, p_mode: 'cash', p_lines: [line(STING, 6)], p_account: null, p_discount: 0, p_plan: plan }, manager)
 check(err(r) === 'NOT_ON_TRUCK', 'cannot bill more than is on the truck (6 > 5)', r.body)
-const seqAfterRefusal = (await rest('rpc/counter_sales', manager, { method: 'POST', body: JSON.stringify({ p_from: today, p_to: today }) })) ?? []
+const seqAfterRefusal = (await rest('cash_sale?select=number&order=number.desc&limit=1', admin)) ?? []
 const OTHER = cat.find((c) => c.on_hand > 0 && c.variant_id !== STING && c.variant_id !== NIMBOOZ).variant_id
 r = await call('counter_sale_save_into', { p_id: null, p_action: randomUUID(), p_shop: shop.id, p_mode: 'cash', p_lines: [line(OTHER, 1)], p_account: null, p_discount: 0, p_plan: plan }, manager)
 check(err(r) === 'NOT_ON_TRUCK', 'cannot bill an item that is not on the truck')

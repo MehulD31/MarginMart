@@ -336,8 +336,9 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
             <li key={i.variant_id} data-testid="carry-row"><div className="grow"><div className="cell-title">{i.label}</div>
               {onTruck(i) < (i.carry ?? 0) && <div className="cell-sub text-warn">{t('trip.carry.missing', { n: (i.carry ?? 0) - onTruck(i) })}</div>}</div>
               <Stepper value={onTruck(i)} max={i.carry ?? 0} showZero label={`${t('trip.carry.onTruck')}: ${i.label}`}
-                onChange={(v) => { const n = clamp(v, i.carry ?? 0); setCarryOk((s) => ({ ...s, [i.variant_id]: n })); setCarryChecked(false)
-                  setQty((s) => ({ ...s, [i.variant_id]: Math.min(s[i.variant_id] ?? 0, i.godown + n) })) }} />
+                onChange={(v) => { const n = clamp(v, i.carry ?? 0), prev = onTruck(i); setCarryOk((s) => ({ ...s, [i.variant_id]: n })); setCarryChecked(false)
+                  // the load follows the count on the truck (a missing case is not quietly replaced from the godown)
+                  setQty((s) => ({ ...s, [i.variant_id]: Math.max(0, Math.min((s[i.variant_id] ?? 0) + (n - prev), i.godown + n)) })) }} />
             </li>))}</ul>
           <label className="chip"><input type="checkbox" checked={carryChecked} onChange={(e) => setCarryChecked(e.target.checked)} data-testid="carry-ok" />
             {t('trip.carry.confirm', { n: carryTotal })}</label>
@@ -431,6 +432,16 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
         : <p className="muted">{t('trip.unload.hint')}</p>}
       {!closed && <button type="button" style={{ alignSelf: 'flex-start' }} onClick={() => setBack(Object.fromEntries(items.map((i) => [i.variant_id, allBack ? 0 : maxBack(i)])))}>
         <CheckCheck size={18} aria-hidden="true" />{allBack ? t('trip.unload.none') : t('trip.unload.allBack')}</button>}
+      {!closed && canKeep && totalBack > 0 && (
+        <div className="stack" style={{ gap: 6 }} data-testid="keep-choice">
+          <span className="cell-sub">{t('trip.carry.where')}</span>
+          <div className="segmented" role="radiogroup" aria-label={t('trip.carry.where')}>
+            <button type="button" role="radio" className="btn-sm" aria-checked={keep} aria-selected={keep} onClick={() => setKeep(true)}>
+              <Truck size={16} aria-hidden="true" />{t('trip.carry.keep')}</button>
+            <button type="button" role="radio" className="btn-sm" aria-checked={!keep} aria-selected={!keep} onClick={() => setKeep(false)}>
+              <PackageOpen size={16} aria-hidden="true" />{t('trip.carry.toGodown')}</button>
+          </div>
+        </div>)}
       <div className="card card-flush">
         <ul className="plain-list trip-list">{items.map((i) => {
           const max = maxBack(i), n = back[i.variant_id] ?? 0
@@ -456,13 +467,6 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
       <Alert msg={msg} />
       {!closed && d.plan.unloaded_at && <button type="button" className="danger btn-sm" style={{ alignSelf: 'flex-start' }} disabled={revert.busy || busy} data-testid="undo-unload" title={t('trip.unload.undoHint')}
         onClick={() => void revert.run('trip_undo_unload', d.plan.id, t('trip.revert.unload'), t('trip.revert.unloadBody', { n: savedBack }), t('trip.revert.unloadDone'), setMsg)}>{t('trip.revert.unload')}</button>}
-      {!closed && canKeep && totalBack > 0 && (
-        <div className="segmented" role="radiogroup" aria-label={t('trip.carry.where')} data-testid="keep-choice">
-          <button type="button" role="radio" className="btn-sm" aria-checked={keep} aria-selected={keep} onClick={() => setKeep(true)}>
-            <Truck size={16} aria-hidden="true" />{t('trip.carry.keep')}</button>
-          <button type="button" role="radio" className="btn-sm" aria-checked={!keep} aria-selected={!keep} onClick={() => setKeep(false)}>
-            <PackageOpen size={16} aria-hidden="true" />{t('trip.carry.toGodown')}</button>
-        </div>)}
       {!closed && <div className="trip-bar trip-bar-compact">
         <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: totalBack })}</strong><span className="cell-sub">{canKeep && keep ? t('trip.carry.keepHint') : t('trip.unload.toGodown')}</span></div>
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}><Undo2 size={18} aria-hidden="true" />
