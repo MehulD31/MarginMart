@@ -853,6 +853,7 @@
     "dashLeft": "{{n}} left · alert at {{min}}",
     "dashDays": "{{n}} left · ~{{d}} days",
     "lasts": "lasts ~{{d}} days",
+    "onTruck": "{{n}} on a truck · {{g}} in godown",
     "undo": "Undo",
     "undone": "Adjustment {{n}} undone."
   },

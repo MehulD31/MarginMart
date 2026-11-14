@@ -32,6 +32,13 @@ export default function InventoryPage() {
   const value = rows.reduce((a, r) => a + Math.max(r.on_hand, 0) * r.avg_cost_paise, 0)
   const cases = rows.reduce((a, r) => a + Math.max(r.on_hand, 0), 0)
   const current = rows.find((r) => r.variant_id === open)
+  // Cases that came back and stayed on a truck: still part of on-hand, but not in the godown.
+  const carry = useQuery({
+    queryKey: ['vehicle-carry'],
+    queryFn: () => must<{ variant_id: string; qty: number }[]>(supabase.from('vehicle_carry').select('variant_id, qty')),
+  })
+  const onTruck = new Map<string, number>()
+  for (const c of carry.data ?? []) onTruck.set(c.variant_id, (onTruck.get(c.variant_id) ?? 0) + c.qty)
 
   const pg = usePaged(list)
   return (
@@ -53,6 +60,7 @@ export default function InventoryPage() {
               <td className="lead"><div className="cell-title">{r.name}</div>{r.sub && <div className="cell-sub">{r.sub}</div>}</td>
               <td data-label={t('inventory.onHand')} className="num"><strong>{r.on_hand}</strong>{' '}
                 {r.on_hand < 0 ? <span className="badge badge-red">{t('inventory.negative')}</span> : isLow(r) && <span className="badge badge-amber">{t('inventory.low')}</span>}
+                {(onTruck.get(r.variant_id) ?? 0) > 0 && <div className="cell-sub" data-testid="inv-on-truck">{t('inventory.onTruck', { n: onTruck.get(r.variant_id), g: r.on_hand - (onTruck.get(r.variant_id) ?? 0) })}</div>}
                 {days.get(r.variant_id) != null && <div className="cell-sub">{t('inventory.lasts', { d: Math.floor(days.get(r.variant_id)!) })}</div>}</td>
               <td data-label={t('inventory.threshold')} className="num">{r.low_threshold || '—'}</td>
               <td data-label={t('inventory.avgCost')} className="num">{r.avg_cost_paise ? formatPaise(r.avg_cost_paise) : '—'}</td>

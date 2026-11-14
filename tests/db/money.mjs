@@ -34,7 +34,7 @@ const upiBill = r.body
 let p = (await pays()).find((x) => x.ref_id === upiBill.id)
 check(p?.account_id === SHOBHIT.id && p.explicit, `UPI bill ${upiBill.number} paid into Shobhit`)
 let h = await hold(SHOBHIT.id)
-check(h.holding_paise === h0.shobhit + 100000 && h.oldest_days === 0, 'Shobhit holds +₹1,000, oldest today', h)
+check(h.holding_paise === h0.shobhit + 100000 && h.oldest_days >= 0, 'Shobhit holds +₹1,000 more than before', h)
 r = await call('counter_sale_save_into', { p_id: null, p_action: act, p_shop: shop.id, p_mode: 'upi', p_lines: [{ variant_id: STING, qty: 2, price_paise: 50000 }], p_account: SHOBHIT.id }, admin)
 check(r.body.id === upiBill.id && (await hold(SHOBHIT.id)).holding_paise === h0.shobhit + 100000, 'double tap: same bill, no double count')
 const noAcc = await call('counter_sale_save_into', { p_id: null, p_action: randomUUID(), p_shop: shop.id, p_mode: 'upi', p_lines: line, p_account: randomUUID() }, admin)

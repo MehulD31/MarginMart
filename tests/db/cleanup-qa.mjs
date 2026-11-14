@@ -7,7 +7,8 @@ const jobs = [
   ['purchase', 'purchase?select=id,invoice_no&invoice_no=like.QA-%25', 'invoice_no'],
   ['route', 'route?select=id,name&name=like.QA%25', 'name'],
   ['vehicle', 'vehicle?select=id,name&name=like.QA%25', 'name'],
-  ['pack', 'pack?select=id,name_en&name_en=like.QA%25', 'name_en'],
+  // 'QA Test Drink' is the shared test item: its price row can only be written by SQL (prices are draft-only), so it stays.
+  ['pack', 'pack?select=id,name_en&name_en=like.QA%25&name_en=neq.QA%20Test%20Drink', 'name_en'],
   ['user', 'profiles?select=user_id,name&name=like.QA%25', 'name', 'user_id'],
   ['supplier', 'supplier?select=id,name&name=like.QA%25', 'name'],
   ['join_request', 'join_requests?select=id,shop_name&shop_name=like.QA%25', 'shop_name'],
