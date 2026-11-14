@@ -51,8 +51,15 @@ export async function facts(tok) {
     return { item: p.name_en, bottles_per_case: p.units_per_case, mrp_rs: p.mrp_paise / 100, case_mrp_value_rs: mrpCase / 100,
       our_trade_price_rs: tp / 100, shop_ts_now_rs: (mrpCase - tp) / 100, flavours: fl }
   })
+  // ready-made totals, so the AI never has to add numbers up itself (it is the part it gets wrong)
+  const days = Array.isArray(week?.days) ? week.days : []
+  const sum = (d) => ({ rs: rs((d?.route?.total_paise ?? 0) + (d?.counter?.total_paise ?? 0)), cases: (d?.route?.cases ?? 0) + (d?.counter?.cases ?? 0),
+    bills: (d?.route?.bills ?? 0) + (d?.counter?.bills ?? 0), margin_rs: rs(d?.counter?.margin_paise ?? 0) })
+  const totals = (list) => list.map(sum).reduce((a, x) => ({ rs: a.rs + x.rs, cases: a.cases + x.cases, bills: a.bills + x.bills, margin_rs: a.margin_rs + x.margin_rs }), { rs: 0, cases: 0, bills: 0, margin_rs: 0 })
   return {
     today: todayIST(), our_distributor_code: oms[0]?.distributor_code ?? '198626',
+    SALES_TOTALS: { today: sum(today), yesterday: sum(yday), last_7_days: totals(days),
+      by_day: days.map((d) => ({ day: d.day, ...sum(d) })), total_stock_cases: stock.reduce((a, s) => a + Math.max(0, s.on_hand ?? 0), 0) },
     items, running_schemes: schemes.map((s) => ({ ...s, amount_rs: s.amount_paise / 100, item: packs.find((p) => p.id === s.pack_id)?.name_en })),
     pepsi_portal: { credit_rs: rs(oms[0]?.credit_paise), credit_at: oms[0]?.credit_at, synced_at: oms[0]?.synced_at, recent_orders: orders },
     sales_today: today, sales_yesterday: yday, last_7_days: week?.days ?? week, dues: due, suggested_pepsi_order: reorder,
@@ -76,6 +83,7 @@ export function systemPrompt(who, lang, data) {
     'You cannot change anything in the app. To start a scheme, tell them to use the Schemes page (or forward the Pepsi photo with a caption in the Telegram group).',
     'Never show field names from DATA (like shop_ts_now_rs or pepsi_portal_price_rs): say "shop ka TS", "hamara buy rate" etc.',
     'Answer the question first in one line, then only the details that matter. Stock is in peti (cases).',
+    'For sales questions use SALES_TOTALS (already added up): always give both ₹ and peti. Never add numbers yourself when a total is given.',
     `Reply in ${language}. Short: max 150 words, plain text, bullets start with "• ", rupees as ₹ with Indian commas. No markdown headings, no bold.`,
     `DATA (live, money in rupees): ${JSON.stringify(data).slice(0, 30000)}`,
   ].join('\n')
@@ -85,7 +93,7 @@ const clean = (t) => String(t).replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\
 
 // Fastest first: the lite model answers in ~2-4 s (no "thinking"), the bigger one is the backup. A model that has not started
 // writing within its time box is dropped for the next one. Once words start, they are streamed straight to the phone.
-const MODELS = [['gemini-3.1-flash-lite', 7000], ['gemini-flash-lite-latest', 7000], ['gemini-3.5-flash', 14000]]
+const MODELS = [['gemini-3.1-flash-lite', 4000], ['gemini-flash-lite-latest', 5000], ['gemini-3.5-flash', 12000], ['gemini-3.1-flash-lite', 8000]]
 
 /** Streams the answer: calls onText(piece) as words arrive. Returns { model, ms }. */
 async function gemini(system, messages, image, onText) {
