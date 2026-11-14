@@ -16,7 +16,7 @@ async function caller(tok) {
 }
 
 /** Everything the assistant may use, read with the caller's own login (so it sees only what they may see). */
-async function facts(tok) {
+export async function facts(tok) {
   const h = { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${tok}` }
   const get = (p) => fetch(`${env.SUPABASE_URL}/rest/v1/${p}`, { headers: h }).then((r) => (r.ok ? r.json() : [])).catch(() => [])
   const bot = (fn, args = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -26,7 +26,7 @@ async function facts(tok) {
     get('pack?select=id,name_en,units_per_case,mrp_paise&active=eq.true'),
     get('variant?select=id,pack_id,flavour_en&active=eq.true'),
     get('price_list_item?select=pack_id,trade_price_paise,scheme_value_paise,price_list!inner(status)&price_list.status=eq.active'),
-    get('stock?select=variant_id,on_hand,avg_cost_paise'),
+    get('stock?select=variant_id,on_hand'),            // avg cost is not readable by logins (column grant); the portal price is the buy price anyway
     get('oms_map?select=variant_id,sku_code'),
     get('oms_sku?select=sku_code,description,price_paise,mrp_paise'),
     get(`scheme?select=pack_id,kind,amount_paise,starts_on,ends_on,note&active=eq.true&ends_on=gte.${todayIST()}`),
@@ -46,7 +46,7 @@ async function facts(tok) {
     const tp = trade.get(p.id).trade_price_paise, mrpCase = p.units_per_case * p.mrp_paise
     const fl = variants.filter((v) => v.pack_id === p.id).map((v) => {
       const s = st.get(v.id), o = portal.get(skuOf.get(v.id))
-      return { flavour: v.flavour_en, stock_cases: s?.on_hand ?? 0, on_truck: onTruck.get(v.id) ?? 0, avg_cost_rs: rs(s?.avg_cost_paise || null), pepsi_portal_price_rs: rs(o?.price_paise ?? null) }
+      return { flavour: v.flavour_en, stock_cases: s?.on_hand ?? 0, on_truck: onTruck.get(v.id) ?? 0, pepsi_portal_price_rs: rs(o?.price_paise ?? null) }
     })
     return { item: p.name_en, bottles_per_case: p.units_per_case, mrp_rs: p.mrp_paise / 100, case_mrp_value_rs: mrpCase / 100,
       our_trade_price_rs: tp / 100, shop_ts_now_rs: (mrpCase - tp) / 100, flavours: fl }
