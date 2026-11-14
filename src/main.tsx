@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './shared/i18n'
 import App from './app/App'
+import { sweepDrafts } from './shared/ui/draft'
+
+sweepDrafts()   // drafts older than a day are dropped, so old half-typed forms never pile up
 
 // After a new deploy, a tab that was already open asks for old code files that no longer exist.
 // Reload once to pick up the new version instead of showing a white screen.

@@ -4,6 +4,11 @@
     "tagline": "Order from your distributor",
     "billFooter": "K.D. Foods\n141/20 Matoshree Complex, Maharaja Chowk, Mukt Nagar, Durg\nPh. 9630012636"
   },
+  "draft": {
+    "restored": "Your unsaved work from earlier came back.",
+    "fresh": "Start fresh",
+    "purchaseSending": "The last save of this purchase was cut off, so it may already be saved. Check the Purchases list before saving again, or the stock will be added twice."
+  },
   "ask": {
     "title": "Ask AI",
     "sub": "Stock, prices, TS, sales, dues: ask anything. Add a photo from the Pepsi salesman too.",

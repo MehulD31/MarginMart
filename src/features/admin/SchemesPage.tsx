@@ -8,6 +8,8 @@ import { useAuth } from '../../shared/api/auth'
 import { formatPaise, rupeesToPaise } from '../../shared/money'
 import type { Scheme } from '../../shared/margin'
 import { errorMessage } from '../../shared/ui/errors'
+import { useDraft } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 import { Alert, Empty, PageHeader, Skeleton, type Msg } from '../../shared/ui/kit'
 import { DateField } from '../../shared/ui/DateField'
 import { useConfirm } from '../../shared/ui/confirm'
@@ -16,6 +18,7 @@ import { addDays, todayIST, useLocaleDate } from './opsData'
 import { useSchemes } from './marginData'
 
 /** Time-limited schemes: they change staff order prices only between their dates. Shops never see them. */
+interface SchemeDraft { pack: string; only: string[]; amount: string; kind: Scheme['kind']; note: string }
 export default function SchemesPage() {
   const { t, i18n } = useTranslation()
   const fmt = useLocaleDate()
@@ -73,13 +76,14 @@ function NewScheme() {
   const qc = useQueryClient()
   const packs = usePacks(); const variants = useVariants()
   const hi = i18n.language === 'hi'
-  const [pack, setPack] = useState('')
-  const [only, setOnly] = useState<string[]>([])
-  const [amount, setAmount] = useState('')
-  const [kind, setKind] = useState<Scheme['kind']>('pass_through')
+  // item, flavours, amount and who pays are kept until the scheme is saved (dates stay "today + 3 days" so an old draft cannot start in the past)
+  const freshS = (): SchemeDraft => ({ pack: '', only: [], amount: '', kind: 'pass_through', note: '' })
+  const draft = useDraft<SchemeDraft>('scheme-new', freshS)
+  const { pack, only, amount, kind, note } = draft.value
+  const upd = <K extends keyof SchemeDraft>(k: K) => (v: SchemeDraft[K]) => draft.set((p) => ({ ...p, [k]: v }))
+  const setPack = upd('pack'), setOnly = upd('only'), setAmount = upd('amount'), setKind = upd('kind'), setNote = upd('note')
   const [from, setFrom] = useState(todayIST())
   const [to, setTo] = useState(addDays(todayIST(), 3))
-  const [note, setNote] = useState('')
   const [msg, setMsg] = useState<Msg>(null)
   const flavours = (variants.data ?? []).filter((v) => v.pack_id === pack && v.active)
   const sorted = [...(packs.data ?? [])].filter((p) => p.active).sort((a, b) => a.name_en.localeCompare(b.name_en))
@@ -90,7 +94,7 @@ function NewScheme() {
     try {
       await must(supabase.from('scheme').insert({ pack_id: pack, variant_ids: only.length ? only : null, kind, amount_paise: rupeesToPaise(Number(amount)),
         starts_on: from, ends_on: to, note: note.trim() || null }).select())
-      setPack(''); setOnly([]); setAmount(''); setNote('')
+      draft.discard(freshS())
       setMsg({ kind: 'success', text: t('common.saved') })
       void qc.invalidateQueries({ queryKey: ['scheme'] })
     } catch (err) { setMsg({ kind: 'error', text: errorMessage(t, err) }) }
@@ -99,6 +103,7 @@ function NewScheme() {
   return (
     <form className="card stack" onSubmit={save} noValidate>
       <h2>{t('schemes.new')}</h2>
+      <DraftNote show={draft.restored} onFresh={() => draft.discard(freshS())} />
       <div className="form-grid">
         <label className="field"><span>{t('inventory.item')}</span>
           <select value={pack} onChange={(e) => { setPack(e.target.value); setOnly([]) }}>

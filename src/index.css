@@ -364,9 +364,9 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .stepper-add { min-width: 96px; color: var(--brand-700); border-color: var(--brand-600); background: var(--surface); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
 .stepper-add:hover { background: var(--brand-50); }
 .stepper { display: inline-flex; align-items: stretch; min-width: 112px; height: 44px; border-radius: var(--radius-sm); background: var(--brand-700); color: #fff; overflow: hidden; flex-shrink: 0; }
-.stepper button { min-height: 0; min-width: 36px; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; }
+.stepper button { min-height: 0; min-width: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; }
 .stepper button:hover { background: var(--brand-800); }
-.stepper input { width: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; text-align: center; font-weight: 800; font-size: 1rem; -moz-appearance: textfield; appearance: textfield; }
+.stepper input { width: 44px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; text-align: center; font-weight: 800; font-size: 1rem; -moz-appearance: textfield; appearance: textfield; }
 .stepper input::-webkit-inner-spin-button, .stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .stepper input:focus { box-shadow: none; background: rgb(255 255 255 / 0.15); }
 .cart-bar { position: fixed; z-index: 19; left: 12px; right: 12px; bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 10px); max-width: 696px; margin: 0 auto;
@@ -1004,6 +1004,9 @@ dialog::backdrop { background: rgb(15 23 42 / 0.45); backdrop-filter: blur(3px);
   a.card:hover, .stat:hover, .sidebar nav a:hover { transform: none; }
 }
 @media print { .content > * { animation: none; } .stat .value { color: var(--ink); background: none; } }
+
+.draft-note { align-items: center; gap: 10px; background: var(--info-50); border-color: #bfdbfe; color: #1e3a8a; }
+.draft-note .grow { min-width: 0; }
 
 /* ---------- Ask AI chat (phone first: WhatsApp / ChatGPT-style thread, composer pinned above the bottom bar and the keyboard) ---------- */
 .ask-page { display: flex; flex-direction: column; gap: 14px; max-width: 760px; margin: 0 auto; padding-bottom: calc(var(--ask-bar, 120px) + 16px); }

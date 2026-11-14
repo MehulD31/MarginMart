@@ -10,6 +10,7 @@ import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { Pager } from '../../shared/ui/Pager'
+import { useRemembered } from '../../shared/ui/draft'
 import { usePaged } from '../../shared/ui/paging'
 
 interface Move { id: number; qty: number; kind: string; reason: string | null; balance_after: number; at: string; cash_sale_id: string | null; route_day_plan_id: string | null }
@@ -19,8 +20,8 @@ export default function InventoryPage() {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin'
   const { rows, isLoading } = useStockRows()
-  const [q, setQ] = useState('')
-  const [filter, setFilter] = useState<'all' | 'low'>('all')
+  const [q, setQ] = useRemembered('view:inventory:q', '')
+  const [filter, setFilter] = useRemembered<'all' | 'low'>('view:inventory:filter', 'all')
   const [open, setOpen] = useState<string | null>(null)
 
   const watch = useStockWatch().data

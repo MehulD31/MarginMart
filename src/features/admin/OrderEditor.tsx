@@ -15,6 +15,8 @@ import { CANCEL_REASONS } from './opsData'
 import { useMargin } from './marginData'
 import { priceLevel, schemePrice, slabOff } from '../../shared/margin'
 import { useConfirm } from '../../shared/ui/confirm'
+import { useDraft } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 
 /** Staff editor for one shop's order on one delivery day. Saves through save_order, so the same rules apply. */
 export function OrderEditor({ shopId, shopName, planId, initial, orderId, editable, onDone }: {
@@ -23,7 +25,11 @@ export function OrderEditor({ shopId, shopName, planId, initial, orderId, editab
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const catalog = useShopCatalog()
-  const [cart, setCart] = useState<Cart>(initial)
+  // the order being typed (cases and any price you set) is kept until it is saved or cancelled
+  const draft = useDraft<{ cart: Cart; custom: Record<string, string> }>(`order:${shopId}:${planId}:${orderId ?? 'new'}`, { cart: initial, custom: {} }, { skip: !editable })
+  const cart = draft.value.cart, custom = draft.value.custom
+  const setCart = (f: (c: Cart) => Cart) => draft.set((d) => ({ ...d, cart: f(d.cart) }))
+  const setCustom = (c: Record<string, string>) => draft.set((d) => ({ ...d, custom: c }))
   const [q, setQ] = useState('')
   const [reason, setReason] = useState<string>('')
   const [busy, setBusy] = useState(false)
@@ -31,8 +37,7 @@ export function OrderEditor({ shopId, shopName, planId, initial, orderId, editab
   const hi = i18n.language === 'hi'
   const m = useMargin()
   const confirm = useConfirm()
-  // Admin/manager price per case; empty = suggested slab price.
-  const [custom, setCustom] = useState<Record<string, string>>({})
+  // Admin/manager price per case (custom); empty = suggested slab price.
 
   const rows = useMemo(() => (catalog.data ?? []).flatMap((it) => it.variants.map((v) => {
     const pack = (hi && it.pack.name_hi) || it.pack.name_en
@@ -62,19 +67,20 @@ export function OrderEditor({ shopId, shopName, planId, initial, orderId, editab
       p_lines: Object.entries(cart).map(([variant_id, qty]) => ({ variant_id, qty, price_paise: priceOf(variant_id) })), p_shop_id: shopId, p_plan_id: planId,
     })
     setBusy(false)
-    if (error) setMsg({ kind: 'error', text: errorMessage(t, error) }); else { refresh(); onDone() }
+    if (error) setMsg({ kind: 'error', text: errorMessage(t, error) }); else { refresh(); draft.clear(); onDone() }
   }
   const cancel = async () => {
     if (!orderId || !reason) return
     setBusy(true); setMsg(null)
     const { error } = await supabase.rpc('cancel_order', { p_order_id: orderId, p_reason: t(`orders.reason.${reason}`, { lng: 'en' }) })
     setBusy(false)
-    if (error) setMsg({ kind: 'error', text: errorMessage(t, error) }); else { refresh(); onDone() }
+    if (error) setMsg({ kind: 'error', text: errorMessage(t, error) }); else { refresh(); draft.clear(); onDone() }
   }
 
   if (catalog.isLoading) return <Skeleton rows={4} />
   return (
     <div className="stack-lg">
+      <DraftNote show={draft.restored} onFresh={() => draft.discard({ cart: initial, custom: {} })} />
       <p className="muted">{shopName}</p>
       {editable && <input type="search" aria-label={t('orders.addItem')} placeholder={t('orders.addItem')} value={q} onChange={(e) => setQ(e.target.value)} />}
       {shown.length === 0 ? <p className="muted">{t('orders.emptyEditor')}</p> : (
@@ -111,7 +117,7 @@ export function OrderEditor({ shopId, shopName, planId, initial, orderId, editab
       )}
       {editable && (
         <div className="sheet-foot">
-          <button type="button" onClick={onDone}>{t('common.cancel')}</button>
+          <button type="button" onClick={() => { draft.clear(); onDone() }}>{t('common.cancel')}</button>
           <button type="button" className="primary" disabled={busy || cases === 0} onClick={() => void save()}><Save size={18} aria-hidden="true" />{busy ? t('common.loading') : t('orders.save')}</button>
         </div>
       )}

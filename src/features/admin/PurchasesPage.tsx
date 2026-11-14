@@ -14,6 +14,8 @@ import { useStockRows } from './stockRows'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
+import { useDraft } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 
 interface Supplier { id: string; name: string; phone: string | null; gstin: string | null; active: boolean }
 interface Purchase {
@@ -106,16 +108,20 @@ export default function PurchasesPage() {
 }
 
 type Line = { variant_id: string; qty: string; cost: string }
+type PurchaseDraft = { supplier: string; invoice: string; date: string; note: string; lines: Line[]; sending: boolean }
 const blank = (): Line => ({ variant_id: '', qty: '', cost: '' })
 
 function PurchaseForm({ suppliers, items, onDone }: { suppliers: Supplier[]; items: { variant_id: string; name: string }[]; onDone: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const [supplier, setSupplier] = useState(suppliers[0]?.id ?? '')
-  const [invoice, setInvoice] = useState('')
-  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }))
-  const [note, setNote] = useState('')
-  const [lines, setLines] = useState<Line[]>([blank()])
+  // The purchase being typed is kept until it is saved or cancelled. "sending" marks the moment the save was sent: if the tab died
+  // right then, we cannot know if it went through, so the restored form warns before saving again (a purchase adds stock).
+  const fresh = (): PurchaseDraft => ({ supplier: suppliers[0]?.id ?? '', invoice: '', date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }), note: '', lines: [blank()], sending: false })
+  const draft = useDraft<PurchaseDraft>('purchase', fresh)
+  const { supplier, invoice, date, note, lines, sending } = draft.value
+  const patchDraft = (p: Partial<PurchaseDraft>) => draft.set((d) => ({ ...d, ...p }))
+  const setSupplier = (v: string) => patchDraft({ supplier: v }), setInvoice = (v: string) => patchDraft({ invoice: v })
+  const setDate = (v: string) => patchDraft({ date: v }), setNote = (v: string) => patchDraft({ note: v }), setLines = (v: Line[]) => patchDraft({ lines: v })
   const [msg, setMsg] = useState<Msg>(null)
   const [busy, setBusy] = useState(false)
   const set = (i: number, patch: Partial<Line>) => setLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
@@ -126,19 +132,23 @@ function PurchaseForm({ suppliers, items, onDone }: { suppliers: Supplier[]; ite
 
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setMsg(null); setBusy(true)
+    patchDraft({ sending: true })
     try {
       await must(supabase.rpc('record_purchase', {
         p_supplier_id: supplier, p_invoice_no: invoice, p_date: date || null, p_note: note || null,
         p_lines: lines.map((l) => ({ variant_id: l.variant_id, qty: Number(l.qty), cost_paise: rupeesToPaise(Number(l.cost)) })),
       }))
       for (const k of ['purchase', 'stock', 'stock_move']) void qc.invalidateQueries({ queryKey: [k] })
+      draft.clear()
       onDone()
-    } catch (err) { setMsg({ kind: 'error', text: errorMessage(t, err) }) }
+    } catch (err) { patchDraft({ sending: false }); setMsg({ kind: 'error', text: errorMessage(t, err) }) }
     finally { setBusy(false) }
   }
 
   return (
     <form className="stack-lg" onSubmit={submit} noValidate>
+      <DraftNote show={draft.restored} onFresh={() => draft.discard(fresh())} />
+      {draft.restored && sending && <Alert msg={{ kind: 'warn', text: t('draft.purchaseSending') }} />}
       <div className="form-grid">
         <label className="field"><span>{t('purchases.supplier')}</span>
           <select value={supplier} onChange={(e) => setSupplier(e.target.value)}>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>

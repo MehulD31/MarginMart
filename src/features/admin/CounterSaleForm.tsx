@@ -11,6 +11,8 @@ import { Alert, Skeleton, type Msg } from '../../shared/ui/kit'
 import { DateField } from '../../shared/ui/DateField'
 import { Stepper } from '../../shared/ui/Stepper'
 import { useConfirm } from '../../shared/ui/confirm'
+import { useDraft } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 import { VoiceSale, type VoiceResult } from './VoiceSale'
 import { refreshMoney } from './money'
 import { PaidIntoSelect } from './PaidIntoSelect'
@@ -26,6 +28,7 @@ export interface CounterBill {
 interface CatalogRow { variant_id: string; label: string; trade_paise: number; buy_paise: number | null; floor_paise: number | null; on_hand: number }
 interface ShopRow { id: string; name: string; phone: string | null; locality: string | null; owner_name: string | null }
 interface Line { variant_id: string; qty: number; rate: string }
+interface SaleDraft { action: string; shop: ShopRow | null; lines: Line[]; mode: 'cash' | 'upi'; account: string; discount: string }
 
 const useCounterCatalog = () => useQuery({
   queryKey: ['counter-catalog'],
@@ -53,15 +56,21 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   const trip = useTripDetail(planId)
   const truckLeft = useMemo(() => new Map((trip.data?.items ?? []).map((i) => [i.variant_id, Math.max(0, i.left)])), [trip.data])
   const shops = useShopPicker()
-  const [action] = useState(() => crypto.randomUUID())
-  const [shop, setShop] = useState<ShopRow | null>(bill ? { id: bill.shop_id, name: bill.shop, phone: bill.phone, locality: bill.locality, owner_name: bill.owner ?? null } : null)
   const [shopQ, setShopQ] = useState('')
-  const [lines, setLines] = useState<Line[]>(() => (bill?.lines ?? []).map((l) => ({ variant_id: l.variant_id, qty: l.qty, rate: String(l.price_paise / 100) })))
   const [itemQ, setItemQ] = useState('')
-  const [mode, setMode] = useState<'cash' | 'upi'>(bill?.mode ?? 'cash')
-  // '' = the default for the mode (cash box / company bank); a picked account is saved with the bill.
-  const [account, setAccount] = useState(paidInto ?? '')
-  const [discount, setDiscount] = useState(bill?.discount_paise ? String(bill.discount_paise / 100) : '')
+  // A NEW bill is kept as a draft (shop, items, rates, payment, discount) until it is saved or cancelled: a refresh, a phone call or a
+  // dropped network loses nothing. The action id is kept too, so saving twice after a dead tab can never make two bills.
+  // Editing an existing bill is not drafted. account '' = the default for the mode (cash box / company bank).
+  const draft = useDraft<SaleDraft>(`sale:${planProp ?? 'counter'}`, () => ({
+    action: crypto.randomUUID(),
+    shop: bill ? { id: bill.shop_id, name: bill.shop, phone: bill.phone, locality: bill.locality, owner_name: bill.owner ?? null } : null,
+    lines: (bill?.lines ?? []).map((l) => ({ variant_id: l.variant_id, qty: l.qty, rate: String(l.price_paise / 100) })),
+    mode: bill?.mode ?? 'cash', account: paidInto ?? '', discount: bill?.discount_paise ? String(bill.discount_paise / 100) : '',
+  }), { skip: !!bill })
+  const { action, shop, lines, mode, account, discount } = draft.value
+  const upd = <K extends keyof SaleDraft>(k: K) => (v: SaleDraft[K] | ((p: SaleDraft[K]) => SaleDraft[K])) =>
+    draft.set((p) => ({ ...p, [k]: typeof v === 'function' ? (v as (x: SaleDraft[K]) => SaleDraft[K])(p[k]) : v }))
+  const setShop = upd('shop'), setLines = upd('lines'), setMode = upd('mode'), setAccount = upd('account'), setDiscount = upd('discount')
   const [today] = useState(() => dayIST(new Date()))
   const [day, setDay] = useState(() => (bill ? dayIST(bill.at) : today))
   const [addingShop, setAddingShop] = useState(false)
@@ -110,6 +119,7 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
     for (const k of ['counter-sales', 'counter-catalog', 'stock', 'stock_move', 'month_stats', 'trip-detail', 'trip-board']) void qc.invalidateQueries({ queryKey: [k] })
     refreshMoney(qc)
     const saved = data as { number: string; day?: string }
+    draft.clear()
     onDone(saved.number, saved.day)
   }
 
@@ -135,6 +145,7 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   if (catalog.isLoading || shops.isLoading || (planId && trip.isLoading)) return <Skeleton rows={4} />
   return (
     <div className="stack-lg">
+      <DraftNote show={draft.restored} onFresh={() => { draft.discard({ action: crypto.randomUUID(), shop: null, lines: [], mode: 'cash', account: paidInto ?? '', discount: '' }); setShopQ(''); setItemQ('') }} />
       {planId && <span className="badge badge-blue" style={{ alignSelf: 'flex-start', fontSize: '0.85rem' }} data-testid="truck-tag">🚚 {t('trip.form.from', { v: vehicle ?? '' })}</span>}
       {!bill && <VoiceSale onResult={applyVoice} />}
       {/* Bill date: today by default; pick an earlier day for an old parchi. Truck bills stay on their trip's day. */}
@@ -237,7 +248,7 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
       {problem && (shop || lines.length > 0) && <p className="cell-sub">{problem}</p>}
       <Alert msg={msg} />
       <div className="sheet-foot">
-        <button type="button" onClick={() => onDone()}>{t('common.cancel')}</button>
+        <button type="button" onClick={() => { draft.clear(); onDone() }}>{t('common.cancel')}</button>
         <button type="button" className="primary" disabled={busy || !!problem} onClick={() => void save()}>
           <Save size={18} aria-hidden="true" />{busy ? t('common.loading') : bill ? t('sales.form.saveChanges') : t('sales.form.saveSale')}</button>
       </div>

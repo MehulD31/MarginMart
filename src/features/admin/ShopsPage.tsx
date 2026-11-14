@@ -13,6 +13,7 @@ import { useAuth } from '../../shared/api/auth'
 import { useConfirm } from '../../shared/ui/confirm'
 import { downloadText } from '../../shared/ui/util'
 import { Pager } from '../../shared/ui/Pager'
+import { useRemembered } from '../../shared/ui/draft'
 import { usePaged } from '../../shared/ui/paging'
 
 const useShops = () => useQuery({
@@ -43,8 +44,8 @@ export default function ShopsPage() {
   const shops = useShops()
   const logins = useShopLogins()
   const routes = useRoutes()
-  const [routeFilter, setRouteFilter] = useState('')
-  const [q, setQ] = useState('')
+  const [routeFilter, setRouteFilter] = useRemembered('view:shops:route', '')
+  const [q, setQ] = useRemembered('view:shops:q', '')
   const [editing, setEditing] = useState<Partial<Shop> | null>(null)
   const [importing, setImporting] = useState(false)
   const [issued, setIssued] = useState<Issued[]>([])

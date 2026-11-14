@@ -8,6 +8,8 @@ import { useAuth } from '../../shared/api/auth'
 import { formatPaise, rupeesToPaise } from '../../shared/money'
 import { useCreditStatus, useLedger, type LedgerEntry } from '../../shared/ledger'
 import { errorMessage } from '../../shared/ui/errors'
+import { useDraft, useRemembered } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { BalanceCards, LedgerList } from '../../shared/ui/Khata'
 import { Pager } from '../../shared/ui/Pager'
@@ -31,12 +33,13 @@ const useKhata = () => useQuery({
 
 type Filter = 'due' | 'overdue' | 'all'
 
+interface PayDraft { action: string; mode: 'cash' | 'upi'; account: string; amount: string; ref: string; note: string }
 export default function KhataPage() {
   const { t } = useTranslation()
   const list = useKhata()
   const routes = useRoutes()
-  const [filter, setFilter] = useState<Filter>('due')
-  const [q, setQ] = useState('')
+  const [filter, setFilter] = useRemembered<Filter>('view:khata:filter', 'due')
+  const [q, setQ] = useRemembered('view:khata:q', '')
   const [open, setOpen] = useState<Shop | null>(null)
   const routeName = new Map(routes.data?.map((r) => [r.id, r.name]))
   const rows = useMemo(() => (list.data ?? [])
@@ -90,11 +93,13 @@ function ShopKhata({ shop }: { shop: Shop }) {
   const isAdmin = profile?.role === 'admin'
   const status = useCreditStatus(shop.id)
   const ledger = useLedger(shop.id)
-  const [mode, setMode] = useState<'cash' | 'upi'>('cash')
-  const [account, setAccount] = useState('')
-  const [amount, setAmount] = useState('')
-  const [ref, setRef] = useState('')
-  const [note, setNote] = useState('')
+  // The payment being typed for this shop is kept until it is saved. Its action id is kept too, so if a save was cut off and you
+  // tap Save again after reopening, the server still counts that payment only once.
+  const freshPay = (): PayDraft => ({ action: crypto.randomUUID(), mode: 'cash', account: '', amount: '', ref: '', note: '' })
+  const draft = useDraft<PayDraft>(`khata-pay:${shop.id}`, freshPay)
+  const { mode, account, amount, ref, note } = draft.value
+  const upd = <K extends keyof PayDraft>(k: K) => (v: PayDraft[K]) => draft.set((p) => ({ ...p, [k]: v }))
+  const setMode = upd('mode'), setAccount = upd('account'), setAmount = upd('amount'), setRef = upd('ref'), setNote = upd('note')
   const [voiding, setVoiding] = useState<LedgerEntry | null>(null)
   const [reason, setReason] = useState('')
   const [opening, setOpening] = useState('')
@@ -111,8 +116,8 @@ function ShopKhata({ shop }: { shop: Shop }) {
   }
   const paise = rupeesToPaise(Number(amount) || 0)
   const pay = async () => {
-    if (await run(() => supabase.rpc('record_payment_into', { p_action_id: crypto.randomUUID(), p_shop_id: shop.id, p_mode: mode, p_amount_paise: paise, p_upi_ref: ref || null, p_note: note || null, p_account: account || null }), t('khata.paymentSaved'))) {
-      setAmount(''); setRef(''); setNote(''); setAccount('')
+    if (await run(() => supabase.rpc('record_payment_into', { p_action_id: draft.value.action, p_shop_id: shop.id, p_mode: mode, p_amount_paise: paise, p_upi_ref: ref || null, p_note: note || null, p_account: account || null }), t('khata.paymentSaved'))) {
+      draft.discard(freshPay())
     }
   }
 
@@ -122,6 +127,7 @@ function ShopKhata({ shop }: { shop: Shop }) {
       <Alert msg={msg} />
       <div className="card stack">
         <h2>{t('khata.recordPayment')}</h2>
+        <DraftNote show={draft.restored} onFresh={() => draft.discard(freshPay())} />
         <fieldset className="days"><legend className="sr-only">{t('driver.payMode')}</legend>
           {(['cash', 'upi'] as const).map((m) => <label key={m} className="day-toggle"><input type="radio" name="kmode" checked={mode === m} onChange={() => setMode(m)} /><span>{m === 'cash' ? t('driver.cash') : 'UPI'}</span></label>)}
         </fieldset>

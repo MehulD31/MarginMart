@@ -11,6 +11,8 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../share
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
 import { Stepper } from '../../shared/ui/Stepper'
+import { useDraft } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 import { useConfirm } from '../../shared/ui/confirm'
 import { addDays, todayIST, useDrivers, useLocaleDate } from './opsData'
 import { CounterSaleForm } from './CounterSaleForm'
@@ -255,11 +257,16 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
   const [carryChecked, setCarryChecked] = useState(false)
   const onTruck = (i: TripDetail['items'][number]) => carryOk[i.variant_id] ?? 0
   const cap = (i: TripDetail['items'][number]) => i.godown + (isLoaded ? i.loaded : onTruck(i))
-  const [qty, setQty] = useState<Record<string, number>>(() => Object.fromEntries(d.items.map((i) => {
+  const startQty = () => Object.fromEntries(d.items.map((i) => {
     const c = isLoaded ? 0 : (i.carry ?? 0)
     return [i.variant_id, isLoaded ? i.loaded : c + Math.min(Math.max(0, i.ordered - c), i.godown)]
-  })))
-  const [driver, setDriver] = useState(d.plan.driver_id ?? '')
+  })) as Record<string, number>
+  // typed quantities and the driver are kept (24 h) until the load is saved, so a refresh or a phone call loses nothing
+  const draftKey = `load:${d.plan.id}:${isLoaded ? 'edit' : 'new'}`
+  const qtyDraft = useDraft<Record<string, number>>(`${draftKey}:qty`, startQty, { skip: started })
+  const driverDraft = useDraft<string>(`${draftKey}:driver`, d.plan.driver_id ?? '', { skip: started })
+  const qty = qtyDraft.value, setQty = qtyDraft.set
+  const driver = driverDraft.value, setDriver = driverDraft.set
   const [q, setQ] = useState('')
   const [brand, setBrand] = useState<string>('')
   const [busy, setBusy] = useState(false)
@@ -284,7 +291,7 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
       await must(supabase.rpc('trip_load', { p_plan: d.plan.id, p_driver: driver || null,
         p_lines: Object.entries(qty).filter(([, n]) => n > 0).map(([variant_id, n]) => ({ variant_id, qty: n })),
         p_carry: carryItems.length ? carryItems.map((i) => ({ variant_id: i.variant_id, qty: onTruck(i) })) : null }))
-      refreshTrips(qc)
+      refreshTrips(qc); qtyDraft.clear(); driverDraft.clear()
       onDone({ kind: 'success', text: t('trip.load.done', { v: d.plan.vehicle, n: total }) })
     } catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
   }
@@ -331,6 +338,7 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
   }
   return (
     <div className="stack-lg">
+      <DraftNote show={qtyDraft.restored || driverDraft.restored} onFresh={() => { qtyDraft.discard(startQty()); driverDraft.discard(d.plan.driver_id ?? '') }} />
       {carryItems.length > 0 && (
         <div className="card stack carry-card" data-testid="carry-card">
           <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
@@ -403,14 +411,18 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
   const qc = useQueryClient()
   const items = d.items.filter((i) => i.loaded > 0)
   const maxBack = (i: TripDetail['items'][number]) => Math.max(0, i.loaded - i.delivered - i.billed)
-  const [back, setBack] = useState<Record<string, number>>(() => Object.fromEntries(items.map((i) => [i.variant_id, i.returned])))
+  const closed = d.plan.status === 'closed'
+  // what came back is counted at night, often with a phone call in between: keep the counts until they are saved
+  const key = `unload:${d.plan.id}:${d.plan.unloaded_at ? 'fix' : 'new'}`
+  const startBack = () => Object.fromEntries(items.map((i) => [i.variant_id, i.returned])) as Record<string, number>
+  const backDraft = useDraft<Record<string, number>>(`${key}:back`, startBack, { skip: closed })
+  const keepDraft = useDraft<boolean>(`${key}:keep`, d.plan.unloaded_at ? !!d.plan.kept : true, { skip: closed })
+  const back = backDraft.value, setBack = backDraft.set, keep = keepDraft.value, setKeep = keepDraft.set
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
-  const closed = d.plan.status === 'closed'
   const revert = useRevert()
   // Our own truck: what came back stays on it for its next trip (default), or goes into the godown.
   const canKeep = !!d.plan.vehicle_id
-  const [keep, setKeep] = useState(d.plan.unloaded_at ? !!d.plan.kept : true)
 
   if (d.plan.status === 'planning') return <div className="card"><Empty icon={<PackageOpen size={26} />} title={t('trip.unload.notLoaded')} /></div>
   const totalBack = Object.values(back).reduce((a, n) => a + n, 0)
@@ -423,7 +435,7 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
     setBusy(true); setMsg(null)
     try {
       await must(supabase.rpc('trip_unload', { p_plan: d.plan.id, p_returned: items.map((i) => ({ variant_id: i.variant_id, qty: back[i.variant_id] ?? 0 })), p_keep: canKeep && keep }))
-      refreshTrips(qc)
+      refreshTrips(qc); backDraft.clear(); keepDraft.clear()
       const kept = canKeep && keep && totalBack > 0
       onDone({ kind: 'success', text: (toBill > 0 ? t('trip.unload.doneBill', { n: totalBack, b: toBill }) : t('trip.unload.done', { n: totalBack })) + (kept ? ' ' + t('trip.carry.keptNote', { n: totalBack }) : '') })
     } catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
@@ -433,6 +445,7 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
   const at = d.plan.unloaded_at ? new Date(d.plan.unloaded_at).toLocaleTimeString(i18n.language === 'hi' ? 'hi-IN' : 'en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : ''
   return (
     <div className="stack-lg">
+      <DraftNote show={backDraft.restored || keepDraft.restored} onFresh={() => { backDraft.discard(startBack()); keepDraft.discard(d.plan.unloaded_at ? !!d.plan.kept : true) }} />
       {d.plan.unloaded_at
         ? <Alert msg={{ kind: 'success', text: t('trip.unload.savedNote', { at, who: '', n: savedBack }) }} />
         : <p className="muted">{t('trip.unload.hint')}</p>}

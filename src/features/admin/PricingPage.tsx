@@ -11,6 +11,7 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { useMargin } from './marginData'
 import { Pager } from '../../shared/ui/Pager'
+import { useRemembered } from '../../shared/ui/draft'
 import { usePaged } from '../../shared/ui/paging'
 
 const rs = (p: number) => formatPaise(p)
@@ -20,8 +21,8 @@ export default function PricingPage() {
   const isAdmin = useAuth().profile?.role === 'admin'
   const m = useMargin()
   const [edit, setEdit] = useState(false)
-  const [q, setQ] = useState('')
-  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: 'name', dir: 1 })
+  const [q, setQ] = useRemembered('view:pricing:q', '')
+  const [sort, setSort] = useRemembered<{ key: string; dir: 1 | -1 }>('view:pricing:sort', { key: 'name', dir: 1 })
   const hi = i18n.language === 'hi'
   const onSeason = m?.onSeason ?? false
   const slabs = m ? (onSeason ? m.s.slabs.on : m.s.slabs.off) : []

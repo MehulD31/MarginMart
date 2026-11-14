@@ -13,6 +13,8 @@ import { usePaged } from '../../shared/ui/paging'
 import { useConfirm } from '../../shared/ui/confirm'
 import { CATEGORIES, fixedPerDay, pnl, spendBudget, type KharchaSettings } from '../../shared/kharcha.js'
 import { todayIST } from './opsData'
+import { useDraft } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 import { monthStart, r100, useExpenses, useKharchaSettings, usePnl, type Expense } from './kharchaData'
 
 /** "How was today?" — the card on the dashboard and on top of this page. */
@@ -52,7 +54,13 @@ export default function KharchaPage() {
   const s = useKharchaSettings()
   const month = useExpenses(monthStart(today), today)
   const [msg, setMsg] = useState<Msg>(null)
-  const [f, setF] = useState({ amount: '', category: CATEGORIES[0], note: '', spent_on: today, paid_from: 'cash' })
+  // amount, category, note and "paid from" are kept until the kharcha is saved (a phone call or refresh loses nothing); the date is
+  // always today unless you pick another day, so an old draft never saves on a past date by itself.
+  const freshF = () => ({ amount: '', category: CATEGORIES[0] as string, note: '', paid_from: 'cash' })
+  const draft = useDraft('kharcha-new', freshF)
+  const [spentOn, setSpentOn] = useState(today)
+  const f = { ...draft.value, spent_on: spentOn }
+  const setF = (v: typeof f) => { const { spent_on, ...rest } = v; setSpentOn(spent_on); draft.set(rest) }
   const pg = usePaged(month.data ?? [], 20)
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['expense'] }); void qc.invalidateQueries({ queryKey: ['business_settings'] }) }
 
@@ -62,7 +70,7 @@ export default function KharchaPage() {
       if (amount_paise <= 0) throw new Error(t('kharcha.badAmount'))
       await must(supabase.from('expense').insert({ amount_paise, category: f.category, note: f.note.trim() || null, spent_on: f.spent_on, paid_from: f.paid_from, budget_line: s.data?.spend_line ?? 'Miscellaneous' }))
     },
-    onSuccess: () => { setMsg({ kind: 'success', text: t('kharcha.added', { v: f.amount, c: t(`kharcha.cat.${f.category}`) }) }); setF((x) => ({ ...x, amount: '', note: '' })); refresh() },
+    onSuccess: () => { setMsg({ kind: 'success', text: t('kharcha.added', { v: f.amount, c: t(`kharcha.cat.${f.category}`) }) }); draft.discard({ ...freshF(), category: f.category, paid_from: f.paid_from }); refresh() },
     onError: (e) => setMsg({ kind: 'error', text: errorMessage(t, e) }),
   })
   const voidIt = async (e: Expense) => {
@@ -78,6 +86,7 @@ export default function KharchaPage() {
 
       <form className="card stack" onSubmit={(e) => { e.preventDefault(); add.mutate() }} data-testid="add-kharcha">
         <h2 style={{ margin: 0 }}>{t('kharcha.add')}</h2>
+        <DraftNote show={draft.restored} onFresh={() => draft.discard(freshF())} />
         <div className="form-grid-2">
           <label className="field"><span>{t('kharcha.amount')}</span>
             <input inputMode="decimal" required value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="800" /></label>

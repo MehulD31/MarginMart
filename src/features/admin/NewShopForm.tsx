@@ -7,6 +7,8 @@ import { must } from '../../shared/api/db'
 import { callFunction } from '../../shared/api/functions'
 import { errorMessage } from '../../shared/ui/errors'
 import { Alert } from '../../shared/ui/kit'
+import { useDraft } from '../../shared/ui/draft'
+import { DraftNote } from '../../shared/ui/DraftNote'
 import { PinIssued, type Issued } from './PinIssued'
 import { suggestName } from '../../shared/spelling'
 
@@ -16,8 +18,10 @@ export interface NewShop { id: string; name: string; phone: string | null; local
 export function NewShopForm({ initialName = '', onDone, onCancel }: { initialName?: string; onDone: (s: NewShop) => void; onCancel: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const [f, setF] = useState({ name: initialName, owner: '', phone: '', area: '' })
-  const [login, setLogin] = useState(false)
+  // name, owner, phone and area are kept until the shop is added or cancelled (not when opened from a bill with a typed name)
+  const draft = useDraft('new-shop', { name: initialName, owner: '', phone: '', area: '', login: false }, { skip: !!initialName })
+  const f = draft.value, setF = (v: typeof f) => draft.set(v)
+  const login = f.login, setLogin = (v: boolean) => draft.set((d) => ({ ...d, login: v }))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [issued, setIssued] = useState<{ shop: NewShop; pin: Issued } | null>(null)
@@ -35,6 +39,7 @@ export function NewShopForm({ initialName = '', onDone, onCancel }: { initialNam
         name: f.name.trim(), owner_name: f.owner.trim(), phone: f.phone, locality: f.area.trim(), route_id: route[0].id, stop_seq: 0,
       }).select('id, name, phone, locality, owner_name'))
       void qc.invalidateQueries({ queryKey: ['shop'] })
+      draft.clear()
       if (login) {
         try {
           const res = await callFunction<{ pin: string }>('admin-users', { action: 'create', role: 'shop', name: f.owner.trim(), phone: f.phone, shop_id: s.id })
@@ -47,10 +52,11 @@ export function NewShopForm({ initialName = '', onDone, onCancel }: { initialNam
 
   if (issued) return <PinIssued issued={[issued.pin]} onDone={() => onDone(issued.shop)} />
 
-  const set = (k: keyof typeof f) => (v: string) => setF({ ...f, [k]: v })
+  const set = (k: 'name' | 'owner' | 'phone' | 'area') => (v: string) => setF({ ...f, [k]: v })
   return (
     <form className="card stack" onSubmit={submit} noValidate data-testid="new-shop-form" style={{ padding: '12px' }}>
       <span className="cell-title row"><Store size={18} aria-hidden="true" />{t('newShop.title')}</span>
+      <DraftNote show={draft.restored} onFresh={() => draft.discard({ name: initialName, owner: '', phone: '', area: '', login: false })} />
       <div className="form-grid">
         <label className="field"><span>{t('newShop.name')} *</span><input autoFocus maxLength={100} value={f.name} onChange={(e) => set('name')(e.target.value)} />
         {suggestName(f.name) && <span className="hint" data-testid="name-hint">{t('newShop.didYouMean')} <button type="button" className="btn-sm ghost" onClick={() => set('name')(suggestName(f.name)!)}>{suggestName(f.name)}</button></span>}</label>
@@ -64,7 +70,7 @@ export function NewShopForm({ initialName = '', onDone, onCancel }: { initialNam
       <label className="chip" style={{ alignSelf: 'flex-start' }}><input type="checkbox" checked={login} onChange={(e) => setLogin(e.target.checked)} />{t('newShop.login')}</label>
       <Alert msg={err ? { kind: 'error', text: err } : null} />
       <div className="row" style={{ gap: 8 }}>
-        <button type="button" onClick={onCancel}>{t('common.cancel')}</button>
+        <button type="button" onClick={() => { draft.clear(); onCancel() }}>{t('common.cancel')}</button>
         <button type="submit" className="primary" disabled={busy || !ok}>{busy ? t('common.loading') : t('newShop.save')}</button>
       </div>
     </form>
