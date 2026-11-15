@@ -334,7 +334,7 @@ async function watchdog() {
   // 8. the 19:30 post: an approved post still queued late at night means the evening trigger missed: post it now, once, and say so
   try {
     const queued = await db('social_post?status=eq.queued&select=id,kind&limit=1')
-    const reelToday = await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T00:00:00%2B05:30&select=id&limit=1`)
+    const reelToday = await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T19:00:00%2B05:30&select=id&limit=1`)
     if (queued.length && m >= 21 * 60 && !reelToday.length && !(await done('social-late', today))) {
       await mark('social-late', today)
       await gh('actions/workflows/ops.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { mode: 'social' } }) })
@@ -641,7 +641,9 @@ async function social() {
   // exactly one Reel per evening, and a missed 19:30 still goes out later the same night.
   // Only in the evening window (19:00 to 23:30 IST). A late trigger (GitHub or a retry) must never post at midnight or in the morning.
   if (!id && (istMinutes() < 19 * 60 || istMinutes() > 23 * 60 + 30)) return console.log('social: outside the 19:00-23:30 window, not posting')
-  const reelToday = id ? [] : await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T00:00:00%2B05:30&select=id&limit=1`)
+  // "one Reel per evening" counts only Reels posted since 19:00 today: a stray post made after midnight must not use up the evening's turn
+  // (15 Nov: the 00:24 post made the 19:30 run skip the approved Reel).
+  const reelToday = id ? [] : await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T19:00:00%2B05:30&select=id&limit=1`)
   const list = id ? await db(`social_post?id=eq.${id}&status=eq.queued&select=*`) : [
     ...await db('social_post?status=eq.queued&kind=neq.reel&order=created_at&limit=5&select=*'),
     ...(reelToday.length ? [] : await nextReel())]
