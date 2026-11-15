@@ -627,6 +627,13 @@ async function rateComments() {
   if (failed && !(await done('cdm-fail', today))) { await say(`⚠️ Comment pe DM nahi ja raha: ${failed}. Meta page settings me messaging permission check karni padegi.`); await mark('cdm-fail', today) }
 }
 // 19:30 job: every approved post (max 5). With POST_ID (⚡ in Telegram): just that one, right now.
+/** The oldest queued Reel the group has already seen (preview sent). One that is still waiting for its preview must not block the
+ *  others: on 15 Nov the 19:30 post found an unpreviewed Reel first, waited for it, and never reached the approved one behind it. */
+async function nextReel() {
+  const q = await db('social_post?status=eq.queued&kind=eq.reel&order=created_at&limit=10&select=*')
+  for (const p of q) if ((await db(`ops_log?job=eq.preview&key=eq.${p.id}&select=job`)).length) return [p]
+  return []
+}
 async function social() {
   const id = process.env.POST_ID
   // Reels go out one per evening (oldest approved first) so a batch that became 3 Reels fills 3 days, not one feed burst
@@ -637,7 +644,7 @@ async function social() {
   const reelToday = id ? [] : await db(`social_post?kind=eq.reel&status=eq.posted&posted_at=gte.${today}T00:00:00%2B05:30&select=id&limit=1`)
   const list = id ? await db(`social_post?id=eq.${id}&status=eq.queued&select=*`) : [
     ...await db('social_post?status=eq.queued&kind=neq.reel&order=created_at&limit=5&select=*'),
-    ...(reelToday.length ? [] : await db('social_post?status=eq.queued&kind=eq.reel&order=created_at&limit=1&select=*'))]
+    ...(reelToday.length ? [] : await nextReel())]
   if (!list.length) return console.log('nothing queued')
   let failed = null
   for (const p of list) { try { await postOne(p) } catch (e) { console.log('post failed', p.id, e.message); failed = e } }
