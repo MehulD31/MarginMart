@@ -83,7 +83,17 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   const free = (id: string) => (planId ? truckLeft.get(id) ?? 0 : byId.get(id)?.on_hand ?? 0) + (held.get(id) ?? 0)
 
   const sq = shopQ.trim().toLowerCase()
-  const shopHits = sq.length < 2 ? [] : (shops.data ?? []).filter((s) => `${s.name} ${s.owner_name ?? ''} ${s.phone ?? ''} ${s.locality ?? ''}`.toLowerCase().includes(sq)).slice(0, 8)
+  // Best match first (the old list was A to Z cut at 8, so a name starting with P never showed when many others contained the letters):
+  // 0 name starts with it, 1 a word of the name starts with it, 2 name contains it, 3 owner / phone / area contains it. Ties A to Z.
+  const rank = (s: ShopRow) => {
+    const n = s.name.toLowerCase()
+    if (n.startsWith(sq)) return 0
+    if (n.split(/[^a-z0-9\u0900-\u097f]+/).some((w) => w.startsWith(sq))) return 1
+    if (n.includes(sq)) return 2
+    return 3
+  }
+  const shopHits = sq.length < 2 ? [] : (shops.data ?? []).filter((s) => `${s.name} ${s.owner_name ?? ''} ${s.phone ?? ''} ${s.locality ?? ''}`.toLowerCase().includes(sq))
+    .map((s) => ({ s, r: rank(s) })).sort((a, b) => a.r - b.r || a.s.name.localeCompare(b.s.name, 'en', { sensitivity: 'base', numeric: true })).slice(0, 20).map((x) => x.s)
   const iq = itemQ.trim().toLowerCase()
   const itemHits = (!iq && !planId) ? [] : (catalog.data ?? []).filter((c) => c.label.toLowerCase().includes(iq) && !lines.some((l) => l.variant_id === c.variant_id) && (!planId || free(c.variant_id) > 0))
     .sort((a, b) => Number(b.on_hand > 0) - Number(a.on_hand > 0) || a.label.localeCompare(b.label)).slice(0, planId ? 40 : 8)
