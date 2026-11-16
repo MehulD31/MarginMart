@@ -88,7 +88,7 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   const rank = (s: ShopRow) => {
     const n = s.name.toLowerCase()
     if (n.startsWith(sq)) return 0
-    if (n.split(/[^a-z0-9\u0900-\u097f]+/).some((w) => w.startsWith(sq))) return 1
+    if (n.split(/[\s.,&()/-]+/).some((w) => w.startsWith(sq))) return 1
     if (n.includes(sq)) return 2
     return 3
   }
