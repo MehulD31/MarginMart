@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Bot, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
+import { useFitTables } from '../../shared/ui/useFitTables'
 import { useStockWatch } from '../../shared/api/db'
 import { useMoneyHoldings } from './money'
 import { supabase } from '../../shared/api/supabase'
@@ -47,6 +48,7 @@ const usePendingJoins = () => useQuery({
 })
 
 export default function AdminApp() {
+  useFitTables()
   const { t } = useTranslation()
   const { profile, signOut } = useAuth()
   const { pathname } = useLocation()

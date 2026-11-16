@@ -57,10 +57,57 @@ export default function ShopsPage() {
   const withLogin = all.filter((s) => logins.data?.has(s.id)).length
 
   const pg = usePaged(list)
+  const [exporting, setExporting] = useState(false)
+  /** Excel of every shop (whatever the search or route filter shows): "All shops" sorted by area, plus one sheet per area. */
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      const cols = [
+        { header: 'Area', key: 'area', width: 22 }, { header: 'Shop name', key: 'name', width: 30 }, { header: 'Owner', key: 'owner', width: 22 },
+        { header: 'Phone', key: 'phone', width: 14 }, { header: 'Other phone', key: 'alt', width: 14 }, { header: 'Address', key: 'address', width: 38 },
+        { header: 'Route', key: 'route', width: 26 }, { header: 'Shop type', key: 'type', width: 16 }, { header: 'Code', key: 'code', width: 12 },
+        { header: 'GSTIN', key: 'gstin', width: 18 }, { header: 'Credit limit (₹)', key: 'credit', width: 14 },
+        { header: 'Has app login', key: 'login', width: 13 }, { header: 'Active', key: 'active', width: 9 }, { header: 'Map', key: 'map', width: 30 },
+      ]
+      const row = (s: Shop) => ({
+        area: s.locality?.trim() || 'No area', name: s.name, owner: s.owner_name ?? '', phone: s.phone ?? '', alt: s.alt_phone ?? '', address: s.address ?? '',
+        route: routeName.get(s.route_id ?? '') ?? '', type: s.sub_channel ?? s.channel ?? '', code: s.code ?? '', gstin: s.gstin ?? '',
+        credit: s.credit_limit_paise ? s.credit_limit_paise / 100 : '', login: logins.data?.has(s.id) ? 'Yes' : 'No', active: s.active ? 'Yes' : 'No',
+        map: s.lat != null && s.lng != null ? `https://maps.google.com/?q=${s.lat},${s.lng}` : '',
+      })
+      const rows = [...all].map(row).sort((a, b) => a.area.localeCompare(b.area, 'en', { sensitivity: 'base' }) || a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
+      const sheet = (name: string, data: typeof rows) => {
+        const ws = wb.addWorksheet(name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Area')
+        ws.columns = cols
+        ws.addRows(data)
+        const head = ws.getRow(1); head.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF15803D' } }
+        ws.views = [{ state: 'frozen', ySplit: 1 }]
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } }
+        return ws
+      }
+      sheet('All shops', rows)
+      const byArea = new Map<string, typeof rows>()
+      for (const r of rows) byArea.set(r.area, [...(byArea.get(r.area) ?? []), r])
+      const used = new Set(['All shops'])
+      for (const [area, data] of byArea) {
+        let nm = area.replace(/[\\/?*[\]:]/g, ' ').slice(0, 28) || 'Area'
+        for (let i = 2; used.has(nm); i++) nm = `${nm.slice(0, 25)} ${i}`
+        used.add(nm); sheet(nm, data)
+      }
+      const buf = await wb.xlsx.writeBuffer()
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const a = document.createElement('a'); a.href = url; a.download = `KD-Foods-shops-by-area-${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })}.xlsx`
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } finally { setExporting(false) }
+  }
   return (
     <section className="stack-lg">
       <PageHeader title={t('shops.title')} sub={t('shops.sub', { n: all.length, l: withLogin })}
         actions={<>
+          <button type="button" onClick={() => void exportExcel()} disabled={exporting || !all.length} data-testid="export-shops"><Download size={18} aria-hidden="true" />{exporting ? t('common.loading') : t('shops.exportExcel')}</button>
           <button type="button" onClick={() => setImporting(true)}><FileSpreadsheet size={18} aria-hidden="true" />{t('shops.importCsv')}</button>
           <button type="button" className="primary" onClick={() => setEditing({ active: true, route_id: routeFilter || routes.data?.[0]?.id })}>
             <Plus size={18} aria-hidden="true" />{t('shops.add')}</button>

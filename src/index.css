@@ -1008,6 +1008,16 @@ dialog::backdrop { background: rgb(15 23 42 / 0.45); backdrop-filter: blur(3px);
 .draft-note { align-items: center; gap: 10px; background: var(--info-50); border-color: #bfdbfe; color: #1e3a8a; }
 .draft-note .grow { min-width: 0; }
 
+/* Laptop tables: the table scrolls inside its own box, so the left-right scrollbar is always on screen (it used to sit at the very
+   bottom of a 25-row table, thousands of pixels down, so on a narrower window or zoomed page there was "no scroller"). Headings stay put. */
+@media (min-width: 960px) {
+  .table-wrap { overflow: auto; max-height: calc(100dvh - 210px); overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .table-wrap thead th { position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 var(--line); }
+  .table-wrap::-webkit-scrollbar { height: 12px; width: 12px; }
+  .table-wrap::-webkit-scrollbar-thumb { background: #b6c2d0; border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+  .table-wrap::-webkit-scrollbar-thumb:hover { background: #94a3b8; background-clip: content-box; border: 3px solid transparent; }
+}
+
 /* ---------- Ask AI chat (phone first: WhatsApp / ChatGPT-style thread, composer pinned above the bottom bar and the keyboard) ---------- */
 .ask-page { display: flex; flex-direction: column; gap: 14px; max-width: 760px; margin: 0 auto; padding-bottom: calc(var(--ask-bar, 120px) + 16px); }
 .ask-head { display: flex; align-items: center; gap: 12px; }

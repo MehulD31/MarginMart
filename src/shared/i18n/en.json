@@ -357,6 +357,7 @@
   },
   "shops": {
     "title": "Shops",
+    "exportExcel": "Export Excel",
     "importCsv": "Import CSV",
     "add": "Add shop",
     "route": "Route",

@@ -357,6 +357,7 @@
   },
   "shops": {
     "title": "दुकानें",
+    "exportExcel": "Excel निकालें",
     "importCsv": "CSV इम्पोर्ट",
     "add": "दुकान जोड़ें",
     "route": "रूट",
