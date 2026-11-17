@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { usePacks, useStock, useVariants, type Stock } from '../../shared/api/db'
 import { formatPaise } from '../../shared/money'
 
-export interface StockRow extends Stock { name: string; sub: string; active: boolean }
+export interface StockRow extends Stock { name: string; sub: string; active: boolean; units: number }
 
 /** Every flavour with its stock (0 if never stocked), labelled "Flavour · Pack". */
 export function useStockRows() {
@@ -22,6 +22,7 @@ export function useStockRows() {
         name: v.flavour_en !== p?.name_en ? `${(hi && v.flavour_hi) || v.flavour_en} · ${pn}` : pn,
         sub: p ? `${t('catalog.caseOf', { n: p.units_per_case })} · MRP ${formatPaise(p.mrp_paise)}` : '',
         active: v.active && !!p?.active,
+        units: p?.units_per_case ?? 1,
       }
     })
   }, [packs.data, variants.data, stock.data, hi, t])

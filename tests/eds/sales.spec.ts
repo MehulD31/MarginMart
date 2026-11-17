@@ -87,7 +87,7 @@ test('New sale: shop search, items, rate, cases, UPI, checks, one bill only', as
   await d.getByLabel(`Rate: ${nim}`).fill('520')
   // more than stock warns but is allowed
   await d.getByLabel(`Cases of ${nim}`).fill('99999')
-  await expect(d.getByText(/only \d+ in stock/)).toBeVisible()
+  await expect(d.getByText(/only [\d ]+(cases?|pcs)?[\d ]* in stock/)).toBeVisible()
   await d.getByLabel(`Cases of ${nim}`).fill('2')
   await d.getByRole('radio', { name: 'UPI' }).check()
   await expect(save).toBeEnabled()

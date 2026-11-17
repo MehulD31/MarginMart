@@ -12,6 +12,7 @@ import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
 import { Stepper } from '../../shared/ui/Stepper'
 import { useDraft } from '../../shared/ui/draft'
+import { casesNum, joinQty, qtyText, round6, splitQty } from '../../shared/cases'
 import { DraftNote } from '../../shared/ui/DraftNote'
 import { useConfirm } from '../../shared/ui/confirm'
 import { addDays, todayIST, useDrivers, useLocaleDate } from './opsData'
@@ -35,7 +36,7 @@ function useRevert() {
 }
 const clamp = (n: number, max: number) => Math.max(0, Math.min(max, Math.floor(n) || 0))
 /** ₹ value of some cases of each item at the trade price (what the truck's stock is worth). */
-const valueOf = (items: TripDetail['items'], qty: (i: TripDetail['items'][number]) => number) => items.reduce((a, i) => a + qty(i) * (i.price_paise ?? 0), 0)
+const valueOf = (items: TripDetail['items'], qty: (i: TripDetail['items'][number]) => number) => Math.round(items.reduce((a, i) => a + qty(i) * (i.price_paise ?? 0), 0))
 
 /** Loading: morning load, evening unload, parchis billed from the truck, then close. One trip per vehicle per day. */
 export default function TripsPage() {
@@ -228,13 +229,13 @@ function TruckCounts({ d }: { d: TripDetail }) {
   const worth = (paise: number) => <div className="cell-sub num" data-testid="worth">{formatPaise(paise)}</div>
   return (
     <div className="stats" data-testid="truck-counts">
-      <div className="stat"><div className="label">{t('trip.loaded')}</div><div className="value num">{n((i) => i.loaded)}</div>{worth(valueOf(d.items, (i) => i.loaded))}</div>
+      <div className="stat"><div className="label">{t('trip.loaded')}</div><div className="value num">{casesNum(n((i) => i.loaded))}</div>{worth(valueOf(d.items, (i) => i.loaded))}</div>
       {/* what the parchis really billed (after discounts), not the list value */}
-      <div className="stat"><div className="label">{t('trip.billedDelivered')}</div><div className="value num">{n((i) => i.billed + i.delivered)}</div>{worth(billed)}</div>
-      <div className="stat"><div className="label">{t('trip.cameBack')}</div><div className="value num">{n((i) => i.returned)}</div>{worth(valueOf(d.items, (i) => i.returned))}</div>
+      <div className="stat"><div className="label">{t('trip.billedDelivered')}</div><div className="value num">{casesNum(n((i) => i.billed + i.delivered))}</div>{worth(billed)}</div>
+      <div className="stat"><div className="label">{t('trip.cameBack')}</div><div className="value num">{casesNum(n((i) => i.returned))}</div>{worth(valueOf(d.items, (i) => i.returned))}</div>
       {/* before unload it is stock still on the truck; after unload nothing is on the truck, it is sold with the parchi not entered yet */}
       <div className="stat"><div className="label">{t(d.plan.unloaded_at ? 'trip.parchiDue' : 'trip.onTruckNow')}</div>
-        <div className="value num" style={left > 0 ? { color: 'var(--warn)' } : undefined} data-testid="left-total">{left}</div>
+        <div className="value num" style={left > 0 ? { color: 'var(--warn)' } : undefined} data-testid="left-total">{casesNum(left)}</div>
         {worth(valueOf(d.items, (i) => Math.max(0, i.left)))}
         {d.plan.unloaded_at && left > 0 && <div className="cell-sub">{t('trip.parchiDueSub')}</div>}</div>
     </div>
@@ -425,11 +426,12 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
   const canKeep = !!d.plan.vehicle_id
 
   if (d.plan.status === 'planning') return <div className="card"><Empty icon={<PackageOpen size={26} />} title={t('trip.unload.notLoaded')} /></div>
-  const totalBack = Object.values(back).reduce((a, n) => a + n, 0)
-  const sold = sumBy(items, (i) => i.delivered + i.billed)
+  const totalBack = round6(Object.values(back).reduce((a, n) => a + n, 0))
+  const sold = round6(sumBy(items, (i) => i.delivered + i.billed))
   const loaded = sumBy(items, (i) => i.loaded)
-  const toBill = loaded - sold - totalBack
-  const allBack = items.every((i) => (back[i.variant_id] ?? 0) === maxBack(i))
+  const toBill = round6(loaded - sold - totalBack)
+  const allBack = items.every((i) => Math.abs((back[i.variant_id] ?? 0) - maxBack(i)) < 1e-6)
+  const words = { case: t('qty.case'), cases: t('qty.cases'), pcs: t('qty.pcs') }
 
   const save = async () => {
     setBusy(true); setMsg(null)
@@ -464,32 +466,41 @@ function UnloadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) 
       <div className="card card-flush">
         <ul className="plain-list trip-list">{items.map((i) => {
           const max = maxBack(i), n = back[i.variant_id] ?? 0
+          const u = i.units ?? 1, sp = splitQty(n, u)
+          const setN = (q: number) => setBack((s) => ({ ...s, [i.variant_id]: Math.min(max, Math.max(0, q)) }))
           return (
             <li key={i.variant_id} data-testid="unload-row">
               <div className="grow">
                 <div className="cell-title">{i.label}</div>
                 {/* sold = what went out minus what came back (parchis for it are entered in the next step) */}
-                <div className="cell-sub num">{t('trip.unload.rowSub', { l: i.loaded })} · <b>{t('trip.unload.rowSold', { b: n, s: Math.max(0, i.loaded - n) })}</b>
-                  {i.delivered + i.billed > 0 ? t('trip.unload.rowBilled', { p: i.delivered + i.billed }) : ''}</div>
+                <div className="cell-sub num">{t('trip.unload.rowSub', { l: i.loaded })} · <b>{t('trip.unload.rowSold', { b: qtyText(n, u, words) || 0, s: qtyText(Math.max(0, i.loaded - n), u, words) })}</b>
+                  {i.delivered + i.billed > 0 ? t('trip.unload.rowBilled', { p: qtyText(i.delivered + i.billed, u, words) }) : ''}</div>
               </div>
-              {closed ? <strong className="num">{n}</strong>
-                : <Stepper value={n} max={max} showZero label={`${t('trip.cameBack')}: ${i.label}`} disabled={max === 0} onChange={(v) => setBack((s) => ({ ...s, [i.variant_id]: clamp(v, max) }))} />}
+              {closed ? <strong className="num">{qtyText(n, u, words)}</strong>
+                : <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Stepper value={sp.c} max={Math.floor(max + 1e-9)} showZero label={`${t('trip.cameBack')}: ${i.label}`} disabled={max === 0} onChange={(v) => setN(joinQty(clamp(v, Math.floor(max + 1e-9)), sp.p, u))} />
+                  {u > 1 && max > 0 && (
+                    <label className="field" style={{ gap: 2 }} data-testid="back-pcs"><span className="cell-sub">{t('sales.form.pcs', { n: u })}</span>
+                      <input type="number" inputMode="numeric" min={0} max={u - 1} step={1} style={{ width: 84 }} value={sp.p || ''} placeholder="0"
+                        aria-label={`${t('trip.cameBack')} ${t('qty.pcs')}: ${i.label}`}
+                        onChange={(e) => setN(joinQty(sp.c, Math.max(0, Math.min(u - 1, Math.floor(Number(e.target.value) || 0))), u))} /></label>)}
+                </div>}
             </li>)
         })}</ul>
       </div>
       <div className="card stack" style={{ gap: 6 }} data-testid="unload-summary">
         {/* cases and their ₹ value at the trade price; "came back" follows the numbers being typed */}
-        <div className="row-between"><span>{t('trip.loaded')}</span><span className="num"><strong>{loaded}</strong> <span className="cell-sub">· {formatPaise(valueOf(items, (i) => i.loaded))}</span></span></div>
-        <div className="row-between"><span>{t('trip.billedDelivered')}</span><span className="num"><strong>− {sold}</strong> <span className="cell-sub">· {formatPaise(valueOf(items, (i) => i.delivered + i.billed))}</span></span></div>
-        <div className="row-between"><span>{t('trip.cameBack')}</span><span className="num"><strong>− {totalBack}</strong> <span className="cell-sub" data-testid="back-worth">· {formatPaise(valueOf(items, (i) => back[i.variant_id] ?? 0))}</span></span></div>
-        <div className="row-between total-row"><span>{t('trip.unload.parchisToEnter')}</span><span className="num"><strong className={toBill > 0 ? 'text-warn' : 'text-ok'}>{toBill}</strong>
+        <div className="row-between"><span>{t('trip.loaded')}</span><span className="num"><strong>{casesNum(loaded)}</strong> <span className="cell-sub">· {formatPaise(valueOf(items, (i) => i.loaded))}</span></span></div>
+        <div className="row-between"><span>{t('trip.billedDelivered')}</span><span className="num"><strong>− {casesNum(sold)}</strong> <span className="cell-sub">· {formatPaise(valueOf(items, (i) => i.delivered + i.billed))}</span></span></div>
+        <div className="row-between"><span>{t('trip.cameBack')}</span><span className="num"><strong>− {casesNum(totalBack)}</strong> <span className="cell-sub" data-testid="back-worth">· {formatPaise(valueOf(items, (i) => back[i.variant_id] ?? 0))}</span></span></div>
+        <div className="row-between total-row"><span>{t('trip.unload.parchisToEnter')}</span><span className="num"><strong className={toBill > 0 ? 'text-warn' : 'text-ok'}>{casesNum(toBill)}</strong>
           <span className="cell-sub" data-testid="tobill-worth"> · {formatPaise(valueOf(items, (i) => Math.max(0, i.loaded - i.delivered - i.billed - (back[i.variant_id] ?? 0))))}</span></span></div>
       </div>
       <Alert msg={msg} />
       {!closed && d.plan.unloaded_at && <button type="button" className="danger btn-sm" style={{ alignSelf: 'flex-start' }} disabled={revert.busy || busy} data-testid="undo-unload" title={t('trip.unload.undoHint')}
         onClick={() => void revert.run('trip_undo_unload', d.plan.id, t('trip.revert.unload'), t('trip.revert.unloadBody', { n: savedBack }), t('trip.revert.unloadDone'), setMsg)}>{t('trip.revert.unload')}</button>}
       {!closed && <div className="trip-bar trip-bar-compact">
-        <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: totalBack })}</strong><span className="cell-sub">{canKeep && keep ? t('trip.carry.keepHint') : t('trip.unload.toGodown')}</span></div>
+        <div className="grow"><strong className="num">{t('trip.unload.backCount', { n: casesNum(totalBack) })}</strong><span className="cell-sub">{canKeep && keep ? t('trip.carry.keepHint') : t('trip.unload.toGodown')}</span></div>
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}><Undo2 size={18} aria-hidden="true" />
           {busy ? t('common.loading') : d.plan.unloaded_at ? t('trip.unload.saveFix') : canKeep && keep ? t('trip.unload.btnKeep', { n: totalBack }) : t('trip.unload.btn', { n: totalBack })}</button>
       </div>}
@@ -538,13 +549,13 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
     <div className="stack-lg">
       <div className="card stack" data-testid="bill-progress">
         <div className="row-between">
-          <div><strong>{left > 0 ? t('trip.bills.leftToBill', { n: left }) : t('trip.bills.allBilled')}</strong>
+          <div><strong>{left > 0 ? t('trip.bills.leftToBill', { n: casesNum(left) }) : t('trip.bills.allBilled')}</strong>
             {/* money: billed so far, and what the cases without a parchi are worth at the trade price */}
             <div className="cell-sub num" data-testid="bill-money">{t('trip.bills.money', { billed: formatPaise(sumBy(d.bills, (b) => b.total_paise) + sumBy(d.orders, (o) => o.delivered_paise)), left: formatPaise(valueOf(d.items, (i) => Math.max(0, i.left))) })}</div></div>
           {out && <button type="button" className="primary" disabled={left === 0} onClick={() => { setSaved(null); setFormKey((k) => k + 1); setSelling(true) }}>
             <Plus size={18} aria-hidden="true" />{t('trip.bills.newSale', { v: d.plan.vehicle })}</button>}
         </div>
-        {left > 0 && <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{d.items.filter((i) => i.left > 0).map((i) => <span key={i.variant_id} className="badge badge-amber">{i.label}: {i.left}{i.price_paise ? ` · ${formatPaise(i.left * i.price_paise)}` : ''}</span>)}</div>}
+        {left > 0 && <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{d.items.filter((i) => i.left > 0).map((i) => <span key={i.variant_id} className="badge badge-amber">{i.label}: {qtyText(i.left, i.units ?? 1, { case: t('qty.case'), cases: t('qty.cases'), pcs: t('qty.pcs') })}{i.price_paise ? ` · ${formatPaise(Math.round(i.left * i.price_paise))}` : ''}</span>)}</div>}
         {left === 0 && out && <button type="button" style={{ alignSelf: 'flex-start' }} onClick={onGoClose}><ClipboardCheck size={18} aria-hidden="true" />{t('trip.closeTrip')}</button>}
       </div>
       <Alert msg={msg} />

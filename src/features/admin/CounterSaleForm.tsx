@@ -12,6 +12,7 @@ import { DateField } from '../../shared/ui/DateField'
 import { Stepper } from '../../shared/ui/Stepper'
 import { useConfirm } from '../../shared/ui/confirm'
 import { useDraft } from '../../shared/ui/draft'
+import { joinQty, qtyText, splitQty, wholePieces } from '../../shared/cases'
 import { DraftNote } from '../../shared/ui/DraftNote'
 import { VoiceSale, type VoiceResult } from './VoiceSale'
 import { refreshMoney } from './money'
@@ -25,7 +26,7 @@ export interface CounterBill {
   mode: 'cash' | 'upi'; total_paise: number; discount_paise?: number; by: string | null; voided: boolean; void_reason: string | null
   margin_paise: number | null; lines: CounterLine[]; plan_id?: string | null; vehicle?: string | null
 }
-interface CatalogRow { variant_id: string; label: string; trade_paise: number; buy_paise: number | null; floor_paise: number | null; on_hand: number }
+interface CatalogRow { variant_id: string; label: string; trade_paise: number; buy_paise: number | null; floor_paise: number | null; on_hand: number; units?: number }
 interface ShopRow { id: string; name: string; phone: string | null; locality: string | null; owner_name: string | null }
 interface Line { variant_id: string; qty: number; rate: string }
 interface SaleDraft { action: string; shop: ShopRow | null; lines: Line[]; mode: 'cash' | 'upi'; account: string; discount: string }
@@ -99,7 +100,10 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
     .sort((a, b) => Number(b.on_hand > 0) - Number(a.on_hand > 0) || a.label.localeCompare(b.label)).slice(0, planId ? 40 : 8)
 
   const paise = (r: string) => Math.round(Number(r) * 100)
-  const lineBad = (l: Line) => !Number.isInteger(l.qty) || l.qty < 1 || l.qty > 9999 || !(Number(l.rate) >= MIN_RATE) || Number(l.rate) > 100000
+  const unitsOf = (id: string) => byId.get(id)?.units ?? 1
+  const words = { case: t('qty.case'), cases: t('qty.cases'), pcs: t('qty.pcs') }
+  // a line's quantity is in cases and may have pieces (0.75 = 18 of 24); it must be a whole number of pieces
+  const lineBad = (l: Line) => !(l.qty > 0) || !wholePieces(l.qty, unitsOf(l.variant_id)) || l.qty > 9999 || !(Number(l.rate) >= MIN_RATE) || Number(l.rate) > 100000
   const cases = lines.reduce((a, l) => a + l.qty, 0)
   const subtotal = lines.reduce((a, l) => a + l.qty * (paise(l.rate) || 0), 0)
   const disc = Math.max(0, paise(discount) || 0)
@@ -203,7 +207,8 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
         {lines.length > 0 && (
           <ul className="plain-list">{lines.map((l, i) => {
             const c = byId.get(l.variant_id)
-            const over = l.qty > free(l.variant_id)
+            const over = l.qty > free(l.variant_id) + 1e-6
+            const u = unitsOf(l.variant_id), sp = splitQty(l.qty, u)
             const low = c?.floor_paise != null && paise(l.rate) < c.floor_paise
             const label = c?.label ?? bill?.lines.find((x) => x.variant_id === l.variant_id)?.item ?? ''
             return (
@@ -214,12 +219,20 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
                     <label className="row" style={{ gap: 4 }}><span className="cell-sub">{t('sales.form.rate')} ₹</span>
                       <input type="number" inputMode="decimal" min={MIN_RATE} step="0.5" style={{ width: 96 }} value={l.rate}
                         aria-label={`${t('sales.form.rate')}: ${label}`} aria-invalid={!(Number(l.rate) >= MIN_RATE)} onChange={(e) => setLine(i, { rate: e.target.value })} /></label>
-                    <span className="cell-sub num">= {formatPaise(l.qty * (paise(l.rate) || 0))}</span>
-                    {over && <span className="badge badge-amber">{t(planId ? 'trip.form.onlyLeft' : 'sales.form.overStock', { n: Math.max(0, free(l.variant_id)) })}</span>}
+                    <span className="cell-sub num">= {formatPaise(Math.round(l.qty * (paise(l.rate) || 0)))}{u > 1 && sp.p > 0 ? ` · ${qtyText(l.qty, u, words)}` : ''}</span>
+                    {over && <span className="badge badge-amber">{t(planId ? 'trip.form.onlyLeft' : 'sales.form.overStock', { n: qtyText(Math.max(0, free(l.variant_id)), u, words) })}</span>}
                     {low && <span className="badge badge-red">{t('sales.form.belowFloor', { floor: formatPaise(c!.floor_paise!) })}</span>}
                   </div>
                 </div>
-                <Stepper value={l.qty} max={planId ? Math.max(l.qty, free(l.variant_id)) : 9999} onChange={(n) => (n === 0 ? setLines((ls) => ls.filter((_, j) => j !== i)) : setLine(i, { qty: n }))} label={label} />
+                <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Stepper value={sp.c} max={planId ? Math.max(sp.c, Math.floor(free(l.variant_id))) : 9999}
+                    onChange={(n) => (n === 0 && sp.p === 0 ? setLines((ls) => ls.filter((_, j) => j !== i)) : setLine(i, { qty: joinQty(n, sp.p, u) }))} showZero={sp.p > 0} label={label} />
+                  {u > 1 && (
+                    <label className="field" style={{ gap: 2 }} data-testid="pcs-field"><span className="cell-sub">{t('sales.form.pcs', { n: u })}</span>
+                      <input type="number" inputMode="numeric" min={0} max={u - 1} step={1} style={{ width: 84 }} value={sp.p || ''} placeholder="0"
+                        aria-label={`${t('sales.form.pcs', { n: u })}: ${label}`}
+                        onChange={(e) => { const p = Math.max(0, Math.min(u - 1, Math.floor(Number(e.target.value) || 0))); setLine(i, { qty: joinQty(sp.c, p, u) }) }} /></label>)}
+                </div>
                 <button type="button" className="btn-sm ghost icon-btn" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} aria-label={`${t('sales.form.remove')}: ${label}`}><Trash2 size={16} aria-hidden="true" /></button>
               </li>)
           })}</ul>

@@ -11,6 +11,7 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { Pager } from '../../shared/ui/Pager'
 import { useRemembered } from '../../shared/ui/draft'
+import { qtyText } from '../../shared/cases'
 import { usePaged } from '../../shared/ui/paging'
 
 interface Move { id: number; qty: number; kind: string; reason: string | null; balance_after: number; at: string; cash_sale_id: string | null; route_day_plan_id: string | null }
@@ -59,7 +60,7 @@ export default function InventoryPage() {
           <tbody>{pg.rows.map((r) => (
             <tr key={r.variant_id} className={r.active ? '' : 'dim'}>
               <td className="lead"><div className="cell-title">{r.name}</div>{r.sub && <div className="cell-sub">{r.sub}</div>}</td>
-              <td data-label={t('inventory.onHand')} className="num"><strong>{r.on_hand}</strong>{' '}
+              <td data-label={t('inventory.onHand')} className="num"><strong>{Number.isInteger(r.on_hand) ? r.on_hand : qtyText(r.on_hand, r.units, { case: t('qty.case'), cases: t('qty.cases'), pcs: t('qty.pcs') })}</strong>{' '}
                 {r.on_hand < 0 ? <span className="badge badge-red">{t('inventory.negative')}</span> : isLow(r) && <span className="badge badge-amber">{t('inventory.low')}</span>}
                 {(onTruck.get(r.variant_id) ?? 0) > 0 && <div className="cell-sub" data-testid="inv-on-truck">{t('inventory.onTruck', { n: onTruck.get(r.variant_id), g: r.on_hand - (onTruck.get(r.variant_id) ?? 0) })}</div>}
                 {days.get(r.variant_id) != null && <div className="cell-sub">{t('inventory.lasts', { d: Math.floor(days.get(r.variant_id)!) })}</div>}</td>

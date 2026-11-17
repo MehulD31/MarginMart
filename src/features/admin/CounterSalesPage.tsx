@@ -10,6 +10,7 @@ import { errorMessage } from '../../shared/ui/errors'
 import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../shared/ui/kit'
 import { DateField } from '../../shared/ui/DateField'
 import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
+import { casesNum } from '../../shared/cases'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { useMoneyPayments } from './money'
 import { Pager } from '../../shared/ui/Pager'
@@ -86,7 +87,7 @@ export default function CounterSalesPage() {
 
       <div className="stats" aria-label={t('sales.summary')}>
         <div className="stat"><div className="label">{t('sales.bills')}</div><div className="value num">{live.length}</div></div>
-        <div className="stat"><div className="label">{t('sales.cases')}</div><div className="value num">{sum(live, casesOf)}</div></div>
+        <div className="stat"><div className="label">{t('sales.cases')}</div><div className="value num">{casesNum(sum(live, casesOf))}</div></div>
         <div className="stat"><div className="label">{t('sales.total')}</div><div className="value num">{formatPaise(sum(live, (b) => b.total_paise))}</div></div>
         <div className="stat"><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'cash' ? b.total_paise : 0)))}</div></div>
         <div className="stat"><div className="label">UPI</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'upi' ? b.total_paise : 0)))}</div></div>
@@ -103,7 +104,7 @@ export default function CounterSalesPage() {
               <tr key={d} data-testid="day-row">
                 <td className="lead">{new Date(d + 'T00:00:00').toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' })}</td>
                 <td data-label={t('sales.bills')} className="num">{bs.length}</td>
-                <td data-label={t('sales.cases')} className="num">{sum(bs, casesOf)}</td>
+                <td data-label={t('sales.cases')} className="num">{casesNum(sum(bs, casesOf))}</td>
                 <td data-label={t('sales.total')} className="num"><strong>{formatPaise(sum(bs, (b) => b.total_paise))}</strong></td>
                 <td data-label={t('driver.cash')} className="num">{formatPaise(sum(bs, (b) => (b.mode === 'cash' ? b.total_paise : 0)))}</td>
                 <td data-label="UPI" className="num">{formatPaise(sum(bs, (b) => (b.mode === 'upi' ? b.total_paise : 0)))}</td>
@@ -136,7 +137,7 @@ export default function CounterSalesPage() {
                   </div>
                 </div>
                 <ul className="plain-list cell-sub">
-                  {b.lines.map((l) => <li key={l.variant_id}>{l.item}: {l.qty} × {formatPaise(l.price_paise)} = {formatPaise(l.qty * l.price_paise)}</li>)}
+                  {b.lines.map((l) => <li key={l.variant_id}>{l.item}: {Number.isInteger(l.qty) ? l.qty : casesNum(l.qty)} × {formatPaise(l.price_paise)} = {formatPaise(Math.round(l.qty * l.price_paise))}</li>)}
                   {!!b.discount_paise && <li data-testid="sale-discount">{t('sales.form.discount')}: −{formatPaise(b.discount_paise)}</li>}
                 </ul>
                 {b.voided && <p className="cell-sub">{t('sales.voidReason', { reason: b.void_reason ?? '' })}</p>}
