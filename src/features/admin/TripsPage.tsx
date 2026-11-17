@@ -251,16 +251,21 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
   const fmt = useLocaleDate()
   const isLoaded = d.plan.status === 'loaded'
   const started = d.plan.status !== 'planning' && (d.plan.status !== 'loaded' || !!d.plan.unloaded_at || d.items.some((i) => i.billed || i.delivered || i.returned))
+  // After selling started the load can still be topped up (a forgotten item), but never below what is sold.
+  const canTopUp = started && (d.plan.status === 'loaded' || d.plan.status === 'out') && !d.plan.unloaded_at
+  const [topUp, setTopUp] = useState(false)
+  const hasLoad = isLoaded || canTopUp
+  const soldMin = (i: TripDetail['items'][number]) => (topUp ? Math.ceil(i.billed) + i.delivered : 0)
   // What the godown can give: its stock, plus what is on the truck now when the load is being changed.
   // Leftover still on this truck from its last trip: the loader confirms the count before loading.
-  const carryItems = isLoaded ? [] : d.items.filter((i) => (i.carry ?? 0) > 0)
+  const carryItems = hasLoad ? [] : d.items.filter((i) => (i.carry ?? 0) > 0)
   const [carryOk, setCarryOk] = useState<Record<string, number>>(() => Object.fromEntries(carryItems.map((i) => [i.variant_id, i.carry ?? 0])))
   const [carryChecked, setCarryChecked] = useState(false)
   const onTruck = (i: TripDetail['items'][number]) => carryOk[i.variant_id] ?? 0
-  const cap = (i: TripDetail['items'][number]) => i.godown + (isLoaded ? i.loaded : onTruck(i))
+  const cap = (i: TripDetail['items'][number]) => i.godown + (hasLoad ? i.loaded : onTruck(i))
   const startQty = () => Object.fromEntries(d.items.map((i) => {
-    const c = isLoaded ? 0 : (i.carry ?? 0)
-    return [i.variant_id, isLoaded ? i.loaded : c + Math.min(Math.max(0, i.ordered - c), i.godown)]
+    const c = hasLoad ? 0 : (i.carry ?? 0)
+    return [i.variant_id, hasLoad ? i.loaded : c + Math.min(Math.max(0, i.ordered - c), i.godown)]
   })) as Record<string, number>
   // typed quantities and the driver are kept (24 h) until the load is saved, so a refresh or a phone call loses nothing
   const draftKey = `load:${d.plan.id}:${isLoaded ? 'edit' : 'new'}`
@@ -289,6 +294,12 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
     if (shortForOrders.length && !(await confirm({ title: t('trip.load.shortTitle'), body: t('trip.load.shortBody', { n: shortForOrders.length }), confirm: t('trip.load.loadAnyway') }))) return
     setBusy(true); setMsg(null)
     try {
+      if (topUp) {
+        await must(supabase.rpc('trip_load_change', { p_plan: d.plan.id, p_lines: Object.entries(qty).filter(([, n]) => n > 0).map(([variant_id, n]) => ({ variant_id, qty: n })) }))
+        refreshTrips(qc); setTopUp(false)
+        onDone({ kind: 'success', text: t('trip.load.topUpDone', { v: d.plan.vehicle, n: total }) })
+        return
+      }
       await must(supabase.rpc('trip_load', { p_plan: d.plan.id, p_driver: driver || null,
         p_lines: Object.entries(qty).filter(([, n]) => n > 0).map(([variant_id, n]) => ({ variant_id, qty: n })),
         p_carry: carryItems.length ? carryItems.map((i) => ({ variant_id: i.variant_id, qty: onTruck(i) })) : null }))
@@ -297,7 +308,7 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
     } catch (e) { setMsg({ kind: 'error', text: errorMessage(t, e) }) } finally { setBusy(false) }
   }
 
-  if (started || (isLoaded && !editing)) {
+  if ((started && !topUp) || (isLoaded && !editing)) {
     const items = d.items.filter((i) => i.loaded > 0)
     return (
       <div className="stack-lg trip-printable">
@@ -305,9 +316,10 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
         <div className="card card-flush"><ul className="plain-list trip-list">{items.map((i) => (
           <li key={i.variant_id}><span className="grow">{i.label}</span><strong className="num">{i.loaded}</strong></li>))}</ul></div>
         <Alert msg={msg} />
-        {started && <p className="cell-sub">{t('trip.load.lockedHint')}</p>}
+        {started && <p className="cell-sub">{t(canTopUp ? 'trip.load.topUpHint' : 'trip.load.lockedHint')}</p>}
         <div className="row no-print" style={{ gap: 8, flexWrap: 'wrap' }}>
           {!started && <button type="button" onClick={() => setEditing(true)}>{t('trip.load.change')}</button>}
+          {canTopUp && <button type="button" data-testid="top-up" onClick={() => { qtyDraft.discard(startQty()); setTopUp(true) }}><PackageCheck size={18} aria-hidden="true" />{t('trip.load.topUp')}</button>}
           {!started && <button type="button" className="danger" disabled={revert.busy} data-testid="undo-load"
             onClick={() => void revert.run('trip_undo_load', d.plan.id, t('trip.revert.load'), t('trip.revert.loadBody', { v: d.plan.vehicle, n: sumBy(items, (i) => i.loaded) }), t('trip.revert.loadDone', { v: d.plan.vehicle }), (m) => (m?.kind === 'error' ? setMsg(m) : onDone(m)))}>
             <Undo2 size={18} aria-hidden="true" />{t('trip.revert.load')}</button>}
@@ -358,12 +370,13 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
           <label className="chip"><input type="checkbox" checked={carryChecked} onChange={(e) => setCarryChecked(e.target.checked)} data-testid="carry-ok" />
             {t('trip.carry.confirm', { n: carryTotal })}</label>
         </div>)}
-      {d.orders.length > 0 && <Alert msg={{ kind: 'success', text: t('trip.load.prefilled', { count: d.orders.length }) }} />}
-      <label className="field" style={{ maxWidth: 360 }}><span>{t('trip.load.driver')}</span>
+      {topUp && <Alert msg={{ kind: 'success', text: t('trip.load.topUpNote') }} />}
+      {!topUp && d.orders.length > 0 && <Alert msg={{ kind: 'success', text: t('trip.load.prefilled', { count: d.orders.length }) }} />}
+      {!topUp && <label className="field" style={{ maxWidth: 360 }}><span>{t('trip.load.driver')}</span>
         <select value={driver} onChange={(e) => setDriver(e.target.value)}>
           <option value="">{t('trip.load.noDriver')}</option>
           {drivers.data?.map((x) => <option key={x.user_id} value={x.user_id}>{x.name}</option>)}
-        </select></label>
+        </select></label>}
       <div className="stack" style={{ gap: 10 }}>
         <label className="field"><span className="sr-only">{t('trip.load.search')}</span>
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('trip.load.search')} aria-label={t('trip.load.search')} /></label>
@@ -381,10 +394,10 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
               <li key={i.variant_id} className={max === 0 && n === 0 ? 'dim' : ''} data-testid="load-row">
                 <div className="grow">
                   <div className="cell-title">{i.label}</div>
-                  <div className="cell-sub num">{onTruck(i) > 0 ? t('trip.carry.rowSub', { t: onTruck(i), g: i.godown }) : t('trip.load.godown', { n: max })}{i.ordered > 0 && <> · <span className={i.ordered > n ? 'text-warn' : 'text-ok'}>{t('trip.load.ordered', { n: i.ordered })}</span></>}</div>
+                  <div className="cell-sub num">{onTruck(i) > 0 ? t('trip.carry.rowSub', { t: onTruck(i), g: i.godown }) : t('trip.load.godown', { n: max })}{i.ordered > 0 && <> · <span className={i.ordered > n ? 'text-warn' : 'text-ok'}>{t('trip.load.ordered', { n: i.ordered })}</span></>}{soldMin(i) > 0 && <> · {t('trip.load.soldMin', { n: soldMin(i) })}</>}</div>
                 </div>
                 {max === 0 && n === 0 ? <span className="badge">{t('trip.load.noStock')}</span>
-                  : <Stepper value={n} max={max} label={i.label} onChange={(v) => setQty((s) => ({ ...s, [i.variant_id]: clamp(v, max) }))} />}
+                  : <Stepper value={n} max={max} label={i.label} onChange={(v) => setQty((s) => ({ ...s, [i.variant_id]: Math.max(clamp(v, max), soldMin(i)) }))} />}
               </li>)
           })}
           {!rows.length && <li className="muted">{t('common.noMatches')}</li>}
@@ -397,10 +410,10 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
           {capacity > 0 && <div className={`bar${total > capacity ? ' bar-over' : ''}`} role="progressbar" aria-label={t('trip.load.space')} aria-valuenow={total} aria-valuemin={0} aria-valuemax={capacity}><i style={{ width: `${pct}%` }} /></div>}
           {total > capacity && capacity > 0 && <span className="cell-sub">{t('trip.load.over', { n: total - capacity })}</span>}
         </div>
-        {isLoaded && <button type="button" onClick={() => setEditing(false)}>{t('common.cancel')}</button>}
+        {(isLoaded || topUp) && <button type="button" onClick={() => { setEditing(false); setTopUp(false) }}>{t('common.cancel')}</button>}
         {carryItems.length > 0 && !carryChecked && <span className="cell-sub text-warn">{t('trip.carry.checkFirst')}</span>}
         <button type="button" className="primary" disabled={busy || total === 0 || (carryItems.length > 0 && !carryChecked)} onClick={() => void save()}>
-          <PackageCheck size={18} aria-hidden="true" />{busy ? t('common.loading') : isLoaded ? t('trip.load.saveChange') : t('trip.load.loadBtn', { v: d.plan.vehicle })}</button>
+          <PackageCheck size={18} aria-hidden="true" />{busy ? t('common.loading') : isLoaded || topUp ? t('trip.load.saveChange') : t('trip.load.loadBtn', { v: d.plan.vehicle })}</button>
       </div>
     </div>
   )
