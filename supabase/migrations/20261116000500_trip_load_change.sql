@@ -13,7 +13,7 @@ begin
   if not public.is_staff() then raise exception 'FORBIDDEN'; end if;
   select * into v from public.route_day_plan where id = p_plan for update;
   if v.id is null then raise exception 'NOT_FOUND'; end if;
-  if v.status not in ('loaded', 'out') or v.unloaded_at is not null then raise exception 'TRIP_CLOSED'; end if;
+  if v.status not in ('loaded', 'out') then raise exception 'TRIP_CLOSED'; end if;
   if jsonb_typeof(p_lines) <> 'array' or exists (
        select 1 from jsonb_array_elements(p_lines) e left join public.variant x on x.id = (e ->> 'variant_id')::uuid
        where x.id is null or (e ->> 'qty') !~ '^\d{1,4}$')
@@ -22,13 +22,12 @@ begin
 
   for r in
     select coalesce(t.variant_id, (e ->> 'variant_id')::uuid) vid, coalesce((e ->> 'qty')::int, 0) want,
-           coalesce(t.loaded, 0) loaded, coalesce(t.billed, 0) billed, coalesce(t.delivered, 0) delivered
-      from public._trip_left(p_plan) t
+           coalesce(t.loaded, 0) loaded, coalesce(t.billed, 0) billed, x      from public._trip_left(p_plan) t
       full join jsonb_array_elements(p_lines) e on (e ->> 'variant_id')::uuid = t.variant_id
   loop
     w := r.want;
     if w = r.loaded then continue; end if;
-    s := ceil(r.billed) + r.delivered;
+    s := ceil(r.billed) + r.delivered + ceil(r.returned);
     if w < s then raise exception 'BELOW_SOLD'; end if;
     if w > r.loaded and (w - r.loaded) > coalesce((select on_hand from public.stock where variant_id = r.vid), 0) - public._carry_qty(r.vid, v.vehicle_id)
     then raise exception 'NOT_ENOUGH_STOCK'; end if;

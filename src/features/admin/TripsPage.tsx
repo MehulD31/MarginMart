@@ -252,10 +252,10 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
   const isLoaded = d.plan.status === 'loaded'
   const started = d.plan.status !== 'planning' && (d.plan.status !== 'loaded' || !!d.plan.unloaded_at || d.items.some((i) => i.billed || i.delivered || i.returned))
   // After selling started the load can still be topped up (a forgotten item), but never below what is sold.
-  const canTopUp = started && (d.plan.status === 'loaded' || d.plan.status === 'out') && !d.plan.unloaded_at
+  const canTopUp = started && (d.plan.status === 'loaded' || d.plan.status === 'out')
   const [topUp, setTopUp] = useState(false)
   const hasLoad = isLoaded || canTopUp
-  const soldMin = (i: TripDetail['items'][number]) => (topUp ? Math.ceil(i.billed) + i.delivered : 0)
+  const soldMin = (i: TripDetail['items'][number]) => (topUp ? Math.ceil(i.billed) + i.delivered + Math.ceil(i.returned) : 0)
   // What the godown can give: its stock, plus what is on the truck now when the load is being changed.
   // Leftover still on this truck from its last trip: the loader confirms the count before loading.
   const carryItems = hasLoad ? [] : d.items.filter((i) => (i.carry ?? 0) > 0)
@@ -313,13 +313,13 @@ function LoadStep({ d, onDone }: { d: TripDetail; onDone: (m: Msg) => void }) {
     return (
       <div className="stack-lg trip-printable">
         <Alert msg={{ kind: 'success', text: t('trip.load.loadedNote', { v: d.plan.vehicle, n: sumBy(items, (i) => i.loaded) }) }} />
+        {canTopUp && <div className="no-print"><button type="button" className="primary" data-testid="top-up" onClick={() => { qtyDraft.discard(startQty()); setTopUp(true) }}><PackageCheck size={18} aria-hidden="true" />{t('trip.load.topUp')}</button></div>}
         <div className="card card-flush"><ul className="plain-list trip-list">{items.map((i) => (
           <li key={i.variant_id}><span className="grow">{i.label}</span><strong className="num">{i.loaded}</strong></li>))}</ul></div>
         <Alert msg={msg} />
         {started && <p className="cell-sub">{t(canTopUp ? 'trip.load.topUpHint' : 'trip.load.lockedHint')}</p>}
         <div className="row no-print" style={{ gap: 8, flexWrap: 'wrap' }}>
           {!started && <button type="button" onClick={() => setEditing(true)}>{t('trip.load.change')}</button>}
-          {canTopUp && <button type="button" data-testid="top-up" onClick={() => { qtyDraft.discard(startQty()); setTopUp(true) }}><PackageCheck size={18} aria-hidden="true" />{t('trip.load.topUp')}</button>}
           {!started && <button type="button" className="danger" disabled={revert.busy} data-testid="undo-load"
             onClick={() => void revert.run('trip_undo_load', d.plan.id, t('trip.revert.load'), t('trip.revert.loadBody', { v: d.plan.vehicle, n: sumBy(items, (i) => i.loaded) }), t('trip.revert.loadDone', { v: d.plan.vehicle }), (m) => (m?.kind === 'error' ? setMsg(m) : onDone(m)))}>
             <Undo2 size={18} aria-hidden="true" />{t('trip.revert.load')}</button>}
