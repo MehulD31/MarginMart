@@ -23,13 +23,13 @@ import { useTripDetail } from './trips'
 export interface CounterLine { variant_id: string; item: string; qty: number; price_paise: number }
 export interface CounterBill {
   id: string; number: string; at: string; shop: string; shop_id: string; locality: string | null; phone: string | null; owner: string | null
-  mode: 'cash' | 'upi'; total_paise: number; discount_paise?: number; by: string | null; voided: boolean; void_reason: string | null
+  mode: 'cash' | 'upi'; total_paise: number; paid_paise?: number; discount_paise?: number; by: string | null; voided: boolean; void_reason: string | null
   margin_paise: number | null; lines: CounterLine[]; plan_id?: string | null; vehicle?: string | null
 }
 interface CatalogRow { variant_id: string; label: string; trade_paise: number; buy_paise: number | null; floor_paise: number | null; on_hand: number; units?: number }
 interface ShopRow { id: string; name: string; phone: string | null; locality: string | null; owner_name: string | null }
 interface Line { variant_id: string; qty: number; rate: string }
-interface SaleDraft { action: string; shop: ShopRow | null; lines: Line[]; mode: 'cash' | 'upi'; account: string; discount: string }
+interface SaleDraft { action: string; shop: ShopRow | null; lines: Line[]; mode: 'cash' | 'upi'; account: string; discount: string; pay?: 'full' | 'part' | 'none'; recv?: string }
 
 const useCounterCatalog = () => useQuery({
   queryKey: ['counter-catalog'],
@@ -67,11 +67,15 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
     shop: bill ? { id: bill.shop_id, name: bill.shop, phone: bill.phone, locality: bill.locality, owner_name: bill.owner ?? null } : null,
     lines: (bill?.lines ?? []).map((l) => ({ variant_id: l.variant_id, qty: l.qty, rate: String(l.price_paise / 100) })),
     mode: bill?.mode ?? 'cash', account: paidInto ?? '', discount: bill?.discount_paise ? String(bill.discount_paise / 100) : '',
+    pay: bill?.paid_paise != null && bill.paid_paise < bill.total_paise ? (bill.paid_paise === 0 ? 'none' : 'part') : 'full',
+    recv: bill?.paid_paise != null && bill.paid_paise > 0 && bill.paid_paise < bill.total_paise ? String(bill.paid_paise / 100) : '',
   }), { skip: !!bill })
   const { action, shop, lines, mode, account, discount } = draft.value
+  const pay = draft.value.pay ?? 'full', recv = draft.value.recv ?? ''
   const upd = <K extends keyof SaleDraft>(k: K) => (v: SaleDraft[K] | ((p: SaleDraft[K]) => SaleDraft[K])) =>
     draft.set((p) => ({ ...p, [k]: typeof v === 'function' ? (v as (x: SaleDraft[K]) => SaleDraft[K])(p[k]) : v }))
   const setShop = upd('shop'), setLines = upd('lines'), setMode = upd('mode'), setAccount = upd('account'), setDiscount = upd('discount')
+  const setPay = upd('pay'), setRecv = upd('recv')
   const [today] = useState(() => dayIST(new Date()))
   const [day, setDay] = useState(() => (bill ? dayIST(bill.at) : today))
   const [addingShop, setAddingShop] = useState(false)
@@ -111,9 +115,12 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   const total = subtotal - (discBad ? 0 : disc)
   const margin = lines.reduce((a, l) => a + l.qty * ((paise(l.rate) || 0) - (byId.get(l.variant_id)?.buy_paise ?? 0)), 0) - (discBad ? 0 : disc)
   const belowFloor = lines.filter((l) => { const f = byId.get(l.variant_id)?.floor_paise; return f != null && paise(l.rate) < f })
+  // Payment: full (default), part (some received now, the rest goes to the shop's Khata) or none (all goes to Khata)
+  const received = pay === 'full' ? null : pay === 'none' ? 0 : paise(recv) || 0
+  const recvBad = pay === 'part' && (!(Number(recv) > 0) || received! >= total)
   const minDay = shiftDay(today, -366)
   const dayBad = !planId && (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > today || day < minDay)
-  const problem = !shop ? t('sales.form.needShop') : dayBad ? t('sales.form.badDay') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : planId && lines.some((l) => l.qty > free(l.variant_id)) ? t('trip.form.overTruck') : discBad ? t('sales.form.badDiscount') : null
+  const problem = !shop ? t('sales.form.needShop') : dayBad ? t('sales.form.badDay') : !lines.length ? t('sales.form.needItem') : lines.some(lineBad) ? t('sales.form.badLine', { min: MIN_RATE }) : planId && lines.some((l) => l.qty > free(l.variant_id)) ? t('trip.form.overTruck') : discBad ? t('sales.form.badDiscount') : recvBad ? t('sales.form.badReceived') : null
 
   const setLine = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const addItem = (c: CatalogRow) => { setLines((ls) => [...ls, { variant_id: c.variant_id, qty: 1, rate: String(c.trade_paise / 100) }]); setItemQ('') }
@@ -127,6 +134,7 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
       p_lines: lines.map((l) => ({ variant_id: l.variant_id, qty: l.qty, price_paise: paise(l.rate) })),
       // null = keep the date as it is (a new bill for today keeps the current time; a truck bill keeps its trip's day)
       p_day: planId || (!bill && day === today) ? null : day,
+      p_received: received,
     })
     setBusy(false)
     if (error) { setMsg({ kind: 'error', text: errorMessage(t, error) }); return }
@@ -159,7 +167,7 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
   if (catalog.isLoading || shops.isLoading || (planId && trip.isLoading)) return <Skeleton rows={4} />
   return (
     <div className="stack-lg">
-      <DraftNote show={draft.restored} onFresh={() => { draft.discard({ action: crypto.randomUUID(), shop: null, lines: [], mode: 'cash', account: paidInto ?? '', discount: '' }); setShopQ(''); setItemQ('') }} />
+      <DraftNote show={draft.restored} onFresh={() => { draft.discard({ action: crypto.randomUUID(), shop: null, lines: [], mode: 'cash', account: paidInto ?? '', discount: '', pay: 'full', recv: '' }); setShopQ(''); setItemQ('') }} />
       {planId && <span className="badge badge-blue" style={{ alignSelf: 'flex-start', fontSize: '0.85rem' }} data-testid="truck-tag">🚚 {t('trip.form.from', { v: vehicle ?? '' })}</span>}
       {!bill && <VoiceSale onResult={applyVoice} />}
       {/* Bill date: today by default; pick an earlier day for an old parchi. Truck bills stay on their trip's day. */}
@@ -251,10 +259,19 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
       </div>
 
       {/* Payment */}
-      <fieldset className="days"><legend className="cell-title" style={{ marginBottom: 6 }}>{t('sales.form.pay')}</legend>
-        {(['cash', 'upi'] as const).map((m) => <label key={m} className="day-toggle"><input type="radio" name="cs-mode" checked={mode === m} onChange={() => setMode(m)} /><span>{m === 'cash' ? t('driver.cash') : 'UPI'}</span></label>)}
+      <fieldset className="days" data-testid="pay-state"><legend className="cell-title" style={{ marginBottom: 6 }}>{t('sales.form.paidQ')}</legend>
+        {(['full', 'part', 'none'] as const).map((p) => <label key={p} className="day-toggle"><input type="radio" name="cs-pay" checked={pay === p} onChange={() => setPay(p)} /><span>{t(`sales.form.pay_${p}`)}</span></label>)}
       </fieldset>
-      <PaidIntoSelect value={account} mode={mode} onChange={setAccount} id="cs-paid-into" />
+      {pay === 'part' && (
+        <label className="field" style={{ maxWidth: 260 }}><span>{t('sales.form.received')}</span>
+          <input type="number" inputMode="decimal" min={1} step="1" data-testid="received" value={recv} aria-invalid={recvBad} placeholder="0" onChange={(e) => setRecv(e.target.value)} /></label>)}
+      {pay !== 'full' && lines.length > 0 && !recvBad && (
+        <p className="badge badge-amber" style={{ alignSelf: 'flex-start' }} data-testid="due-note">{t('sales.form.dueNote', { amount: formatPaise(total - (received ?? 0)) })}</p>)}
+      {pay !== 'none' && <>
+        <fieldset className="days"><legend className="cell-sub" style={{ marginBottom: 6 }}>{t('sales.form.pay')}</legend>
+          {(['cash', 'upi'] as const).map((m) => <label key={m} className="day-toggle"><input type="radio" name="cs-mode" checked={mode === m} onChange={() => setMode(m)} /><span>{m === 'cash' ? t('driver.cash') : 'UPI'}</span></label>)}
+        </fieldset>
+        <PaidIntoSelect value={account} mode={mode} onChange={setAccount} id="cs-paid-into" /></>}
 
       {lines.length > 0 && (
         <div className="stack" style={{ gap: 6 }}>

@@ -17,6 +17,7 @@ import { DraftNote } from '../../shared/ui/DraftNote'
 import { useConfirm } from '../../shared/ui/confirm'
 import { addDays, todayIST, useDrivers, useLocaleDate } from './opsData'
 import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
+import { PayBadge } from './PayBadge'
 import { refreshTrips, stageOf, useTripHistory, sumBy, useTripBoard, useTripDetail, type Stage, type TripCard, type TripDetail, type TripOrder } from './trips'
 
 type Step = 'load' | 'unload' | 'bills' | 'close'
@@ -608,7 +609,7 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
                 <div className="cell-sub">{new Date(b.at).toLocaleTimeString(loc, { hour: 'numeric', minute: '2-digit' })} · {t('trip.load.cases', { n: b.cases })}</div></div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <div style={{ textAlign: 'right' }}><strong className="num">{formatPaise(b.total_paise)}</strong>{' '}
-                  <span className={`badge ${b.mode === 'upi' ? 'badge-blue' : 'badge-green'}`}>{b.mode === 'upi' ? 'UPI' : t('driver.cash')}</span></div>
+                  <PayBadge total={b.total_paise} paid={b.paid_paise} mode={b.mode} /></div>
                 {!closed && <button type="button" className="btn-sm" data-testid="edit-trip-bill" onClick={() => { setEditing(b.id); void dayBills.refetch() }}>
                   <Pencil size={16} aria-hidden="true" />{t('common.edit')}</button>}
               </div>

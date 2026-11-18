@@ -13,6 +13,7 @@ import { CounterSaleForm, type CounterBill } from './CounterSaleForm'
 import { casesNum } from '../../shared/cases'
 import { DeleteButton } from '../../shared/ui/DeleteButton'
 import { useMoneyPayments } from './money'
+import { PayBadge } from './PayBadge'
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
 
@@ -89,8 +90,8 @@ export default function CounterSalesPage() {
         <div className="stat"><div className="label">{t('sales.bills')}</div><div className="value num">{live.length}</div></div>
         <div className="stat"><div className="label">{t('sales.cases')}</div><div className="value num">{casesNum(sum(live, casesOf))}</div></div>
         <div className="stat"><div className="label">{t('sales.total')}</div><div className="value num">{formatPaise(sum(live, (b) => b.total_paise))}</div></div>
-        <div className="stat"><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'cash' ? b.total_paise : 0)))}</div></div>
-        <div className="stat"><div className="label">UPI</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'upi' ? b.total_paise : 0)))}</div></div>
+        <div className="stat"><div className="label">{t('driver.cash')}</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'cash' ? b.paid_paise ?? b.total_paise : 0)))}</div></div>
+        <div className="stat"><div className="label">UPI</div><div className="value num">{formatPaise(sum(live, (b) => (b.mode === 'upi' ? b.paid_paise ?? b.total_paise : 0)))}</div></div>
         {isAdmin && <div className="stat"><div className="label">{t('sales.margin')}</div><div className="value num">{formatPaise(sum(live, (b) => b.margin_paise ?? 0))}</div></div>}
       </div>
 
@@ -106,8 +107,8 @@ export default function CounterSalesPage() {
                 <td data-label={t('sales.bills')} className="num">{bs.length}</td>
                 <td data-label={t('sales.cases')} className="num">{casesNum(sum(bs, casesOf))}</td>
                 <td data-label={t('sales.total')} className="num"><strong>{formatPaise(sum(bs, (b) => b.total_paise))}</strong></td>
-                <td data-label={t('driver.cash')} className="num">{formatPaise(sum(bs, (b) => (b.mode === 'cash' ? b.total_paise : 0)))}</td>
-                <td data-label="UPI" className="num">{formatPaise(sum(bs, (b) => (b.mode === 'upi' ? b.total_paise : 0)))}</td>
+                <td data-label={t('driver.cash')} className="num">{formatPaise(sum(bs, (b) => (b.mode === 'cash' ? b.paid_paise ?? b.total_paise : 0)))}</td>
+                <td data-label="UPI" className="num">{formatPaise(sum(bs, (b) => (b.mode === 'upi' ? b.paid_paise ?? b.total_paise : 0)))}</td>
                 {isAdmin && <td data-label={t('sales.margin')} className="num">{formatPaise(sum(bs, (b) => b.margin_paise ?? 0))}</td>}
               </tr>))}</tbody>
           </table>
@@ -130,7 +131,7 @@ export default function CounterSalesPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <strong className="num">{formatPaise(b.total_paise)}</strong>{' '}
-                    <span className={`badge ${b.mode === 'upi' ? 'badge-blue' : 'badge-green'}`}>{b.mode === 'upi' ? 'UPI' : t('driver.cash')}</span>
+                    <PayBadge total={b.total_paise} paid={b.paid_paise} mode={b.mode} />
                     {paidBy.get(b.id)?.account_kind === 'personal' && <> <span className="badge badge-amber" data-testid="paid-into">→ {paidBy.get(b.id)!.account}</span></>}
                     {b.vehicle && <> <span className="badge badge-blue" data-testid="truck-badge">🚚 {b.vehicle}</span></>}
                     {b.voided && <> <span className="badge badge-red">{t('sales.voided')}</span></>}

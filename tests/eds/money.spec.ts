@@ -63,7 +63,7 @@ test('UPI sale paid into Shobhit -> badge, holding, change account, moved to com
 
   // Money page: holding card, row, change account
   await page.goto('/admin/money')
-  await expect(page.getByRole('heading', { name: 'Money with partners', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Money in hand (not in bank yet)', level: 1 })).toBeVisible()
   const hold = page.getByTestId('holding').filter({ hasText: 'Shobhit (personal)' })
   await expect(hold).toContainText(rs(before + 49500))
   const row = page.getByTestId('money-row').filter({ hasText: number })
@@ -102,7 +102,7 @@ test('UPI sale paid into Shobhit -> badge, holding, change account, moved to com
   await expect(hold).toContainText(rs(before + 49500))
 
   // the page is in the menu (sidebar on laptop, "More" on phone)
-  if (test.info().project.name === 'laptop') await expect(page.getByRole('link', { name: 'Money with partners' })).toBeVisible()
+  if (test.info().project.name === 'laptop') await expect(page.getByRole('link', { name: 'Money in hand' })).toBeVisible()
 
   // clean up the bill (stock goes back)
   const bill = ((await rpc('money_payments', { p_from: null, p_to: null })) as { ref_id: string; number: string }[]).find((p) => p.number === number)!

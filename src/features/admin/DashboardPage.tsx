@@ -31,12 +31,12 @@ const useMoney = () => useQuery({
     const [pays, bills, bal, hand] = await Promise.all([
       must<{ amount_paise: number; payment_mode: string }[]>(supabase.from('ledger_entry').select('amount_paise, payment_mode').eq('type', 'payment').gte('created_at', since)),
       // counter + truck bills are paid in full on the spot, so they are money collected today too
-      must<{ total_paise: number; payment_mode: string }[]>(supabase.from('cash_sale').select('total_paise, payment_mode').is('voided_at', null).gte('created_at', since)),
+      must<{ cash_in_paise: number; payment_mode: string }[]>(supabase.from('cash_sale').select('cash_in_paise, payment_mode').is('voided_at', null).gte('created_at', since)),
       must<{ balance_paise: number; overdue_paise: number }[]>(supabase.from('v_shop_balance').select('balance_paise, overdue_paise').gt('balance_paise', 0)),
       must<Handover[]>(supabase.from('cash_handover').select('expected_cash_paise, handed_cash_paise, stock_diff, received_at').gte('closed_at', weekAgo)),
     ])
     const paid = (m?: string) => pays.filter((p) => !m || p.payment_mode === m).reduce((a, p) => a - p.amount_paise, 0)
-      + bills.filter((b) => !m || b.payment_mode === m).reduce((a, b) => a + b.total_paise, 0)
+      + bills.filter((b) => !m || b.payment_mode === m).reduce((a, b) => a + b.cash_in_paise, 0)
     const flagged = hand.filter((h) => h.handed_cash_paise !== h.expected_cash_paise || (h.stock_diff?.length ?? 0) > 0)
     const overdue = bal.filter((b) => b.overdue_paise > 0)
     return {

@@ -76,7 +76,7 @@
     "live": "Live deliveries",
     "schemes": "Schemes",
     "sales": "Counter sales",
-    "money": "Money with partners",
+    "money": "Money in hand",
     "kharcha": "Kharcha",
     "products": "Products",
     "pepsi": "Pepsi portal",
@@ -643,6 +643,14 @@
     "signLoaded": "Checked by"
   },
   "khata": {
+    "received": {
+      "period": "Period", "span0": "Today", "span7": "Last 7 days", "span30": "Last 30 days", "total": "Money received", "none": "No payments in this period",
+      "for": "For", "when": "When", "amount": "Amount", "atBill": "At bill {{n}}", "later": "Paid later on Khata"
+    },
+    "openBills": {
+      "title": "Bills not fully paid", "hint": "Oldest first. A payment on this Khata is matched to the oldest bill first.", "days": "{{n}} days old",
+      "paidOf": "{{p}} paid of {{t}}", "left": "{{a}} left"
+    },
     "title": "Khata",
     "due": "Due",
     "advance": "Advance",
@@ -670,7 +678,8 @@
     "totalDue": "Total due",
     "advances": "Advances held",
     "filter": {
-      "due": "Owe money",
+      "due": "Pending (owe money)",
+      "received": "Payments received",
       "overdue": "Overdue",
       "all": "All shops"
     },
@@ -1102,6 +1111,15 @@
       "needShop": "Pick the shop.",
       "needItem": "Add at least one item.",
       "badLine": "Every item needs whole cases (1 or more) and a rate of ₹{{min}} or more.",
+      "paidQ": "Did the shop pay?",
+      "pay_full": "Fully paid",
+      "pay_part": "Part paid",
+      "pay_none": "Not paid",
+      "received": "Received now (₹)",
+      "dueNote": "{{amount}} will be added to this shop's Khata",
+      "badReceived": "Received amount must be more than 0 and less than the bill total.",
+      "notPaid": "Not paid: {{due}} due",
+      "partPaid": "Part paid {{paid}}, {{due}} due",
       "saveSale": "Save sale",
       "saveChanges": "Save changes",
       "discount": "Discount (₹)",
@@ -1133,7 +1151,7 @@
     }
   },
   "money": {
-    "title": "Money with partners",
+    "title": "Money in hand (not in bank yet)",
     "sub": "Shop payments that went into a personal account or the cash box are still company money. Move them to the company bank and record it here.",
     "paidInto": "Paid into",
     "kind": {

@@ -14,7 +14,7 @@ import { Alert, Empty, PageHeader, Sheet, Skeleton, type Msg } from '../../share
 import { BalanceCards, LedgerList } from '../../shared/ui/Khata'
 import { Pager } from '../../shared/ui/Pager'
 import { usePaged } from '../../shared/ui/paging'
-import { MONEY_KEYS } from './money'
+import { MONEY_KEYS, useMoneyPayments } from './money'
 import { PaidIntoSelect } from './PaidIntoSelect'
 
 interface Row { shop: Shop; balance: number; overdue: number; lastPay: string | null }
@@ -31,7 +31,13 @@ const useKhata = () => useQuery({
   },
 })
 
-type Filter = 'due' | 'overdue' | 'all'
+type Filter = 'due' | 'overdue' | 'all' | 'received'
+interface OpenItem { shop_id: string; shop: string; at: string; kind: string; label: string; charge_paise: number; remaining_paise: number; paid_paise: number; days: number; cash_sale_id: string | null }
+const useOpenItems = (shop?: string) => useQuery({
+  queryKey: ['khata-open', shop ?? 'all'],
+  queryFn: () => must<OpenItem[]>(supabase.rpc('khata_open_items', { p_shop: shop ?? null })),
+})
+const istDay = (shift = 0) => { const d = new Date(Date.now() + shift * 86400000); return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) }
 
 interface PayDraft { action: string; mode: 'cash' | 'upi'; account: string; amount: string; ref: string; note: string }
 export default function KhataPage() {
@@ -41,6 +47,7 @@ export default function KhataPage() {
   const [filter, setFilter] = useRemembered<Filter>('view:khata:filter', 'due')
   const [q, setQ] = useRemembered('view:khata:q', '')
   const [open, setOpen] = useState<Shop | null>(null)
+  const [span, setSpan] = useRemembered<'0' | '7' | '30'>('view:khata:span', '0')
   const routeName = new Map(routes.data?.map((r) => [r.id, r.name]))
   const rows = useMemo(() => (list.data ?? [])
     .filter((r) => filter === 'all' || (filter === 'due' ? r.balance > 0 : r.overdue > 0))
@@ -59,9 +66,9 @@ export default function KhataPage() {
       </div>
       <input type="search" aria-label={t('shops.searchLabel')} placeholder={t('shops.searchLabel')} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 420 }} />
       <div className="segmented" role="tablist" aria-label={t('khata.title')}>
-        {(['due', 'overdue', 'all'] as const).map((f) => <button key={f} type="button" role="tab" className="btn-sm" aria-selected={filter === f} onClick={() => setFilter(f)}>{t(`khata.filter.${f}`)}</button>)}
+        {(['due', 'overdue', 'all', 'received'] as const).map((f) => <button key={f} type="button" role="tab" className="btn-sm" aria-selected={filter === f} onClick={() => setFilter(f)}>{t(`khata.filter.${f}`)}</button>)}
       </div>
-      {list.isLoading ? <Skeleton rows={4} /> : rows.length === 0 ? (
+      {filter === 'received' ? <Received span={Number(span)} setSpan={(n) => setSpan(String(n) as '0' | '7' | '30')} q={q} /> : list.isLoading ? <Skeleton rows={4} /> : rows.length === 0 ? (
         <div className="card"><Empty icon={<BookOpen size={26} />} title={t('khata.nothingDue')} /></div>
       ) : (
         <div className="table-wrap"><table className="table-stack">
@@ -86,6 +93,52 @@ export default function KhataPage() {
   )
 }
 
+/** Every payment that came in (at the bill or later on the Khata), newest first. */
+function Received({ span, setSpan, q }: { span: number; setSpan: (n: number) => void; q: string }) {
+  const { t } = useTranslation()
+  const pay = useMoneyPayments(istDay(-span), istDay(0))
+  const rows = (pay.data ?? []).filter((p) => !q || p.shop.toLowerCase().includes(q.toLowerCase()))
+  const sum = rows.reduce((a, p) => a + p.amount_paise, 0)
+  const pg = usePaged(rows)
+  return (
+    <div className="stack">
+      <div className="segmented" role="tablist" aria-label={t('khata.received.period')}>
+        {[0, 7, 30].map((n) => <button key={n} type="button" role="tab" className="btn-sm" aria-selected={span === n} onClick={() => setSpan(n)}>{t(`khata.received.span${n}`)}</button>)}
+      </div>
+      <div className="stat kpi kpi-green"><span className="kpi-icon" aria-hidden="true"><Wallet size={18} /></span><div className="label">{t('khata.received.total')}</div><div className="value num" data-testid="received-total">{formatPaise(sum)}</div></div>
+      {pay.isLoading ? <Skeleton rows={4} /> : rows.length === 0 ? <div className="card"><Empty icon={<BookOpen size={26} />} title={t('khata.received.none')} /></div> : (
+        <div className="table-wrap"><table className="table-stack">
+          <thead><tr><th scope="col">{t('shops.name')}</th><th scope="col">{t('khata.received.for')}</th><th scope="col">{t('khata.received.when')}</th><th scope="col">{t('khata.received.amount')}</th></tr></thead>
+          <tbody>{pg.rows.map((p) => (
+            <tr key={p.kind + p.ref_id}>
+              <td className="lead"><div className="cell-title">{p.shop}</div></td>
+              <td data-label={t('khata.received.for')}>{p.kind === 'counter_sale' ? t('khata.received.atBill', { n: p.number }) : t('khata.received.later')}<div className="cell-sub">{p.mode === 'upi' ? 'UPI' : t('driver.cash')}{p.account ? ` · ${p.account}` : ''}</div></td>
+              <td data-label={t('khata.received.when')}>{new Date(p.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</td>
+              <td data-label={t('khata.received.amount')} className="num"><strong>{formatPaise(p.amount_paise)}</strong></td>
+            </tr>))}</tbody>
+        </table><Pager p={pg} /></div>)}
+    </div>
+  )
+}
+
+function OpenBills({ shopId }: { shopId: string }) {
+  const { t } = useTranslation()
+  const items = useOpenItems(shopId)
+  if (!items.data?.length) return null
+  return (
+    <div className="card stack" data-testid="open-bills">
+      <h2>{t('khata.openBills.title')}</h2>
+      <p className="muted">{t('khata.openBills.hint')}</p>
+      <ul className="plain-list">{items.data.map((i) => (
+        <li key={(i.cash_sale_id ?? i.label) + i.at} className="row-between" style={{ gap: 8, alignItems: 'flex-start' }}>
+          <div><div className="cell-title">{i.label}</div>
+            <div className="cell-sub">{new Date(i.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {t('khata.openBills.days', { n: i.days })}{i.paid_paise > 0 ? ` · ${t('khata.openBills.paidOf', { p: formatPaise(i.paid_paise), t: formatPaise(i.charge_paise) })}` : ` · ${formatPaise(i.charge_paise)}`}</div></div>
+          <span className={`badge ${i.days > 7 ? 'badge-red' : 'badge-amber'}`}>{t('khata.openBills.left', { a: formatPaise(i.remaining_paise) })}</span>
+        </li>))}</ul>
+    </div>
+  )
+}
+
 function ShopKhata({ shop }: { shop: Shop }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
@@ -105,7 +158,7 @@ function ShopKhata({ shop }: { shop: Shop }) {
   const [opening, setOpening] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
-  const refresh = () => ['ledger', 'credit-status', 'khata-list', ...MONEY_KEYS].forEach((k) => void qc.invalidateQueries({ queryKey: [k] }))
+  const refresh = () => ['ledger', 'credit-status', 'khata-list', 'khata-open', ...MONEY_KEYS].forEach((k) => void qc.invalidateQueries({ queryKey: [k] }))
 
   const run = async (fn: () => PromiseLike<{ error: unknown }>, ok: string) => {
     setBusy(true); setMsg(null)
@@ -124,6 +177,7 @@ function ShopKhata({ shop }: { shop: Shop }) {
   return (
     <div className="stack-lg">
       <BalanceCards status={status.data} />
+      <OpenBills shopId={shop.id} />
       <Alert msg={msg} />
       <div className="card stack">
         <h2>{t('khata.recordPayment')}</h2>

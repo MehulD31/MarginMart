@@ -29,7 +29,7 @@ export interface TripOrder {
   phone: string | null; stop_seq: number; lines: { variant_id: string; label: string; qty: number; price_paise: number }[]
   total_paise: number; delivered_paise: number
 }
-export interface TripBill { id: string; number: string; shop: string; owner: string | null; total_paise: number; mode: 'cash' | 'upi'; cases: number; at: string }
+export interface TripBill { id: string; number: string; shop: string; owner: string | null; total_paise: number; paid_paise?: number; mode: 'cash' | 'upi'; cases: number; at: string }
 export interface TripDetail {
   plan: {
     id: string; date: string; status: PlanStatus; route: string; vehicle_id: string | null; vehicle: string | null; capacity: number | null
