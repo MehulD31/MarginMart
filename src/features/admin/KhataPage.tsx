@@ -65,7 +65,7 @@ export default function KhataPage() {
         <div className="stat kpi kpi-green"><span className="kpi-icon" aria-hidden="true"><Wallet size={18} /></span><div className="label">{t('khata.advances')}</div><div className="value num">{formatPaise(totals.adv)}</div></div>
       </div>
       <input type="search" aria-label={t('shops.searchLabel')} placeholder={t('shops.searchLabel')} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 420 }} />
-      <div className="segmented" role="tablist" aria-label={t('khata.title')}>
+      <div className="segmented" role="tablist" aria-label={t('khata.title')} style={{ flexWrap: 'wrap' }}>
         {(['due', 'overdue', 'all', 'received'] as const).map((f) => <button key={f} type="button" role="tab" className="btn-sm" aria-selected={filter === f} onClick={() => setFilter(f)}>{t(`khata.filter.${f}`)}</button>)}
       </div>
       {filter === 'received' ? <Received span={Number(span)} setSpan={(n) => setSpan(String(n) as '0' | '7' | '30')} q={q} /> : list.isLoading ? <Skeleton rows={4} /> : rows.length === 0 ? (
@@ -102,21 +102,20 @@ function Received({ span, setSpan, q }: { span: number; setSpan: (n: number) => 
   const pg = usePaged(rows)
   return (
     <div className="stack">
-      <div className="segmented" role="tablist" aria-label={t('khata.received.period')}>
+      <div className="segmented" role="tablist" aria-label={t('khata.received.period')} style={{ flexWrap: 'wrap' }}>
         {[0, 7, 30].map((n) => <button key={n} type="button" role="tab" className="btn-sm" aria-selected={span === n} onClick={() => setSpan(n)}>{t(`khata.received.span${n}`)}</button>)}
       </div>
       <div className="stat kpi kpi-green"><span className="kpi-icon" aria-hidden="true"><Wallet size={18} /></span><div className="label">{t('khata.received.total')}</div><div className="value num" data-testid="received-total">{formatPaise(sum)}</div></div>
       {pay.isLoading ? <Skeleton rows={4} /> : rows.length === 0 ? <div className="card"><Empty icon={<BookOpen size={26} />} title={t('khata.received.none')} /></div> : (
-        <div className="table-wrap"><table className="table-stack">
-          <thead><tr><th scope="col">{t('shops.name')}</th><th scope="col">{t('khata.received.for')}</th><th scope="col">{t('khata.received.when')}</th><th scope="col">{t('khata.received.amount')}</th></tr></thead>
-          <tbody>{pg.rows.map((p) => (
-            <tr key={p.kind + p.ref_id}>
-              <td className="lead"><div className="cell-title">{p.shop}</div></td>
-              <td data-label={t('khata.received.for')}>{p.kind === 'counter_sale' ? t('khata.received.atBill', { n: p.number }) : t('khata.received.later')}<div className="cell-sub">{p.mode === 'upi' ? 'UPI' : t('driver.cash')}{p.account ? ` · ${p.account}` : ''}</div></td>
-              <td data-label={t('khata.received.when')}>{new Date(p.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</td>
-              <td data-label={t('khata.received.amount')} className="num"><strong>{formatPaise(p.amount_paise)}</strong></td>
-            </tr>))}</tbody>
-        </table><Pager p={pg} /></div>)}
+        <div className="card card-flush"><ul className="plain-list" data-testid="received-list">{pg.rows.map((p) => (
+          <li key={p.kind + p.ref_id} className="row-between" style={{ gap: 12, padding: '12px 16px', alignItems: 'flex-start' }}>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <div className="cell-title" style={{ overflowWrap: 'anywhere' }}>{p.shop}</div>
+              <div className="cell-sub">{p.kind === 'counter_sale' ? t('khata.received.atBill', { n: p.number }) : t('khata.received.later')} · {p.mode === 'upi' ? 'UPI' : t('driver.cash')}{p.account && p.account_kind !== 'cash' ? ` · ${p.account}` : ''}</div>
+              <div className="cell-sub">{new Date(p.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</div>
+            </div>
+            <strong className="num">{formatPaise(p.amount_paise)}</strong>
+          </li>))}</ul><Pager p={pg} /></div>)}
     </div>
   )
 }

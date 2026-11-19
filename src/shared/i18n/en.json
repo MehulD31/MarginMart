@@ -678,8 +678,8 @@
     "totalDue": "Total due",
     "advances": "Advances held",
     "filter": {
-      "due": "Pending (owe money)",
-      "received": "Payments received",
+      "due": "Pending",
+      "received": "Received",
       "overdue": "Overdue",
       "all": "All shops"
     },
