@@ -1351,6 +1351,7 @@
       "confirmDeliver": "Confirm delivery",
       "title": "Bills from this truck ({{n}})",
       "none": "No bills yet.",
+      "notFound": "This bill could not be found. Refresh and try again.",
       "editHint": "Wrong item, cases, rate or shop? Tap Edit on the bill. Bills can be changed until the trip is closed.",
       "updated": "Bill {{n}} updated."
     },

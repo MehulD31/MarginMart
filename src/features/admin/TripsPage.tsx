@@ -539,9 +539,11 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
   // Edit a truck bill in place (wrong qty, rate, shop, cash/UPI): the full bill comes from the same list the Counter sales page uses.
   const [editing, setEditing] = useState<string | null>(null)
   const closed = d.plan.status === 'closed'
+  // A truck that stays open past midnight gets bills dated the next day, so look from the trip day up to today (not the trip day only).
+  const lastDay = [new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }), d.plan.date].sort().pop()!
   const dayBills = useQuery({
-    queryKey: ['counter-sales', d.plan.date, d.plan.date, 'trip'],
-    queryFn: () => must<CounterBill[] | null>(supabase.rpc('counter_sales', { p_from: d.plan.date, p_to: d.plan.date })).then((r) => r ?? []),
+    queryKey: ['counter-sales', d.plan.date, lastDay, 'trip'],
+    queryFn: () => must<CounterBill[] | null>(supabase.rpc('counter_sales', { p_from: d.plan.date, p_to: lastDay })).then((r) => r ?? []),
     enabled: !!editing, staleTime: 0, refetchOnMount: 'always',
   })
   // never open the form on an old copy of the bill (a second edit must start from the saved numbers)
@@ -630,7 +632,8 @@ function BillsStep({ d, onGoClose }: { d: TripDetail; onGoClose: () => void }) {
         </div>}
       </Sheet>
       <Sheet open={!!editing} wide title={editBill ? t('sales.editTitle', { n: editBill.number }) : t('common.edit')} onClose={() => setEditing(null)}>
-        {editing && (!editBill ? (dayBills.isError ? <Alert msg={{ kind: 'error', text: errorMessage(t, dayBills.error) }} /> : <Skeleton rows={4} />)
+        {editing && (!editBill ? (dayBills.isError ? <Alert msg={{ kind: 'error', text: errorMessage(t, dayBills.error) }} />
+          : dayBills.isFetching ? <Skeleton rows={4} /> : <Alert msg={{ kind: 'error', text: t('trip.bills.notFound') }} />)
           : <CounterSaleForm key={editBill.id} bill={editBill} onDone={(number) => {
               setEditing(null)
               if (!number) return
