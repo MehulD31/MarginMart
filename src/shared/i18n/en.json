@@ -80,7 +80,8 @@
     "kharcha": "Kharcha",
     "products": "Products",
     "pepsi": "Pepsi portal",
-    "salesReport": "Sales report"
+    "salesReport": "Sales report",
+    "buying": "Who buys what"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -1791,6 +1792,17 @@
     "askedShort": "Asked",
     "gotShort": "Got",
     "noSpecial": "No Near Expiry, Specific MRP or filler lines in the last 60 days."
+  },
+  "buy": {
+    "title": "Who buys what", "sub": "Which shop buys which item, how much, and at what rate (per case, after discount).",
+    "byShop": "By shop", "byItem": "By item", "period": "Period",
+    "span": { "30": "30 days", "90": "90 days", "365": "1 year", "all": "All time" },
+    "sold": "Sold", "cases": "Cases", "shops": "Shops", "items": "Items", "bought": "Bought",
+    "search": "Search", "searchShop": "Search shop or area", "searchItem": "Search item", "none": "Nothing sold in this period",
+    "topItem": "Buys most: {{item}} ({{n}})", "topShop": "Top shop: {{shop}} ({{n}})", "lastBought": "last {{d}}",
+    "casesN": "{{n}} cases", "shopsN": "{{n}} shops", "rate": "rate",
+    "itemsBought": "Items bought, most first", "recentBills": "Recent bills", "routeBill": "Route bill",
+    "avgRate": "avg rate {{r}}", "lastRate": "last {{r}}", "rateRange": "rate range {{r}}", "times": "{{n}} bills", "avgRateLabel": "Average rate", "whoBuys": "Shops that buy this, most first"
   },
   "srep": {
     "title": "Sales report",

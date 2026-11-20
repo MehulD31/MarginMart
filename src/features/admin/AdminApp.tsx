@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, Bot, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BarChart3, Bot, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, TrendingUp, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { useFitTables } from '../../shared/ui/useFitTables'
 import { useStockWatch } from '../../shared/api/db'
@@ -35,6 +35,7 @@ import ProductsPage from './ProductsPage'
 import PepsiPage from './PepsiPage'
 import AssistantPage from './AssistantPage'
 import SalesReportPage from './SalesReportPage'
+import BuyingPage from './BuyingPage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -68,6 +69,7 @@ export default function AdminApp() {
     { to: 'live', label: t('nav.live'), icon: Radio },
     { to: 'sales', label: t('nav.sales'), icon: Receipt },
     { to: 'khata', label: t('nav.khata'), icon: BookOpen },
+    { to: 'buying', label: t('nav.buying'), icon: TrendingUp },
     ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'money', label: t('nav.money'), icon: Wallet, badge: moneyLate }] : []),
     ...(profile?.role === 'admin' ? [{ to: 'kharcha', label: t('nav.kharcha'), icon: Coins }] : []),
     ...(profile?.role === 'admin' ? [{ to: 'report', label: t('nav.salesReport'), icon: FileText }, { to: 'products', label: t('nav.products'), icon: BarChart3 }] : []),
@@ -139,6 +141,7 @@ export default function AdminApp() {
           <Route path="live" element={<LivePage />} />
           <Route path="sales" element={<CounterSalesPage />} />
           <Route path="khata" element={<KhataPage />} />
+      <Route path="buying" element={<BuyingPage />} />
           <Route path="money" element={<MoneyPage />} />
           <Route path="kharcha" element={adminOnly(<KharchaPage />)} />
           <Route path="products" element={adminOnly(<ProductsPage />)} />
