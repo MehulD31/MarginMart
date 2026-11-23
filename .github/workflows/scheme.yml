@@ -13,7 +13,7 @@ on:
 permissions: { contents: read }
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Playwright cannot install Chromium deps on ubuntu-latest (26.04) yet, Nov 2026
     timeout-minutes: 6
     env:
       KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}

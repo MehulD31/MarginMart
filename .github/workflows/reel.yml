@@ -13,7 +13,7 @@ concurrency: { group: reel, cancel-in-progress: false }
 permissions: { contents: read }
 jobs:
   edit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Playwright cannot install Chromium deps on ubuntu-latest (26.04) yet, Nov 2026
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
