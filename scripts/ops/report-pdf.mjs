@@ -12,7 +12,7 @@ if (done && !force) { console.log('already sent', key); process.exit(0) }
 
 const r = await db('rpc/sales_report', { method: 'POST', body: JSON.stringify({ p_from: p.from, p_to: p.to }) })
 const html = reportHtml(r, { title: 'Sales report', label: p.label, generatedAt: new Date().toISOString() })
-const b = await chromium.launch()
+const b = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {})
 const page = await b.newPage()
 await page.setContent(html, { waitUntil: 'load' })
 const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '14mm', bottom: '16mm', left: '12mm', right: '12mm' },

@@ -58,7 +58,7 @@ strong { color: #0b1f3a; } th strong { color: #fff; } ul { margin: 3pt 0 3pt 16p
 .line { border-bottom: 1px solid #111; height: 20pt; margin: 4pt 0; }
 </style></head><body>${out.join('\n')}</body></html>`
 
-const b = await chromium.launch(); const p = await b.newPage()
+const b = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {}); const p = await b.newPage()
 await p.setContent(html, { waitUntil: 'load' })
 await p.pdf({ path: (process.argv[2] ?? 'docs/pepsi-meeting-brief.md').replace(/\.md$/, '.pdf'), format: 'A4', landscape: process.argv[3] === 'landscape', printBackground: true, displayHeaderFooter: true,
   headerTemplate: '<span></span>', footerTemplate: '<div style="font-size:8px;width:100%;text-align:center;color:#888">Prepared by K.D. Foods · page <span class="pageNumber"></span>/<span class="totalPages"></span></div>' })

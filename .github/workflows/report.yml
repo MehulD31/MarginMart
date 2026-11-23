@@ -17,14 +17,13 @@ jobs:
         with: { sparse-checkout: "scripts/ops/report-pdf.mjs\nscripts/scheme-bot/lib.mjs\nsrc/shared/salesReport.js", sparse-checkout-cone-mode: false }
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
-      - name: Chromium
-        run: |
-          npm i --no-save --no-package-lock playwright@1.59.1 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
+      - name: Playwright (uses the runner's own Google Chrome, nothing to download)
+        run: npm i --no-save --no-package-lock playwright@1.59.1 >/dev/null
       - name: Make and send the PDF
         env:
           PERIOD: ${{ github.event.inputs.period }}
           FORCE: ${{ github.event.inputs.force }}
+          PW_CHANNEL: chrome
           KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
           KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
