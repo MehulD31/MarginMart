@@ -220,28 +220,30 @@ export function CounterSaleForm({ bill, paidInto, onDone, planId: planProp, vehi
             const low = c?.floor_paise != null && paise(l.rate) < c.floor_paise
             const label = c?.label ?? bill?.lines.find((x) => x.variant_id === l.variant_id)?.item ?? ''
             return (
-              <li key={l.variant_id} className="cart-line" data-testid="sale-line">
-                <div className="grow">
-                  <div className="cell-title">{label}</div>
-                  <div className="row" style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                    <label className="row" style={{ gap: 4 }}><span className="cell-sub">{t('sales.form.rate')} ₹</span>
-                      <input type="number" inputMode="decimal" min={MIN_RATE} step="0.5" style={{ width: 96 }} value={l.rate}
-                        aria-label={`${t('sales.form.rate')}: ${label}`} aria-invalid={!(Number(l.rate) >= MIN_RATE)} onChange={(e) => setLine(i, { rate: e.target.value })} /></label>
-                    <span className="cell-sub num">= {formatPaise(Math.round(l.qty * (paise(l.rate) || 0)))}{u > 1 && sp.p > 0 ? ` · ${qtyText(l.qty, u, words)}` : ''}</span>
-                    {over && <span className="badge badge-amber">{t(planId ? 'trip.form.onlyLeft' : 'sales.form.overStock', { n: qtyText(Math.max(0, free(l.variant_id)), u, words) })}</span>}
-                    {low && <span className="badge badge-red">{t('sales.form.belowFloor', { floor: formatPaise(c!.floor_paise!) })}</span>}
-                  </div>
+              // Stacked so it fits a phone: name + delete on top, then cases | loose pieces | rate side by side, then amount and warnings.
+              <li key={l.variant_id} className="stack" style={{ gap: 8, padding: '12px 0', borderBottom: '1px solid var(--line, #e5e7eb)' }} data-testid="sale-line">
+                <div className="row-between" style={{ gap: 8, alignItems: 'flex-start' }}>
+                  <div className="cell-title" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{label}</div>
+                  <button type="button" className="btn-sm ghost icon-btn" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} aria-label={`${t('sales.form.remove')}: ${label}`}><Trash2 size={16} aria-hidden="true" /></button>
                 </div>
-                <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <Stepper value={sp.c} max={planId ? Math.max(sp.c, Math.floor(free(l.variant_id))) : 9999}
-                    onChange={(n) => (n === 0 && sp.p === 0 ? setLines((ls) => ls.filter((_, j) => j !== i)) : setLine(i, { qty: joinQty(n, sp.p, u) }))} showZero={sp.p > 0} label={label} />
+                <div className="row" style={{ gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div className="field" style={{ gap: 2 }}><span className="cell-sub">{t('sales.form.casesLabel')}</span>
+                    <Stepper value={sp.c} max={planId ? Math.max(sp.c, Math.floor(free(l.variant_id))) : 9999}
+                      onChange={(n) => (n === 0 && sp.p === 0 ? setLines((ls) => ls.filter((_, j) => j !== i)) : setLine(i, { qty: joinQty(n, sp.p, u) }))} showZero={sp.p > 0} label={label} /></div>
                   {u > 1 && (
                     <label className="field" style={{ gap: 2 }} data-testid="pcs-field"><span className="cell-sub">{t('sales.form.pcs', { n: u })}</span>
                       <input type="number" inputMode="numeric" min={0} max={u - 1} step={1} style={{ width: 84 }} value={sp.p || ''} placeholder="0"
                         aria-label={`${t('sales.form.pcs', { n: u })}: ${label}`}
                         onChange={(e) => { const p = Math.max(0, Math.min(u - 1, Math.floor(Number(e.target.value) || 0))); setLine(i, { qty: joinQty(sp.c, p, u) }) }} /></label>)}
+                  <label className="field" style={{ gap: 2 }}><span className="cell-sub">{t('sales.form.rate')} ₹</span>
+                    <input type="number" inputMode="decimal" min={MIN_RATE} step="0.5" style={{ width: 96 }} value={l.rate}
+                      aria-label={`${t('sales.form.rate')}: ${label}`} aria-invalid={!(Number(l.rate) >= MIN_RATE)} onChange={(e) => setLine(i, { rate: e.target.value })} /></label>
                 </div>
-                <button type="button" className="btn-sm ghost icon-btn" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} aria-label={`${t('sales.form.remove')}: ${label}`}><Trash2 size={16} aria-hidden="true" /></button>
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  <span className="cell-sub num">= {formatPaise(Math.round(l.qty * (paise(l.rate) || 0)))}{u > 1 && sp.p > 0 ? ` · ${qtyText(l.qty, u, words)}` : ''}</span>
+                  {over && <span className="badge badge-amber">{t(planId ? 'trip.form.onlyLeft' : 'sales.form.overStock', { n: qtyText(Math.max(0, free(l.variant_id)), u, words) })}</span>}
+                  {low && <span className="badge badge-red">{t('sales.form.belowFloor', { floor: formatPaise(c!.floor_paise!) })}</span>}
+                </div>
               </li>)
           })}</ul>
         )}

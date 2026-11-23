@@ -1121,6 +1121,7 @@
       "badReceived": "Received amount must be more than 0 and less than the bill total.",
       "notPaid": "Not paid: {{due}} due",
       "partPaid": "Part paid {{paid}}, {{due}} due",
+      "casesLabel": "Cases (peti)",
       "saveSale": "Save sale",
       "saveChanges": "Save changes",
       "discount": "Discount (₹)",
