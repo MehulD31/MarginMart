@@ -58,6 +58,7 @@
     "catalog": "Catalogue",
     "prices": "Price lists",
     "shops": "Shops",
+    "callSheet": "Route Call Sheet",
     "network": "Routes & vehicles",
     "setup": "Setup",
     "people": "People",
@@ -1422,6 +1423,7 @@
       "call": "Call today",
       "items": "Items",
       "shops": "Shops",
+    "callSheet": "Route Call Sheet",
       "areas": "Growth"
     },
     "ai": {
@@ -1511,6 +1513,7 @@
       "item": "Item",
       "sold": "Sold (cases)",
       "shops": "Shops",
+    "callSheet": "Route Call Sheet",
       "stock": "Stock · lasts",
       "margin": "Margin / case",
       "days": "{{n}} days",
