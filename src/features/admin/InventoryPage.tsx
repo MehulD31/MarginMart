@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Boxes } from 'lucide-react'
+import { Boxes, Download } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { lowIds, must, useStockWatch } from '../../shared/api/db'
 import { useStockRows, type StockRow } from './stockRows'
@@ -25,6 +25,7 @@ export default function InventoryPage() {
   const [q, setQ] = useRemembered('view:inventory:q', '')
   const [filter, setFilter] = useRemembered<'all' | 'low' | 'loaded'>('view:inventory:filter', 'all')
   const [open, setOpen] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const watch = useStockWatch().data
   const lowSet = lowIds(watch)
@@ -72,9 +73,100 @@ export default function InventoryPage() {
   for (const c of carry.data ?? []) onTruck.set(c.variant_id, (onTruck.get(c.variant_id) ?? 0) + c.qty)
 
   const pg = usePaged(list)
+
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      const rs = (p: number) => Number((p / 100).toFixed(2))
+      const styleHead = (ws: InstanceType<typeof ExcelJS.Workbook>['worksheets'][number], cols: { header: string; key: string; width: number }[]) => {
+        ws.columns = cols
+        const head = ws.getRow(1)
+        head.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF15803D' } }
+        ws.views = [{ state: 'frozen', ySplit: 1 }]
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } }
+      }
+      const cols = [
+        { header: 'Item', key: 'item', width: 32 },
+        { header: 'Variant', key: 'sub', width: 18 },
+        { header: 'On Hand (Cases)', key: 'onHand', width: 16 },
+        { header: 'Carry on Truck', key: 'carry', width: 14 },
+        { header: 'Loaded in Vehicle', key: 'loaded', width: 16 },
+        { header: 'Vehicles', key: 'vehicles', width: 18 },
+        { header: 'Low Threshold', key: 'threshold', width: 14 },
+        { header: 'Days Left', key: 'daysLeft', width: 11 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Avg Cost (₹)', key: 'avgCost', width: 14 },
+        { header: 'Stock Value (₹)', key: 'val', width: 16 },
+        { header: 'Active', key: 'active', width: 9 },
+      ]
+      const mapRow = (r: StockRow) => {
+        const ld = loadedMap.get(r.variant_id)
+        const dLeft = days.get(r.variant_id)
+        const status = r.on_hand < 0 ? 'Negative' : isLow(r) ? 'Low' : 'OK'
+        return {
+          item: r.name,
+          sub: r.sub ?? '',
+          onHand: Number(r.on_hand),
+          carry: onTruck.get(r.variant_id) ?? 0,
+          loaded: ld?.qty ?? 0,
+          vehicles: ld ? [...new Set(ld.vehicles)].join(', ') : '',
+          threshold: r.low_threshold || 0,
+          daysLeft: dLeft != null ? Math.floor(dLeft) : '',
+          status,
+          avgCost: r.avg_cost_paise ? rs(r.avg_cost_paise) : 0,
+          val: rs(Math.max(r.on_hand, 0) * r.avg_cost_paise),
+          active: r.active ? 'Yes' : 'No',
+        }
+      }
+
+      const wsAll = wb.addWorksheet('Stock')
+      styleHead(wsAll, cols)
+      const allMapped = list.map(mapRow)
+      wsAll.addRows(allMapped)
+      if (allMapped.length) {
+        const tot = wsAll.addRow({
+          item: `TOTAL (${allMapped.length} items)`,
+          sub: '',
+          onHand: Number(allMapped.reduce((s, x) => s + Math.max(x.onHand, 0), 0).toFixed(2)),
+          carry: Number(allMapped.reduce((s, x) => s + x.carry, 0).toFixed(2)),
+          loaded: Number(allMapped.reduce((s, x) => s + x.loaded, 0).toFixed(2)),
+          vehicles: '',
+          threshold: '',
+          daysLeft: '',
+          status: `${low} low`,
+          avgCost: '',
+          val: Number(allMapped.reduce((s, x) => s + x.val, 0).toFixed(2)),
+          active: '',
+        })
+        tot.font = { bold: true }
+      }
+
+      const lowRows = rows.filter((r) => r.on_hand < 0 || isLow(r)).map(mapRow)
+      const wsLow = wb.addWorksheet('Low Stock')
+      styleHead(wsLow, cols)
+      wsLow.addRows(lowRows)
+
+      const buf = await wb.xlsx.writeBuffer()
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `KD-Foods-inventory-${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <section className="stack-lg">
-      <PageHeader title={t('inventory.title')} sub={t('inventory.sub', { cases, value: formatPaise(value), low })} />
+      <PageHeader title={t('inventory.title')} sub={t('inventory.sub', { cases, value: formatPaise(value), low })}
+        actions={<button type="button" onClick={() => void exportExcel()} disabled={exporting || !rows.length}><Download size={18} aria-hidden="true" />{exporting ? t('common.loading') : 'Export Excel'}</button>} />
       {!isAdmin && <Alert msg={{ kind: 'warn', text: t('catalog.readOnly') }} />}
       <div className="row" style={{ flexWrap: 'wrap' }}>
         <input type="search" aria-label={t('common.search')} placeholder={t('catalog.searchLabel')} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 360 }} />
