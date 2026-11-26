@@ -1818,6 +1818,7 @@
     "title": "Sales report",
     "sub": "Everything sold: items, cases, amount, shops and days. Live, any period. Download as PDF to share.",
     "pdf": "Download PDF",
+    "excel": "Export Excel",
     "period": "Period",
     "from": "From",
     "to": "To",

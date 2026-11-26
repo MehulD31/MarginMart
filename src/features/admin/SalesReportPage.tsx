@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { FileDown } from 'lucide-react'
+import { Download, FileDown } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { Alert, Empty, PageHeader, Skeleton } from '../../shared/ui/kit'
@@ -21,6 +21,7 @@ export default function SalesReportPage() {
   const [custom, setCustom] = useState({ from: today.slice(0, 8) + '01', to: today })
   const [sort, setSort] = useState<SortKey>('cases')
   const [q, setQ] = useState('')
+  const [exporting, setExporting] = useState(false)
   const p = kind === 'custom' ? { ...custom, label: `${niceDate(custom.from)} – ${niceDate(custom.to)}` } : periodOf(kind, today)
   const badRange = kind === 'custom' && (!custom.from || !custom.to || custom.from > custom.to)
   const rep = useQuery({ queryKey: ['sales_report', p.from, p.to], enabled: !badRange, refetchInterval: 120_000,
@@ -41,6 +42,196 @@ export default function SalesReportPage() {
     setTimeout(() => { try { w.focus(); w.print() } catch { /* closed */ } }, 600)
   }
 
+  const exportExcel = async () => {
+    if (!rep.data) return
+    setExporting(true)
+    try {
+      const r = rep.data, tt = r.totals
+      const rs = (paise: number | string | null | undefined) => Number((Number(paise ?? 0) / 100).toFixed(2))
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      const styleHead = (ws: InstanceType<typeof ExcelJS.Workbook>['worksheets'][number], cols: { header: string; key: string; width: number }[]) => {
+        ws.columns = cols
+        const head = ws.getRow(1)
+        head.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF15803D' } }
+        ws.views = [{ state: 'frozen', ySplit: 1 }]
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } }
+      }
+
+      const netAmt = Number(tt?.net_paise ?? 0)
+      const grossAmt = Number(tt?.gross_paise ?? 0)
+      const costAmt = Number(tt?.cost_paise ?? 0)
+      const marginAmt = Number(tt?.margin_paise ?? 0)
+      const discAmt = Number(tt?.discount_paise ?? 0)
+      const totCases = Number(tt?.cases ?? 0)
+      const totBills = Math.max(1, Number(tt?.bills ?? 0))
+      const totDays = Math.max(1, Number(tt?.days ?? 0))
+      const fromEff = r.first_sale && r.from < r.first_sale ? r.first_sale : r.from
+
+      // 1. Summary sheet
+      const wsSum = wb.addWorksheet('Summary')
+      styleHead(wsSum, [
+        { header: 'Metric', key: 'metric', width: 28 },
+        { header: 'Value', key: 'value', width: 22 },
+        { header: 'Notes', key: 'notes', width: 38 },
+      ])
+      wsSum.addRows([
+        { metric: 'Report Period', value: p.label, notes: `${fromEff} to ${r.to}` },
+        { metric: 'Total Sales (Net, ₹)', value: rs(netAmt), notes: discAmt ? `After ₹${rs(discAmt)} bill discounts` : 'All bills (incl. GST)' },
+        { metric: 'Gross Sales (₹)', value: rs(grossAmt), notes: 'Before bill discounts' },
+        { metric: 'Buy Cost (₹)', value: rs(costAmt), notes: 'Based on purchase cost per case' },
+        { metric: 'Gross Margin (₹)', value: rs(marginAmt), notes: `${netAmt ? ((marginAmt / netAmt) * 100).toFixed(1) : '0.0'}% of net sales` },
+        { metric: 'Cases Sold', value: totCases, notes: `${Number(tt?.units ?? 0).toLocaleString('en-IN')} bottles / packs` },
+        { metric: 'Bills', value: Number(tt?.bills ?? 0), notes: `${tt?.days ?? 0} selling days` },
+        { metric: 'Shops Served', value: Number(tt?.shops ?? 0), notes: `${tt?.items ?? 0} unique items` },
+        { metric: 'Avg Bill Value (₹)', value: rs(netAmt / totBills), notes: `${(totCases / totBills).toFixed(1)} cases / bill` },
+        { metric: 'Avg Sell Rate / Case (₹)', value: rs(netAmt / Math.max(1, totCases)), notes: '' },
+        { metric: 'Avg Margin / Case (₹)', value: rs(marginAmt / Math.max(1, totCases)), notes: '' },
+        { metric: 'Avg Sales / Day (₹)', value: rs(netAmt / totDays), notes: `${Math.round(totCases / totDays)} cases / day` },
+      ])
+      wsSum.addRow({})
+      const chHead = wsSum.addRow({ metric: 'Channel', value: 'Bills', notes: 'Cases / Net (₹)' })
+      chHead.font = { bold: true }
+      for (const c of r.by_channel ?? []) {
+        wsSum.addRow({ metric: t(`srep.ch.${c.channel}`), value: c.bills, notes: `${c.cases} cases · ₹${rs(c.net).toLocaleString('en-IN')}` })
+      }
+      wsSum.addRow({})
+      const pmHead = wsSum.addRow({ metric: 'Payment Mode', value: 'Bills', notes: 'Net (₹)' })
+      pmHead.font = { bold: true }
+      for (const m of r.by_mode ?? []) {
+        wsSum.addRow({ metric: t(`srep.mode.${m.mode}`), value: m.bills, notes: `₹${rs(m.net).toLocaleString('en-IN')}` })
+      }
+
+      // 2. Items Sold sheet (respects current sort)
+      const wsItems = wb.addWorksheet('Items Sold')
+      styleHead(wsItems, [
+        { header: '#', key: 'idx', width: 6 },
+        { header: 'Item', key: 'item', width: 32 },
+        { header: 'Brand', key: 'brand', width: 16 },
+        { header: 'Cases', key: 'cases', width: 10 },
+        { header: 'Bottles', key: 'bottles', width: 12 },
+        { header: 'Amount (₹)', key: 'amount', width: 15 },
+        { header: 'Avg Rate / Case (₹)', key: 'avgRate', width: 18 },
+        { header: 'Avg Buy / Case (₹)', key: 'avgBuy', width: 18 },
+        { header: 'Margin (₹)', key: 'margin', width: 15 },
+        { header: 'Margin %', key: 'marginPct', width: 11 },
+        { header: 'Shops', key: 'shops', width: 9 },
+        { header: 'Last Sold', key: 'lastSold', width: 14 },
+      ])
+      const allItems = [...(r.by_item ?? [])].sort((a, b) =>
+        sort === 'item' ? itemName(a.item).localeCompare(itemName(b.item)) : Number(b[sort]) - Number(a[sort])
+      )
+      allItems.forEach((i, idx) => {
+        const amt = Number(i.amount_paise ?? 0)
+        const mrg = Number(i.margin_paise ?? 0)
+        const row = wsItems.addRow({
+          idx: idx + 1,
+          item: itemName(i.item),
+          brand: i.brand,
+          cases: Number(i.cases),
+          bottles: Number(i.units),
+          amount: rs(amt),
+          avgRate: rs(i.avg_rate_paise),
+          avgBuy: i.avg_buy_paise != null ? rs(i.avg_buy_paise) : '',
+          margin: rs(mrg),
+          marginPct: amt ? Number(((mrg / amt) * 100).toFixed(1)) : 0,
+          shops: Number(i.shops),
+          lastSold: i.last_sold,
+        })
+        if (mrg < 0) row.getCell('margin').font = { color: { argb: 'FFDC2626' }, bold: true }
+      })
+      if (allItems.length) {
+        const totRow = wsItems.addRow({
+          idx: '',
+          item: `TOTAL (${allItems.length} items)`,
+          brand: '',
+          cases: totCases,
+          bottles: Number(tt?.units ?? 0),
+          amount: rs(grossAmt),
+          avgRate: rs(grossAmt / Math.max(1, totCases)),
+          avgBuy: rs(costAmt / Math.max(1, totCases)),
+          margin: rs(marginAmt + discAmt),
+          marginPct: grossAmt ? Number((((marginAmt + discAmt) / grossAmt) * 100).toFixed(1)) : 0,
+          shops: '',
+          lastSold: '',
+        })
+        totRow.font = { bold: true }
+      }
+
+      // 3. Day by Day sheet
+      const wsDay = wb.addWorksheet('Day by Day')
+      styleHead(wsDay, [
+        { header: 'Date', key: 'date', width: 14 },
+        { header: 'Bills', key: 'bills', width: 10 },
+        { header: 'Cases', key: 'cases', width: 12 },
+        { header: 'Amount (₹)', key: 'amount', width: 16 },
+      ])
+      for (const d of r.by_day ?? []) {
+        wsDay.addRow({ date: d.dy, bills: Number(d.bills), cases: Number(d.cases), amount: rs(d.amount_paise) })
+      }
+      if ((r.by_day ?? []).length) {
+        const totDay = wsDay.addRow({
+          date: 'TOTAL',
+          bills: (r.by_day ?? []).reduce((s, d) => s + Number(d.bills), 0),
+          cases: (r.by_day ?? []).reduce((s, d) => s + Number(d.cases), 0),
+          amount: rs((r.by_day ?? []).reduce((s, d) => s + Number(d.amount_paise), 0)),
+        })
+        totDay.font = { bold: true }
+      }
+
+      // 4. By Brand sheet
+      const wsBrand = wb.addWorksheet('By Brand')
+      styleHead(wsBrand, [
+        { header: 'Brand', key: 'brand', width: 22 },
+        { header: 'Cases', key: 'cases', width: 12 },
+        { header: 'Amount (₹)', key: 'amount', width: 16 },
+        { header: 'Share %', key: 'share', width: 12 },
+      ])
+      for (const b of r.by_brand ?? []) {
+        wsBrand.addRow({
+          brand: b.brand,
+          cases: Number(b.cases),
+          amount: rs(b.amount_paise),
+          share: grossAmt ? Number(((Number(b.amount_paise) / grossAmt) * 100).toFixed(1)) : 0,
+        })
+      }
+
+      // 5. Top Shops sheet
+      const wsShops = wb.addWorksheet('Top Shops')
+      styleHead(wsShops, [
+        { header: '#', key: 'idx', width: 6 },
+        { header: 'Shop', key: 'shop', width: 30 },
+        { header: 'Area', key: 'area', width: 20 },
+        { header: 'Bills', key: 'bills', width: 10 },
+        { header: 'Cases', key: 'cases', width: 12 },
+        { header: 'Amount (₹)', key: 'amount', width: 16 },
+      ])
+      ;(r.top_shops ?? []).forEach((s, idx) => {
+        wsShops.addRow({
+          idx: idx + 1,
+          shop: s.name,
+          area: s.locality ?? '',
+          bills: Number(s.bills),
+          cases: Number(s.cases),
+          amount: rs(s.amount_paise),
+        })
+      })
+
+      const buf = await wb.xlsx.writeBuffer()
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `KD-Foods-sales-report-${fromEff}-to-${r.to}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const r = rep.data, tt = r?.totals
   const net = Number(tt?.net_paise ?? 0), cases = Number(tt?.cases ?? 0), bills = Math.max(1, Number(tt?.bills ?? 0))
   const maxDay = Math.max(1, ...(r?.by_day ?? []).map((d) => Number(d.amount_paise)))
@@ -51,7 +242,12 @@ export default function SalesReportPage() {
   return (
     <section className="stack-lg">
       <PageHeader title={t('srep.title')} sub={t('srep.sub')}
-        actions={<button type="button" onClick={pdf} disabled={!r} data-testid="srep-pdf"><FileDown size={18} aria-hidden="true" /> {t('srep.pdf')}</button>} />
+        actions={<>
+          <button type="button" onClick={() => void exportExcel()} disabled={!r || exporting} data-testid="srep-excel">
+            <Download size={18} aria-hidden="true" /> {exporting ? t('common.loading') : t('srep.excel')}
+          </button>
+          <button type="button" onClick={pdf} disabled={!r} data-testid="srep-pdf"><FileDown size={18} aria-hidden="true" /> {t('srep.pdf')}</button>
+        </>} />
       <div className="segmented" role="tablist" aria-label={t('srep.period')} style={{ flexWrap: 'wrap' }}>
         {KINDS.map((k) => <button key={k} type="button" role="tab" className="btn-sm" aria-selected={kind === k} onClick={() => setKind(k)}>{t(`srep.k.${k}`)}</button>)}
       </div>
