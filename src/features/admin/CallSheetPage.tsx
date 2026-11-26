@@ -185,18 +185,27 @@ export default function CallSheetPage() {
     return counts
   }, [activeSheet, logByShop])
 
+  const isSearching = q.trim().length > 0
+
+  const sheetAreaByName = useMemo(
+    () => new Map(sheets.map((s) => [s.name, s.areaName])),
+    [sheets],
+  )
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
-    return (activeSheet?.items ?? []).filter((s) => {
+    const sourceItems = needle ? (shopsQ.data ?? []) : (activeSheet?.items ?? [])
+    return sourceItems.filter((s) => {
       const st = logByShop.get(s.id)?.status ?? 'pending'
       if (statusFilter === 'extra' && s.source === 'excel') return false
       if (statusFilter !== 'all' && statusFilter !== 'extra' && st !== statusFilter) return false
-      if (mktFilter && (s.mkt ?? '').trim() !== mktFilter) return false
+      if (!needle && mktFilter && (s.mkt ?? '').trim() !== mktFilter) return false
       if (!needle) return true
-      return [s.outlet_name, s.contact_name, s.phone, s.address, s.location, s.mkt, s.sr_no ? String(s.sr_no) : '']
+      const areaName = sheetAreaByName.get(s.sheet_name) ?? ''
+      return [s.outlet_name, s.contact_name, s.phone, s.address, s.location, s.mkt, areaName, s.sheet_name, s.sr_no ? String(s.sr_no) : '']
         .some((v) => (v ?? '').toLowerCase().includes(needle))
     })
-  }, [activeSheet, logByShop, statusFilter, mktFilter, q])
+  }, [activeSheet, shopsQ.data, sheetAreaByName, logByShop, statusFilter, mktFilter, q])
 
   const upsertCall = useMutation({
     mutationFn: async ({ shopId, status, note }: { shopId: string; status: CallStatus; note?: string }) => {
@@ -319,32 +328,50 @@ export default function CallSheetPage() {
           <div className="card stack" style={{ gap: 10 }}>
             <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 17 }}>
-                  {activeSheet.areaName} <span className="cell-sub" style={{ fontWeight: 500, fontSize: 13 }}>({activeSheet.name}{activeSheet.schedule ? ` · ${activeSheet.schedule}` : ''})</span>
-                </h2>
-                <div className="cell-sub">
-                  {doneCount} of {stats.total} contacted ({donePct}%) · {stats.order_taken} orders · {stats.called} called · {stats.no_answer} no answer · {stats.callback} callback · {stats.extra} extra
-                </div>
+                {isSearching ? (
+                  <>
+                    <h2 style={{ margin: 0, fontSize: 17 }}>
+                      All Routes Search <span className="cell-sub" style={{ fontWeight: 500, fontSize: 13 }}>({filtered.length} matching shops)</span>
+                    </h2>
+                    <div className="cell-sub">
+                      Searching across all {shopsQ.data?.length ?? 0} shops ·{' '}
+                      <button type="button" className="btn-sm" style={{ padding: '1px 6px', fontSize: 11 }} onClick={() => setQ('')}>
+                        Clear search
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 style={{ margin: 0, fontSize: 17 }}>
+                      {activeSheet.areaName} <span className="cell-sub" style={{ fontWeight: 500, fontSize: 13 }}>({activeSheet.name}{activeSheet.schedule ? ` · ${activeSheet.schedule}` : ''})</span>
+                    </h2>
+                    <div className="cell-sub">
+                      {doneCount} of {stats.total} contacted ({donePct}%) · {stats.order_taken} orders · {stats.called} called · {stats.no_answer} no answer · {stats.callback} callback · {stats.extra} extra
+                    </div>
+                  </>
+                )}
               </div>
-              <div style={{ minWidth: 160, flex: '0 1 220px' }}>
-                <div style={{ height: 8, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ width: `${donePct}%`, height: '100%', background: '#16a34a', transition: 'width .2s' }} />
+              {!isSearching && (
+                <div style={{ minWidth: 160, flex: '0 1 220px' }}>
+                  <div style={{ height: 8, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ width: `${donePct}%`, height: '100%', background: '#16a34a', transition: 'width .2s' }} />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 320 }}>
+              <div style={{ position: 'relative', flex: '1 1 220px', maxWidth: 340 }}>
                 <Search size={15} style={{ position: 'absolute', left: 10, top: 11, color: '#64748b' }} aria-hidden="true" />
                 <input
                   className="input"
                   style={{ paddingLeft: 32, width: '100%' }}
-                  placeholder="Search shop, contact, phone, area..."
+                  placeholder="Search all shops, contact, phone, area..."
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                 />
               </div>
-              {markets.length > 0 && (
+              {!isSearching && markets.length > 0 && (
                 <select className="input" value={mktFilter} onChange={(e) => setMktFilter(e.target.value)} aria-label="Filter by market">
                   <option value="">All markets ({markets.length})</option>
                   {markets.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -400,7 +427,19 @@ export default function CallSheetPage() {
                             )}
                           </td>
                           <td className="lead" data-label="Shop">
-                            <b>{s.outlet_name}</b>
+                            <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <b>{s.outlet_name}</b>
+                              {isSearching && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setSheet(s.sheet_name); setQ(''); setMktFilter('') }}
+                                  title={`Open ${sheetAreaByName.get(s.sheet_name) ?? s.sheet_name}`}
+                                  style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99, background: '#e2e8f0', color: '#0f172a', border: 'none', cursor: 'pointer' }}
+                                >
+                                  {sheetAreaByName.get(s.sheet_name) ?? s.sheet_name}
+                                </button>
+                              )}
+                            </div>
                             {areaBits && <div className="cell-sub">{areaBits}</div>}
                           </td>
                           <td data-label="Call">
