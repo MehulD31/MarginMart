@@ -65,6 +65,7 @@ function monthEnd(ym: string): string {
 export default function AttendancePage() {
   const qc = useQueryClient()
   const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
   const today = todayIST()
   const [tab, setTab] = useState<Tab>('daily')
   const [attDate, setAttDate] = useState(today)
@@ -105,6 +106,7 @@ export default function AttendancePage() {
 
   const monthAdvQ = useQuery({
     queryKey: ['staff_advance', 'month', month],
+    enabled: isAdmin,
     queryFn: () => must<StaffAdvance[]>(
       supabase.from('staff_advance').select('*').gte('given_on', mStart).lte('given_on', mEnd).order('given_on', { ascending: false })
     ),
@@ -373,9 +375,9 @@ export default function AttendancePage() {
   return (
     <section className="stack-lg">
       <PageHeader
-        title="Attendance & Salary"
-        sub={`Daily roll-call, half-days, advances, and salary calculation (${workingDays} working days/month).`}
-        actions={
+        title={isAdmin ? 'Attendance & Salary' : 'Attendance'}
+        sub={isAdmin ? `Daily roll-call, half-days, advances, and salary calculation (${workingDays} working days/month).` : 'Daily roll-call and monthly attendance register.'}
+        actions={isAdmin && (
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             <button type="button" onClick={() => void exportExcel()} disabled={exporting || !staff.length}>
               <Download size={16} aria-hidden="true" /> {exporting ? 'Exporting...' : 'Export Excel'}
@@ -387,7 +389,7 @@ export default function AttendancePage() {
               <UserPlus size={16} aria-hidden="true" /> Add staff
             </button>
           </div>
-        }
+        )}
       />
 
       {msg && <Alert msg={msg} />}
@@ -398,11 +400,13 @@ export default function AttendancePage() {
             <Check size={14} aria-hidden="true" /> Daily Roll-Call
           </button>
           <button type="button" role="tab" className="btn-sm" aria-selected={tab === 'monthly'} onClick={() => setTab('monthly')}>
-            <Calendar size={14} aria-hidden="true" /> Monthly &amp; Salary
+            <Calendar size={14} aria-hidden="true" /> {isAdmin ? 'Monthly & Salary' : 'Monthly Register'}
           </button>
-          <button type="button" role="tab" className="btn-sm" aria-selected={tab === 'advances'} onClick={() => setTab('advances')}>
-            <Wallet size={14} aria-hidden="true" /> Advances ({monthAdvQ.data?.length ?? 0})
-          </button>
+          {isAdmin && (
+            <button type="button" role="tab" className="btn-sm" aria-selected={tab === 'advances'} onClick={() => setTab('advances')}>
+              <Wallet size={14} aria-hidden="true" /> Advances ({monthAdvQ.data?.length ?? 0})
+            </button>
+          )}
         </div>
 
         {tab === 'daily' ? (
@@ -434,7 +438,7 @@ export default function AttendancePage() {
                 <tr>
                   <th scope="col">Staff</th>
                   <th scope="col">Attendance</th>
-                  <th scope="col" style={{ width: 110 }}>OT (₹)</th>
+                  {isAdmin && <th scope="col" style={{ width: 110 }}>OT (₹)</th>}
                   <th scope="col">Note</th>
                 </tr>
               </thead>
@@ -451,27 +455,31 @@ export default function AttendancePage() {
                         <div className="row" style={{ gap: 6, alignItems: 'center' }}>
                           <b>{s.name}</b>
                           <span className="cell-sub" style={{ textTransform: 'capitalize' }}>({s.role})</span>
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            title="Edit staff / salary"
-                            onClick={() => {
-                              setStaffForm({
-                                name: s.name,
-                                role: s.role,
-                                phone: s.phone ?? '',
-                                salary: s.monthly_salary_paise ? String(s.monthly_salary_paise / 100) : '',
-                              })
-                              setStaffModal({ open: true, editing: s })
-                            }}
-                          >
-                            <Edit2 size={13} aria-hidden="true" />
-                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              title="Edit staff / salary"
+                              onClick={() => {
+                                setStaffForm({
+                                  name: s.name,
+                                  role: s.role,
+                                  phone: s.phone ?? '',
+                                  salary: s.monthly_salary_paise ? String(s.monthly_salary_paise / 100) : '',
+                                })
+                                setStaffModal({ open: true, editing: s })
+                              }}
+                            >
+                              <Edit2 size={13} aria-hidden="true" />
+                            </button>
+                          )}
                         </div>
-                        <div className="cell-sub">
-                          {s.monthly_salary_paise > 0 ? `${formatPaise(s.monthly_salary_paise)}/mo` : 'Salary ₹0 (tap edit)'}
-                          {rec?.marked_by_name ? ` · Marked by ${rec.marked_by_name}` : ''}
-                        </div>
+                        {(isAdmin || rec?.marked_by_name) && (
+                          <div className="cell-sub">
+                            {isAdmin ? (s.monthly_salary_paise > 0 ? `${formatPaise(s.monthly_salary_paise)}/mo` : 'Salary ₹0 (tap edit)') : ''}
+                            {rec?.marked_by_name ? `${isAdmin ? ' · ' : ''}Marked by ${rec.marked_by_name}` : ''}
+                          </div>
+                        )}
                       </td>
                       <td data-label="Attendance">
                         <div className="row" style={{ gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -504,22 +512,24 @@ export default function AttendancePage() {
                           )}
                         </div>
                       </td>
-                      <td data-label="OT (₹)">
-                        <input
-                          className="input"
-                          inputMode="decimal"
-                          style={{ width: '100%', fontSize: 12, padding: '4px 6px' }}
-                          placeholder="0"
-                          value={otVal}
-                          onChange={(e) => setOtDrafts((d) => ({ ...d, [s.id]: e.target.value.replace(/[^\d.]/g, '') }))}
-                          onBlur={() => {
-                            const nextP = rupeesToPaise(Number(otVal) || 0)
-                            if (nextP !== (rec?.overtime_paise ?? 0)) {
-                              upsertAtt.mutate({ staffId: s.id, date: attDate, status: st ?? 'present', overtimePaise: nextP })
-                            }
-                          }}
-                        />
-                      </td>
+                      {isAdmin && (
+                        <td data-label="OT (₹)">
+                          <input
+                            className="input"
+                            inputMode="decimal"
+                            style={{ width: '100%', fontSize: 12, padding: '4px 6px' }}
+                            placeholder="0"
+                            value={otVal}
+                            onChange={(e) => setOtDrafts((d) => ({ ...d, [s.id]: e.target.value.replace(/[^\d.]/g, '') }))}
+                            onBlur={() => {
+                              const nextP = rupeesToPaise(Number(otVal) || 0)
+                              if (nextP !== (rec?.overtime_paise ?? 0)) {
+                                upsertAtt.mutate({ staffId: s.id, date: attDate, status: st ?? 'present', overtimePaise: nextP })
+                              }
+                            }}
+                          />
+                        </td>
+                      )}
                       <td data-label="Note">
                         <input
                           className="input"
@@ -545,7 +555,7 @@ export default function AttendancePage() {
 
       {!staffQ.isLoading && staff.length > 0 && tab === 'monthly' && (
         <div className="stack-lg">
-          <div className="card stack" style={{ gap: 8 }}>
+          {isAdmin && <div className="card stack" style={{ gap: 8 }}>
             <h2 style={{ margin: 0, fontSize: 17 }}>Salary Sheet · {month}</h2>
             <div className="table-wrap table-scroll">
               <table className="dense table-stack">
@@ -594,7 +604,7 @@ export default function AttendancePage() {
                 </tfoot>
               </table>
             </div>
-          </div>
+          </div>}
 
           <div className="card stack" style={{ gap: 8 }}>
             <div>
@@ -651,7 +661,7 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {!staffQ.isLoading && tab === 'advances' && (
+      {isAdmin && !staffQ.isLoading && tab === 'advances' && (
         <div className="card stack" style={{ gap: 8 }}>
           <div className="row-between">
             <h2 style={{ margin: 0, fontSize: 17 }}>Advances · {month}</h2>
