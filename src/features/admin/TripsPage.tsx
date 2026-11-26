@@ -123,10 +123,10 @@ function Board({ date, onOpen }: { date: string; onOpen: (planId: string, step: 
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  const open = async (c: TripCard, step: Step) => {
-    if (c.plan_id) { onOpen(c.plan_id, step); return }
+  const open = async (c: TripCard, step: Step, forceNew = false) => {
+    if (c.plan_id && !forceNew) { onOpen(c.plan_id, step); return }
     setBusy(c.vehicle_id); setErr(null)
-    try { onOpen(await must<string>(supabase.rpc('trip_open', { p_vehicle: c.vehicle_id, p_date: date })), 'load') }
+    try { onOpen(await must<string>(supabase.rpc('trip_open', { p_vehicle: c.vehicle_id, p_date: date, ...(forceNew ? { p_new: true } : {}) })), 'load') }
     catch (e) { setErr(errorMessage(t, e)) } finally { setBusy(null) }
   }
 
@@ -173,8 +173,17 @@ function Board({ date, onOpen }: { date: string; onOpen: (planId: string, step: 
                   {short && c.close_note && <p className="cell-sub text-danger">{t('trip.reasonWas', { r: c.close_note })}</p>}
                 </>
               )}
-              <button type="button" className={action.primary ? 'primary btn-block' : 'btn-block'} disabled={busy === c.vehicle_id} onClick={() => void open(c, action.step)}>
-                <action.icon size={18} aria-hidden="true" />{busy === c.vehicle_id ? t('common.loading') : action.label}</button>
+              {stage === 'closed' ? (
+                <div className="row" style={{ gap: 8 }}>
+                  <button type="button" className="primary grow" disabled={busy === c.vehicle_id} onClick={() => void open(c, 'load', true)}>
+                    <Truck size={18} aria-hidden="true" />{busy === c.vehicle_id ? t('common.loading') : t('trip.startAnotherTrip')}</button>
+                  <button type="button" className="btn-sm" disabled={busy === c.vehicle_id} onClick={() => void open(c, action.step)}>
+                    <action.icon size={16} aria-hidden="true" />{action.label}</button>
+                </div>
+              ) : (
+                <button type="button" className={action.primary ? 'primary btn-block' : 'btn-block'} disabled={busy === c.vehicle_id} onClick={() => void open(c, action.step)}>
+                  <action.icon size={18} aria-hidden="true" />{busy === c.vehicle_id ? t('common.loading') : action.label}</button>
+              )}
             </li>)
         })}
       </ul>
