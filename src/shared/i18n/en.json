@@ -911,6 +911,10 @@
     "dashDays": "{{n}} left · ~{{d}} days",
     "lasts": "lasts ~{{d}} days",
     "onTruck": "{{n}} on a truck · {{g}} in godown",
+    "loadedOnly": "Loaded in vehicle ({{n}})",
+    "loadedInVehicle": "{{n}} loaded in {{v}} · Total: {{total}}",
+    "loadedLabel": "Loaded in vehicle",
+    "totalWithVehicle": "Total (godown + vehicle)",
     "undo": "Undo",
     "undone": "Adjustment {{n}} undone."
   },

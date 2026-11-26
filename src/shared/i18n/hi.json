@@ -911,6 +911,10 @@
     "dashDays": "{{n}} बचे · ~{{d}} दिन",
     "lasts": "~{{d}} दिन चलेगा",
     "onTruck": "{{n}} गाड़ी में · {{g}} गोदाम में",
+    "loadedOnly": "गाड़ी में लोड ({{n}})",
+    "loadedInVehicle": "{{v}} में {{n}} लोड · कुल: {{total}}",
+    "loadedLabel": "गाड़ी में लोड",
+    "totalWithVehicle": "कुल (गोदाम + गाड़ी)",
     "undo": "वापस लें",
     "undone": "बदलाव {{n}} वापस लिया।"
   },

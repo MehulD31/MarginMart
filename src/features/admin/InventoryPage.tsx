@@ -5,6 +5,7 @@ import { Boxes } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { lowIds, must, useStockWatch } from '../../shared/api/db'
 import { useStockRows, type StockRow } from './stockRows'
+import type { TripDetail } from './trips'
 import { useAuth } from '../../shared/api/auth'
 import { formatPaise } from '../../shared/money'
 import { errorMessage } from '../../shared/ui/errors'
@@ -22,18 +23,46 @@ export default function InventoryPage() {
   const isAdmin = profile?.role === 'admin'
   const { rows, isLoading } = useStockRows()
   const [q, setQ] = useRemembered('view:inventory:q', '')
-  const [filter, setFilter] = useRemembered<'all' | 'low'>('view:inventory:filter', 'all')
+  const [filter, setFilter] = useRemembered<'all' | 'low' | 'loaded'>('view:inventory:filter', 'all')
   const [open, setOpen] = useState<string | null>(null)
 
   const watch = useStockWatch().data
   const lowSet = lowIds(watch)
   const isLow = (r: StockRow) => lowSet.has(r.variant_id)
   const days = new Map((watch ?? []).map((w) => [w.variant_id, w.days_left]))
-  const list = rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase()) && (filter === 'all' || isLow(r)))
+  // Active vehicle loads (status in loaded/out and not yet unloaded): subtracted from godown on_hand while on the vehicle.
+  const activeLoads = useQuery({
+    queryKey: ['inventory-vehicle-loads'],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const plans = await must<{ id: string; vehicle: { name: string } | null }[]>(
+        supabase.from('route_day_plan').select('id, vehicle:vehicle_id(name)').in('status', ['loaded', 'out']).is('unloaded_at', null),
+      )
+      const byVar = new Map<string, { qty: number; vehicles: string[] }>()
+      if (!plans.length) return byVar
+      const details = await Promise.all(plans.map((p) => must<TripDetail>(supabase.rpc('trip_detail', { p_plan: p.id }))))
+      for (let i = 0; i < plans.length; i++) {
+        const vName = details[i]?.plan?.vehicle || plans[i]?.vehicle?.name || 'Vehicle'
+        for (const it of details[i]?.items ?? []) {
+          if ((it.left ?? 0) <= 0) continue
+          const cur = byVar.get(it.variant_id) ?? { qty: 0, vehicles: [] }
+          cur.qty += it.left
+          cur.vehicles.push(vName)
+          byVar.set(it.variant_id, cur)
+        }
+      }
+      return byVar
+    },
+  })
+  const loadedMap = activeLoads.data ?? new Map<string, { qty: number; vehicles: string[] }>()
+  const isLoaded = (r: StockRow) => (loadedMap.get(r.variant_id)?.qty ?? 0) > 0
+  const list = rows.filter((r) => r.name.toLowerCase().includes(q.toLowerCase()) && (filter === 'all' || (filter === 'low' ? isLow(r) : isLoaded(r))))
   const low = rows.filter(isLow).length
+  const loadedCount = rows.filter(isLoaded).length
   const value = rows.reduce((a, r) => a + Math.max(r.on_hand, 0) * r.avg_cost_paise, 0)
   const cases = rows.reduce((a, r) => a + Math.max(r.on_hand, 0), 0)
   const current = rows.find((r) => r.variant_id === open)
+  const fmtQty = (n: number, units: number) => Number.isInteger(n) ? String(n) : qtyText(n, units, { case: t('qty.case'), cases: t('qty.cases'), pcs: t('qty.pcs') })
   // Cases that came back and stayed on a truck: still part of on-hand, but not in the godown.
   const carry = useQuery({
     queryKey: ['vehicle-carry'],
@@ -51,6 +80,7 @@ export default function InventoryPage() {
         <input type="search" aria-label={t('common.search')} placeholder={t('catalog.searchLabel')} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 360 }} />
         <label className="chip"><input type="radio" name="inv-filter" checked={filter === 'all'} onChange={() => setFilter('all')} />{t('common.all')}</label>
         <label className="chip"><input type="radio" name="inv-filter" checked={filter === 'low'} onChange={() => setFilter('low')} />{t('inventory.lowOnly', { n: low })}</label>
+        {loadedCount > 0 && <label className="chip"><input type="radio" name="inv-filter" checked={filter === 'loaded'} onChange={() => setFilter('loaded')} />{t('inventory.loadedOnly', { n: loadedCount })}</label>}
       </div>
       {isLoading ? <Skeleton rows={6} /> : list.length === 0 ? (
         <div className="card"><Empty icon={<Boxes size={26} />} title={t('common.noMatches')} /></div>
@@ -63,6 +93,11 @@ export default function InventoryPage() {
               <td data-label={t('inventory.onHand')} className="num"><strong>{Number.isInteger(r.on_hand) ? r.on_hand : qtyText(r.on_hand, r.units, { case: t('qty.case'), cases: t('qty.cases'), pcs: t('qty.pcs') })}</strong>{' '}
                 {r.on_hand < 0 ? <span className="badge badge-red">{t('inventory.negative')}</span> : isLow(r) && <span className="badge badge-amber">{t('inventory.low')}</span>}
                 {(onTruck.get(r.variant_id) ?? 0) > 0 && <div className="cell-sub" data-testid="inv-on-truck">{t('inventory.onTruck', { n: onTruck.get(r.variant_id), g: r.on_hand - (onTruck.get(r.variant_id) ?? 0) })}</div>}
+                {(() => {
+                  const ld = loadedMap.get(r.variant_id)
+                  if (!ld || ld.qty <= 0) return null
+                  return <div className="cell-sub" data-testid="inv-loaded-vehicle"><span className="badge badge-blue">{t('inventory.loadedInVehicle', { n: fmtQty(ld.qty, r.units), v: [...new Set(ld.vehicles)].join(', '), total: fmtQty(r.on_hand + ld.qty, r.units) })}</span></div>
+                })()}
                 {days.get(r.variant_id) != null && <div className="cell-sub">{t('inventory.lasts', { d: Math.floor(days.get(r.variant_id)!) })}</div>}</td>
               <td data-label={t('inventory.threshold')} className="num">{r.low_threshold || '—'}</td>
               <td data-label={t('inventory.avgCost')} className="num">{r.avg_cost_paise ? formatPaise(r.avg_cost_paise) : '—'}</td>
@@ -73,13 +108,13 @@ export default function InventoryPage() {
         </table><Pager p={pg} /></div>
       )}
       <Sheet open={!!current} wide title={current?.name} onClose={() => setOpen(null)}>
-        {current && <StockEditor key={current.variant_id} row={current} canEdit={isAdmin} />}
+        {current && <StockEditor key={current.variant_id} row={current} canEdit={isAdmin} loaded={loadedMap.get(current.variant_id)} />}
       </Sheet>
     </section>
   )
 }
 
-function StockEditor({ row, canEdit }: { row: StockRow; canEdit: boolean }) {
+function StockEditor({ row, canEdit, loaded }: { row: StockRow; canEdit: boolean; loaded?: { qty: number; vehicles: string[] } }) {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const [mode, setMode] = useState<'count' | 'delta'>('count')
@@ -121,6 +156,10 @@ function StockEditor({ row, canEdit }: { row: StockRow; canEdit: boolean }) {
     <div className="stack-lg">
       <div className="stats">
         <div className="stat"><div className="label">{t('inventory.onHand')}</div><div className="value num">{row.on_hand}</div></div>
+        {loaded && loaded.qty > 0 && <>
+          <div className="stat"><div className="label">{t('inventory.loadedLabel')} ({[...new Set(loaded.vehicles)].join(', ')})</div><div className="value num">{loaded.qty}</div></div>
+          <div className="stat"><div className="label">{t('inventory.totalWithVehicle')}</div><div className="value num">{row.on_hand + loaded.qty}</div></div>
+        </>}
         <div className="stat"><div className="label">{t('inventory.avgCost')}</div><div className="value num">{row.avg_cost_paise ? formatPaise(row.avg_cost_paise) : '—'}</div></div>
       </div>
       <Alert msg={msg} />

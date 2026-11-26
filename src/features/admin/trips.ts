@@ -58,7 +58,7 @@ export const useTripDetail = (planId: string | null | undefined) => useQuery({
 
 /** Everything a trip action can change: stock, bills, orders, khata, money. */
 export const refreshTrips = (qc: QueryClient) => {
-  for (const k of ['trip-board', 'trip-detail', 'plans', 'stock', 'stock_move', 'counter-sales', 'counter-catalog', 'admin-orders', 'route-load', 'load-lines', 'month_stats', 'khata', 'closings'])
+  for (const k of ['trip-board', 'trip-detail', 'plans', 'stock', 'stock_move', 'inventory-vehicle-loads', 'counter-sales', 'counter-catalog', 'admin-orders', 'route-load', 'load-lines', 'month_stats', 'khata', 'closings'])
     void qc.invalidateQueries({ queryKey: [k] })
 }
 
