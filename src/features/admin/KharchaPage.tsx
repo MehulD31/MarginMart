@@ -158,6 +158,53 @@ export default function KharchaPage() {
         totCat.font = { bold: true }
       }
 
+      if (s.data) {
+        const wsFix = wb.addWorksheet('Fixed Costs (Staff)')
+        styleHead(wsFix, [
+          { header: 'Item', key: 'label', width: 24 },
+          { header: 'Monthly (₹)', key: 'monthly', width: 16 },
+          { header: 'Per Working Day (₹)', key: 'perDay', width: 20 },
+          { header: 'Notes', key: 'notes', width: 32 },
+        ])
+        const wDays = Math.max(1, s.data.working_days || 26)
+        const fixedRows = s.data.fixed_costs.map((c) => {
+          const m = Number((c.paise / 100).toFixed(2))
+          const isSpend = c.label === s.data?.spend_line
+          return {
+            label: c.label,
+            monthly: m,
+            perDay: Number((m / wDays).toFixed(2)),
+            notes: isSpend ? 'Daily spends budget line (tracked in Expenses)' : 'Fixed monthly salary / cost',
+          }
+        })
+        wsFix.addRows(fixedRows)
+        const staffOnly = fixedRows
+          .filter((r) => r.label !== s.data?.spend_line)
+          .reduce((sum, r) => sum + r.monthly, 0)
+        const totFixed = fixedRows.reduce((sum, r) => sum + r.monthly, 0)
+        const rStaff = wsFix.addRow({
+          label: 'TOTAL (Staff only)',
+          monthly: Number(staffOnly.toFixed(2)),
+          perDay: Number((staffOnly / wDays).toFixed(2)),
+          notes: `Excludes ${s.data.spend_line ?? 'Miscellaneous'} budget`,
+        })
+        rStaff.font = { bold: true }
+        const rAll = wsFix.addRow({
+          label: 'TOTAL (All fixed lines)',
+          monthly: Number(totFixed.toFixed(2)),
+          perDay: Number((totFixed / wDays).toFixed(2)),
+          notes: `${wDays} working days / month`,
+        })
+        rAll.font = { bold: true }
+        wsFix.addRow({})
+        wsFix.addRow({
+          label: 'Loading (Variable)',
+          monthly: Number((s.data.loading_paise_per_case / 100).toFixed(2)),
+          perDay: '',
+          notes: 'Per case sold',
+        })
+      }
+
       const buf = await wb.xlsx.writeBuffer()
       const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
       const a = document.createElement('a')
