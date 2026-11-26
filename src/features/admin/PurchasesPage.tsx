@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { FileSpreadsheet, Plus, ShoppingCart, Trash2 } from 'lucide-react'
+import { Download, FileSpreadsheet, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { mergeByVariant, parseInvoice, type InvoiceLine } from '../../shared/purchaseImport'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
@@ -48,15 +48,110 @@ export default function PurchasesPage() {
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
   const current = purchases.data?.find((p) => p.id === view)
   const [msg, setMsg] = useState<Msg>(null)
+  const [exporting, setExporting] = useState(false)
   const pg = usePaged(purchases.data ?? [])
+
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const all = await must<Purchase[]>(
+        supabase.from('purchase').select('*, purchase_line(variant_id, qty, cost_paise)')
+          .order('purchase_date', { ascending: false }).order('created_at', { ascending: false })
+      )
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      const styleHead = (ws: InstanceType<typeof ExcelJS.Workbook>['worksheets'][number], cols: { header: string; key: string; width: number }[]) => {
+        ws.columns = cols
+        const head = ws.getRow(1)
+        head.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF15803D' } }
+        ws.views = [{ state: 'frozen', ySplit: 1 }]
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } }
+      }
+
+      const wsInv = wb.addWorksheet('Invoices')
+      const invCols = [
+        { header: 'Date', key: 'date', width: 14 },
+        { header: 'Supplier', key: 'supplier', width: 26 },
+        { header: 'Invoice No', key: 'invoice', width: 18 },
+        { header: 'Cases', key: 'cases', width: 12 },
+        { header: 'Total (₹)', key: 'total', width: 16 },
+        { header: 'Note', key: 'note', width: 32 },
+      ]
+      styleHead(wsInv, invCols)
+      const invRows = all.map((p) => ({
+        date: p.purchase_date,
+        supplier: supp.get(p.supplier_id) ?? '—',
+        invoice: p.invoice_no ?? '',
+        cases: p.purchase_line.reduce((a, l) => a + l.qty, 0),
+        total: Number((p.total_paise / 100).toFixed(2)),
+        note: p.note ?? '',
+      }))
+      wsInv.addRows(invRows)
+      if (invRows.length) {
+        const totRow = wsInv.addRow({
+          date: 'TOTAL',
+          supplier: `${invRows.length} invoices`,
+          invoice: '',
+          cases: invRows.reduce((s, r) => s + r.cases, 0),
+          total: Number(invRows.reduce((s, r) => s + r.total, 0).toFixed(2)),
+          note: '',
+        })
+        totRow.font = { bold: true }
+      }
+
+      const wsItems = wb.addWorksheet('Items')
+      const itemCols = [
+        { header: 'Date', key: 'date', width: 14 },
+        { header: 'Supplier', key: 'supplier', width: 26 },
+        { header: 'Invoice No', key: 'invoice', width: 18 },
+        { header: 'Item', key: 'item', width: 34 },
+        { header: 'Cases', key: 'cases', width: 12 },
+        { header: 'Rate (₹)', key: 'rate', width: 14 },
+        { header: 'Line Total (₹)', key: 'lineTotal', width: 16 },
+      ]
+      styleHead(wsItems, itemCols)
+      const itemRows = all.flatMap((p) =>
+        p.purchase_line.map((l) => ({
+          date: p.purchase_date,
+          supplier: supp.get(p.supplier_id) ?? '—',
+          invoice: p.invoice_no ?? '',
+          item: names.get(l.variant_id) ?? '—',
+          cases: l.qty,
+          rate: Number((l.cost_paise / 100).toFixed(2)),
+          lineTotal: Number(((l.qty * l.cost_paise) / 100).toFixed(2)),
+        }))
+      )
+      wsItems.addRows(itemRows)
+
+      const buf = await wb.xlsx.writeBuffer()
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `KD-Foods-purchases-${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch (e) {
+      setMsg({ kind: 'error', text: errorMessage(t, e) })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <section className="stack-lg">
       <PageHeader title={t('purchases.title')} sub={t('purchases.sub')}
-        actions={isAdmin && <>
-          <button type="button" onClick={() => setSuppOpen(true)}>{t('purchases.suppliers', { n: suppliers.data?.length ?? 0 })}</button>
-          <button type="button" disabled={!suppliers.data?.length} onClick={() => setImportOpen(true)}><FileSpreadsheet size={18} aria-hidden="true" />{t('purchases.importExcel')}</button>
-          <button type="button" className="primary" disabled={!suppliers.data?.length} onClick={() => setNewOpen(true)}><Plus size={18} aria-hidden="true" />{t('purchases.new')}</button>
+        actions={<>
+          <button type="button" onClick={() => void exportExcel()} disabled={exporting || !purchases.data?.length}>
+            <Download size={18} aria-hidden="true" />{exporting ? t('common.loading') : t('purchases.exportExcel')}
+          </button>
+          {isAdmin && <>
+            <button type="button" onClick={() => setSuppOpen(true)}>{t('purchases.suppliers', { n: suppliers.data?.length ?? 0 })}</button>
+            <button type="button" disabled={!suppliers.data?.length} onClick={() => setImportOpen(true)}><FileSpreadsheet size={18} aria-hidden="true" />{t('purchases.importExcel')}</button>
+            <button type="button" className="primary" disabled={!suppliers.data?.length} onClick={() => setNewOpen(true)}><Plus size={18} aria-hidden="true" />{t('purchases.new')}</button>
+          </>}
         </>} />
       {isAdmin && suppliers.data && suppliers.data.length === 0 && <Alert msg={{ kind: 'warn', text: t('purchases.addSupplierFirst') }} />}
       {!view && <Alert msg={msg} />}

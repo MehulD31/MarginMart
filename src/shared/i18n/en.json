@@ -941,6 +941,7 @@
     "phone": "Phone",
     "addSupplier": "Add supplier",
     "importExcel": "Import Pepsi Excel",
+    "exportExcel": "Export Excel",
     "excelFile": "Excel file (.xlsx)",
     "badSheet": "This doesn't look like a Pepsi order sheet. It needs SKU Code, Order Qty and Order Value columns.",
     "importHint": "Pick the supplier first. Each Pepsi SKU is matched to an item once; next time it is remembered.",
