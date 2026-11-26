@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Wallet } from 'lucide-react'
+import { Download, Plus, Trash2, Wallet } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { formatPaise, rupeesToPaise } from '../../shared/money'
@@ -54,6 +54,7 @@ export default function KharchaPage() {
   const s = useKharchaSettings()
   const month = useExpenses(monthStart(today), today)
   const [msg, setMsg] = useState<Msg>(null)
+  const [exporting, setExporting] = useState(false)
   // amount, category, note and "paid from" are kept until the kharcha is saved (a phone call or refresh loses nothing); the date is
   // always today unless you pick another day, so an old draft never saves on a past date by itself.
   const freshF = () => ({ amount: '', category: CATEGORIES[0] as string, note: '', paid_from: 'cash' })
@@ -79,9 +80,104 @@ export default function KharchaPage() {
   }
   const b = s.data && month.data ? spendBudget(s.data, month.data) : null
 
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const all = await must<(Expense & { budget_line?: string | null })[]>(
+        supabase.from('expense').select('*').is('voided_at', null)
+          .order('spent_on', { ascending: false }).order('created_at', { ascending: false })
+      )
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      const styleHead = (ws: InstanceType<typeof ExcelJS.Workbook>['worksheets'][number], cols: { header: string; key: string; width: number }[]) => {
+        ws.columns = cols
+        const head = ws.getRow(1)
+        head.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF15803D' } }
+        ws.views = [{ state: 'frozen', ySplit: 1 }]
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } }
+      }
+
+      const wsExp = wb.addWorksheet('Expenses')
+      styleHead(wsExp, [
+        { header: 'Date', key: 'date', width: 14 },
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Amount (₹)', key: 'amount', width: 15 },
+        { header: 'Paid From', key: 'paidFrom', width: 14 },
+        { header: 'Source', key: 'source', width: 12 },
+        { header: 'Budget Line', key: 'budgetLine', width: 18 },
+        { header: 'Note', key: 'note', width: 34 },
+      ])
+      const rows = all.map((e) => ({
+        date: e.spent_on,
+        category: t(`kharcha.cat.${e.category}`, { defaultValue: e.category }),
+        amount: Number((e.amount_paise / 100).toFixed(2)),
+        paidFrom: t(`kharcha.from.${e.paid_from}`, { defaultValue: e.paid_from }),
+        source: e.source === 'telegram' ? 'Telegram' : 'Web',
+        budgetLine: e.budget_line ?? '',
+        note: e.note ?? '',
+      }))
+      wsExp.addRows(rows)
+      const totalRs = Number(rows.reduce((sum, r) => sum + r.amount, 0).toFixed(2))
+      if (rows.length) {
+        const totRow = wsExp.addRow({
+          date: 'TOTAL',
+          category: `${rows.length} entries`,
+          amount: totalRs,
+          paidFrom: '',
+          source: '',
+          budgetLine: '',
+          note: '',
+        })
+        totRow.font = { bold: true }
+      }
+
+      const wsCat = wb.addWorksheet('By Category')
+      styleHead(wsCat, [
+        { header: 'Category', key: 'category', width: 22 },
+        { header: 'Entries', key: 'entries', width: 12 },
+        { header: 'Amount (₹)', key: 'amount', width: 16 },
+        { header: 'Share %', key: 'share', width: 12 },
+      ])
+      const byCat = new Map<string, { entries: number; amount: number }>()
+      for (const r of rows) {
+        const cur = byCat.get(r.category) ?? { entries: 0, amount: 0 }
+        byCat.set(r.category, { entries: cur.entries + 1, amount: Number((cur.amount + r.amount).toFixed(2)) })
+      }
+      const catRows = [...byCat.entries()]
+        .map(([category, v]) => ({
+          category,
+          entries: v.entries,
+          amount: v.amount,
+          share: totalRs ? Number(((v.amount / totalRs) * 100).toFixed(1)) : 0,
+        }))
+        .sort((a, b) => b.amount - a.amount)
+      wsCat.addRows(catRows)
+      if (catRows.length) {
+        const totCat = wsCat.addRow({ category: 'TOTAL', entries: rows.length, amount: totalRs, share: 100 })
+        totCat.font = { bold: true }
+      }
+
+      const buf = await wb.xlsx.writeBuffer()
+      const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `KD-Foods-expenses-${today}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch (err) {
+      setMsg({ kind: 'error', text: errorMessage(t, err) })
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <section className="stack-lg">
-      <PageHeader title={t('kharcha.title')} sub={t('kharcha.sub')} />
+      <PageHeader title={t('kharcha.title')} sub={t('kharcha.sub')}
+        actions={<button type="button" onClick={() => void exportExcel()} disabled={exporting}><Download size={18} aria-hidden="true" />{exporting ? t('common.loading') : t('kharcha.exportExcel')}</button>} />
       <DayPnlCard />
 
       <form className="card stack" onSubmit={(e) => { e.preventDefault(); add.mutate() }} data-testid="add-kharcha">

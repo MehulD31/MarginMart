@@ -1599,6 +1599,7 @@
   },
   "kharcha": {
     "title": "Kharcha",
+    "exportExcel": "Export Excel",
     "sub": "Fixed monthly kharcha, daily spends, and how each day really went.",
     "today": "How was today?",
     "sales": "Sales",
