@@ -47,6 +47,27 @@ interface CallLog {
 
 const SHEET_ORDER = ['ROUTE 1A', 'ROUTE1B', 'ROUTE1C', 'ROUTE1D', 'ROUTE1E', 'ROUTE2A', 'ROUTE2B', 'ROUTE2C', 'ROUTE3A']
 
+const SHEET_AREA_FALLBACK: Record<string, string> = {
+  'ROUTE 1A': 'Shanti Nagar',
+  'ROUTE1B': 'Ram Nagar',
+  'ROUTE1C': 'Supela',
+  'ROUTE1D': 'Camp 1',
+  'ROUTE1E': 'Housing Board',
+  'ROUTE2A': 'Bhilai 3',
+  'ROUTE2B': 'Charoda',
+  'ROUTE2C': 'Kumhari',
+  'ROUTE3A': 'Camp 2',
+}
+
+function getAreaName(sheetName: string, routeName?: string | null): string {
+  if (routeName) {
+    const parts = routeName.split('·')
+    if (parts.length > 1) return parts.slice(1).join('·').trim()
+    return routeName
+  }
+  return SHEET_AREA_FALLBACK[sheetName] ?? sheetName
+}
+
 const STATUS_META: Record<CallStatus, { label: string; bg: string; fg: string }> = {
   pending: { label: 'To call', bg: '#f1f5f9', fg: '#475569' },
   order_taken: { label: 'Order taken', bg: '#dcfce7', fg: '#166534' },
@@ -127,8 +148,10 @@ export default function CallSheetPage() {
       const items = bySheet.get(name) ?? []
       const rid = items[0]?.route_id ?? null
       const route = rid ? routeById.get(rid) : undefined
+      const areaName = getAreaName(name, route?.name)
+      const schedule = route?.name?.split('·')[0]?.trim() ?? ''
       const isToday = !!(route?.visit_days && route.visit_days.includes(dow))
-      return { name, items, route, isToday }
+      return { name, items, route, areaName, schedule, isToday }
     })
   }, [shopsQ.data, routeById, dow])
 
@@ -276,7 +299,7 @@ export default function CallSheetPage() {
                 }}
               >
                 <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-                  <strong>{s.name}</strong>
+                  <strong>{s.areaName}</strong>
                   <span className="cell-sub">({s.items.length})</span>
                   {s.isToday && (
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99, background: '#16a34a', color: '#fff' }}>
@@ -284,7 +307,9 @@ export default function CallSheetPage() {
                     </span>
                   )}
                 </div>
-                {s.route && <div className="cell-sub" style={{ fontSize: 11 }}>{s.route.name}</div>}
+                <div className="cell-sub" style={{ fontSize: 11 }}>
+                  {[s.schedule, s.name].filter(Boolean).join(' · ')}
+                </div>
               </button>
             )
           })}
@@ -295,7 +320,7 @@ export default function CallSheetPage() {
             <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 17 }}>
-                  {activeSheet.name} {activeSheet.route ? `· ${activeSheet.route.name}` : ''}
+                  {activeSheet.areaName} <span className="cell-sub" style={{ fontWeight: 500, fontSize: 13 }}>({activeSheet.name}{activeSheet.schedule ? ` · ${activeSheet.schedule}` : ''})</span>
                 </h2>
                 <div className="cell-sub">
                   {doneCount} of {stats.total} contacted ({donePct}%) · {stats.order_taken} orders · {stats.called} called · {stats.no_answer} no answer · {stats.callback} callback · {stats.extra} extra
@@ -345,16 +370,14 @@ export default function CallSheetPage() {
             {filtered.length === 0 ? (
               <Empty icon={<Phone size={24} />} title="No shops match this filter" />
             ) : (
-              <div className="table-wrap table-scroll">
-                <table className="dense table-stack">
+              <div className="table-wrap">
+                <table className="dense table-stack" style={{ width: '100%' }}>
                   <thead>
                     <tr>
-                      <th scope="col" style={{ width: 52 }}>S.R.</th>
-                      <th scope="col">Outlet</th>
-                      <th scope="col">Address / Area</th>
-                      <th scope="col">Contact &amp; Call</th>
-                      <th scope="col">Call Status ({callDate === today ? 'Today' : callDate})</th>
-                      <th scope="col">Note</th>
+                      <th scope="col" style={{ width: 44 }}>S.R.</th>
+                      <th scope="col">Shop &amp; Address</th>
+                      <th scope="col" style={{ width: 190 }}>Call</th>
+                      <th scope="col">Status ({callDate === today ? 'Today' : callDate}) &amp; Note</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -364,6 +387,7 @@ export default function CallSheetPage() {
                       const meta = STATUS_META[st]
                       const phone10 = cleanPhone(s.phone)
                       const draft = noteDrafts[s.id] ?? (log?.note ?? '')
+                      const areaBits = [s.address, s.location, s.mkt].filter(Boolean).join(' · ')
                       return (
                         <tr key={s.id} style={{ background: st === 'order_taken' ? '#f0fdf4' : undefined }}>
                           <td className="num" data-label="S.R.">
@@ -375,20 +399,14 @@ export default function CallSheetPage() {
                               </span>
                             )}
                           </td>
-                          <td className="lead">
+                          <td className="lead" data-label="Shop">
                             <b>{s.outlet_name}</b>
-                            <div className="cell-sub">
-                              {[s.mkt, s.beat ? `Beat ${s.beat}` : null, s.visi_info].filter(Boolean).join(' · ')}
-                            </div>
+                            {areaBits && <div className="cell-sub">{areaBits}</div>}
                           </td>
-                          <td data-label="Address">
-                            <div>{s.address || '—'}</div>
-                            {s.location && <div className="cell-sub">{s.location}</div>}
-                          </td>
-                          <td data-label="Contact & Call">
-                            <div>{s.contact_name || '—'}</div>
+                          <td data-label="Call">
+                            {s.contact_name && <div style={{ fontSize: 12, marginBottom: 3 }}>{s.contact_name}</div>}
                             {phone10 ? (
-                              <div className="row" style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                              <div className="row" style={{ gap: 5, flexWrap: 'wrap' }}>
                                 <a
                                   href={`tel:+91${phone10}`}
                                   className="btn-sm"
@@ -411,8 +429,8 @@ export default function CallSheetPage() {
                               <span className="cell-sub">No phone</span>
                             )}
                           </td>
-                          <td data-label="Status">
-                            <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <td data-label="Status & Note">
+                            <div className="row" style={{ gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: meta.bg, color: meta.fg }}>
                                 {meta.label}
                               </span>
@@ -422,7 +440,7 @@ export default function CallSheetPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
+                            <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginBottom: 5 }}>
                               <button type="button" className="btn-sm" title="Order taken" aria-pressed={st === 'order_taken'}
                                 onClick={() => upsertCall.mutate({ shopId: s.id, status: 'order_taken' })}>
                                 <Check size={12} aria-hidden="true" /> Order
@@ -446,8 +464,6 @@ export default function CallSheetPage() {
                                 </button>
                               )}
                             </div>
-                          </td>
-                          <td data-label="Note" style={{ minWidth: 160 }}>
                             <input
                               className="input"
                               style={{ width: '100%', fontSize: 12, padding: '4px 8px' }}
