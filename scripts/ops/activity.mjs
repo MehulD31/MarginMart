@@ -5,11 +5,14 @@ export const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '
 const rs = (p) => '<b>₹' + Math.round(Number(p ?? 0) / 100).toLocaleString('en-IN') + '</b>'
 const cnt = (rows, table, action) => rows.filter((r) => r.table_name === table && (!action || r.action === action))
 const NICE = { shop: 'dukaan', pack: 'item', variant: 'item flavour', price_list: 'rate list', price_list_item: 'rate', scheme: 'scheme', settings: 'settings',
-  business_settings: 'business settings', vehicle: 'gaadi', route: 'route', profiles: 'login', supplier: 'supplier', join_requests: 'join request', stock: 'stock' }
+  business_settings: 'business settings', vehicle: 'gaadi', route: 'route', profiles: 'login', supplier: 'supplier', join_requests: 'join request', stock: 'stock',
+  route_call_log: 'call log', route_sheet_shop: 'call sheet shop' }
 
-/** Lines for one group. L = { variant(id), route(id), vehicle(id), shop(id), supplier(id), load(planId) -> [{variant_id, qty}] } */
+const CALL_LBL = { order_taken: 'order', called: 'called', no_answer: 'no answer', callback: 'callback', pending: 'reset' }
+
+/** Lines for one group. L = { variant(id), route(id), vehicle(id), shop(id), supplier(id), sheetShop?(id), load(planId) -> [{variant_id, qty}] } */
 export function describe(g, L0) {
-  const E = (f) => (id) => { const v = f(id); return v == null ? v : esc(v) }
+  const E = (f) => (id) => { const v = f?.(id); return v == null ? v : esc(v) }
   const L = { ...L0, variant: E(L0.variant), route: E(L0.route), vehicle: E(L0.vehicle), shop: E(L0.shop), supplier: E(L0.supplier) }
   const out = [], rows = g.rows, used = new Set()
   const take = (list) => { list.forEach((r) => used.add(r)); return list }
@@ -59,6 +62,17 @@ export function describe(g, L0) {
     else if (r.action === 'insert') out.push(`💵 Driver ne cash jama kiya: ${rs(r.after?.handed_cash_paise)} (hona tha ${rs(r.after?.expected_cash_paise)})`)
   }
   for (const r of take(cnt(rows, 'shop', 'insert'))) out.push(`🏪 Nayi dukaan: <b>${esc(r.after?.name)}</b>${r.after?.locality ? ' · ' + esc(r.after.locality) : ''}`)
+  for (const r of take(cnt(rows, 'route_sheet_shop', 'insert'))) out.push(`🏪 Call sheet me nayi dukaan: <b>${esc(r.after?.outlet_name)}</b>${r.after?.sheet_name ? ' (' + esc(r.after.sheet_name) + ')' : ''}`)
+  const calls = [...take(cnt(rows, 'route_call_log', 'insert')), ...take(cnt(rows, 'route_call_log', 'update'))]
+  for (const r of calls.slice(0, 12)) {
+    const a = r.after ?? {}
+    const ss = L0.sheetShop?.(a.sheet_shop_id)
+    const name = ss?.outlet_name ? esc(ss.outlet_name) : 'dukaan'
+    const sheet = ss?.sheet_name ? ` (${esc(ss.sheet_name)})` : ''
+    const note = a.note ? ` · "${esc(String(a.note).slice(0, 60))}"` : ''
+    out.push(`📞 Call: <b>${name}</b>${sheet} · ${CALL_LBL[a.status] ?? esc(a.status)}${note}`)
+  }
+  if (calls.length > 12) out.push(`📞 +${calls.length - 12} aur calls`)
   // manual stock changes (not part of a bill/load/purchase)
   const moves = take(cnt(rows, 'stock_move', 'insert'))
   const manual = moves.filter((r) => !r.after?.cash_sale_id && !r.after?.route_day_plan_id && !r.after?.purchase_id)
@@ -88,7 +102,7 @@ export function groupRows(rows) {
 // One group only (owner, 12 Nov 2026): send right away only what needs attention; everything else is collected
 // and sent as one summary every 2 hours. Trips (load / back / close) go right away as one short line, with the
 // item list kept for the summary.
-const NOW = /^(🚫|🗑|📊|↶|🏪)/
+const NOW = /^(🚫|🗑|📊|↶|🏪|📞|📝)/
 const TRIP = /^(🚚|↩️|🛣|✅|🔁)/
 export function split(lines) {
   const now = [], later = []

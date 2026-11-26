@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, MessageCircle, Phone, PhoneCall, PhoneMissed, Clock, Plus, RotateCcw, Search } from 'lucide-react'
+import { useNavigate } from 'react-router'
+import { Check, MessageCircle, Phone, PhoneCall, PhoneMissed, Clock, Plus, RotateCcw, Search, ShoppingCart } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
+import { formatPaise } from '../../shared/money'
 import { Alert, Empty, PageHeader, Sheet, Skeleton } from '../../shared/ui/kit'
 import { todayIST } from './opsData'
 
@@ -91,15 +93,24 @@ function fmtTime(iso: string) {
   }
 }
 
+function fmtShortDate(iso: string) {
+  try {
+    return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-IN', { timeZone: 'UTC', day: 'numeric', month: 'short' })
+  } catch {
+    return iso
+  }
+}
+
 export default function CallSheetPage() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { profile } = useAuth()
   const today = todayIST()
   const [callDate, setCallDate] = useState(today)
   const [sheet, setSheet] = useState<string>('')
   const [q, setQ] = useState('')
   const [mktFilter, setMktFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | CallStatus | 'extra'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | CallStatus | 'extra' | 'followup'>('all')
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
   const [addOpen, setAddOpen] = useState(false)
   const [newShop, setNewShop] = useState({ outlet_name: '', contact_name: '', phone: '', address: '', location: '', mkt: '' })
@@ -127,6 +138,24 @@ export default function CallSheetPage() {
       supabase.from('route_call_log')
         .select('id, sheet_shop_id, call_date, status, note, called_by_name, called_at')
         .eq('call_date', callDate)
+    ),
+  })
+
+  const prevLogsQ = useQuery({
+    queryKey: ['route_call_log_prev', callDate],
+    queryFn: () => must<Pick<CallLog, 'sheet_shop_id' | 'call_date' | 'status' | 'note'>[]>(
+      supabase.from('route_call_log')
+        .select('sheet_shop_id, call_date, status, note')
+        .lt('call_date', callDate)
+        .order('call_date', { ascending: false })
+        .range(0, 1999)
+    ),
+  })
+
+  const balancesQ = useQuery({
+    queryKey: ['call_sheet_balances'],
+    queryFn: () => must<{ shop_id: string; balance_paise: number; overdue_paise: number }[]>(
+      supabase.from('v_shop_balance').select('shop_id, balance_paise, overdue_paise')
     ),
   })
 
@@ -166,6 +195,19 @@ export default function CallSheetPage() {
 
   const logByShop = useMemo(() => new Map((logsQ.data ?? []).map((l) => [l.sheet_shop_id, l])), [logsQ.data])
 
+  const prevLogByShop = useMemo(() => {
+    const m = new Map<string, Pick<CallLog, 'sheet_shop_id' | 'call_date' | 'status' | 'note'>>()
+    for (const l of prevLogsQ.data ?? []) {
+      if (!m.has(l.sheet_shop_id)) m.set(l.sheet_shop_id, l)
+    }
+    return m
+  }, [prevLogsQ.data])
+
+  const balanceByShop = useMemo(
+    () => new Map((balancesQ.data ?? []).map((b) => [b.shop_id, b])),
+    [balancesQ.data],
+  )
+
   const markets = useMemo(() => {
     const set = new Set<string>()
     for (const s of activeSheet?.items ?? []) {
@@ -176,14 +218,16 @@ export default function CallSheetPage() {
 
   const stats = useMemo(() => {
     const items = activeSheet?.items ?? []
-    const counts = { total: items.length, pending: 0, order_taken: 0, called: 0, no_answer: 0, callback: 0, extra: 0 }
+    const counts = { total: items.length, pending: 0, order_taken: 0, called: 0, no_answer: 0, callback: 0, extra: 0, followup: 0 }
     for (const s of items) {
       if (s.source !== 'excel') counts.extra++
       const st = logByShop.get(s.id)?.status ?? 'pending'
       counts[st]++
+      const prev = prevLogByShop.get(s.id)
+      if (st === 'pending' && prev && (prev.status === 'callback' || prev.status === 'no_answer')) counts.followup++
     }
     return counts
-  }, [activeSheet, logByShop])
+  }, [activeSheet, logByShop, prevLogByShop])
 
   const isSearching = q.trim().length > 0
 
@@ -197,15 +241,17 @@ export default function CallSheetPage() {
     const sourceItems = needle ? (shopsQ.data ?? []) : (activeSheet?.items ?? [])
     return sourceItems.filter((s) => {
       const st = logByShop.get(s.id)?.status ?? 'pending'
+      const prev = prevLogByShop.get(s.id)
       if (statusFilter === 'extra' && s.source === 'excel') return false
-      if (statusFilter !== 'all' && statusFilter !== 'extra' && st !== statusFilter) return false
+      if (statusFilter === 'followup' && !(st === 'pending' && prev && (prev.status === 'callback' || prev.status === 'no_answer'))) return false
+      if (statusFilter !== 'all' && statusFilter !== 'extra' && statusFilter !== 'followup' && st !== statusFilter) return false
       if (!needle && mktFilter && (s.mkt ?? '').trim() !== mktFilter) return false
       if (!needle) return true
       const areaName = sheetAreaByName.get(s.sheet_name) ?? ''
       return [s.outlet_name, s.contact_name, s.phone, s.address, s.location, s.mkt, areaName, s.sheet_name, s.sr_no ? String(s.sr_no) : '']
         .some((v) => (v ?? '').toLowerCase().includes(needle))
     })
-  }, [activeSheet, shopsQ.data, sheetAreaByName, logByShop, statusFilter, mktFilter, q])
+  }, [activeSheet, shopsQ.data, sheetAreaByName, logByShop, prevLogByShop, statusFilter, mktFilter, q])
 
   const upsertCall = useMutation({
     mutationFn: async ({ shopId, status, note }: { shopId: string; status: CallStatus; note?: string }) => {
@@ -259,6 +305,7 @@ export default function CallSheetPage() {
 
   const doneCount = stats.order_taken + stats.called + stats.no_answer + stats.callback
   const donePct = stats.total ? Math.round((doneCount / stats.total) * 100) : 0
+  const strikePct = doneCount ? Math.round((stats.order_taken / doneCount) * 100) : 0
 
   return (
     <section className="stack-lg">
@@ -346,7 +393,7 @@ export default function CallSheetPage() {
                       {activeSheet.areaName} <span className="cell-sub" style={{ fontWeight: 500, fontSize: 13 }}>({activeSheet.name}{activeSheet.schedule ? ` · ${activeSheet.schedule}` : ''})</span>
                     </h2>
                     <div className="cell-sub">
-                      {doneCount} of {stats.total} contacted ({donePct}%) · {stats.order_taken} orders · {stats.called} called · {stats.no_answer} no answer · {stats.callback} callback · {stats.extra} extra
+                      {doneCount} of {stats.total} contacted ({donePct}%) · {stats.order_taken} orders ({strikePct}% conv) · {stats.called} called · {stats.no_answer} no ans · {stats.callback} callback
                     </div>
                   </>
                 )}
@@ -381,6 +428,7 @@ export default function CallSheetPage() {
                 {([
                   ['all', `All (${stats.total})`],
                   ['pending', `To call (${stats.pending})`],
+                  ['followup', `Follow-up (${stats.followup})`],
                   ['order_taken', `Order (${stats.order_taken})`],
                   ['called', `Called (${stats.called})`],
                   ['no_answer', `No ans (${stats.no_answer})`],
@@ -410,6 +458,8 @@ export default function CallSheetPage() {
                   <tbody>
                     {filtered.map((s) => {
                       const log = logByShop.get(s.id)
+                      const prev = prevLogByShop.get(s.id)
+                      const bal = s.shop_id ? balanceByShop.get(s.shop_id) : undefined
                       const st: CallStatus = log?.status ?? 'pending'
                       const meta = STATUS_META[st]
                       const phone10 = cleanPhone(s.phone)
@@ -429,6 +479,20 @@ export default function CallSheetPage() {
                           <td className="lead" data-label="Shop">
                             <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                               <b>{s.outlet_name}</b>
+                              {bal && bal.balance_paise > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '1px 6px',
+                                    borderRadius: 99,
+                                    background: bal.overdue_paise > 0 ? '#fee2e2' : '#fef3c7',
+                                    color: bal.overdue_paise > 0 ? '#991b1b' : '#92400e',
+                                  }}
+                                >
+                                  Due {formatPaise(bal.balance_paise)}
+                                </span>
+                              )}
                               {isSearching && (
                                 <button
                                   type="button"
@@ -444,29 +508,42 @@ export default function CallSheetPage() {
                           </td>
                           <td data-label="Call">
                             {s.contact_name && <div style={{ fontSize: 12, marginBottom: 3 }}>{s.contact_name}</div>}
-                            {phone10 ? (
-                              <div className="row" style={{ gap: 5, flexWrap: 'wrap' }}>
-                                <a
-                                  href={`tel:+91${phone10}`}
+                            <div className="row" style={{ gap: 5, flexWrap: 'wrap' }}>
+                              {phone10 ? (
+                                <>
+                                  <a
+                                    href={`tel:+91${phone10}`}
+                                    className="btn-sm"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#16a34a', color: '#fff', textDecoration: 'none', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}
+                                  >
+                                    <Phone size={13} aria-hidden="true" /> {phone10}
+                                  </a>
+                                  <a
+                                    href={`https://wa.me/91${phone10}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-sm"
+                                    title="WhatsApp"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ecfdf5', color: '#166534', border: '1px solid #bbf7d0', textDecoration: 'none', padding: '4px 7px', borderRadius: 6 }}
+                                  >
+                                    <MessageCircle size={13} aria-hidden="true" /> WA
+                                  </a>
+                                </>
+                              ) : (
+                                <span className="cell-sub">No phone</span>
+                              )}
+                              {s.shop_id && (
+                                <button
+                                  type="button"
                                   className="btn-sm"
-                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#16a34a', color: '#fff', textDecoration: 'none', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}
+                                  title="Create order for this shop"
+                                  onClick={() => navigate(`/admin/orders?shopId=${s.shop_id}`)}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
                                 >
-                                  <Phone size={13} aria-hidden="true" /> {phone10}
-                                </a>
-                                <a
-                                  href={`https://wa.me/91${phone10}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="btn-sm"
-                                  title="WhatsApp"
-                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ecfdf5', color: '#166534', border: '1px solid #bbf7d0', textDecoration: 'none', padding: '4px 7px', borderRadius: 6 }}
-                                >
-                                  <MessageCircle size={13} aria-hidden="true" /> WA
-                                </a>
-                              </div>
-                            ) : (
-                              <span className="cell-sub">No phone</span>
-                            )}
+                                  <ShoppingCart size={12} aria-hidden="true" /> + Order
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td data-label="Status & Note">
                             <div className="row" style={{ gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
@@ -518,6 +595,12 @@ export default function CallSheetPage() {
                                 if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
                               }}
                             />
+                            {prev && (
+                              <div className="cell-sub" style={{ fontSize: 11, marginTop: 3 }}>
+                                Last ({fmtShortDate(prev.call_date)}): {STATUS_META[prev.status]?.label ?? prev.status}
+                                {prev.note ? ` · "${prev.note}"` : ''}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )

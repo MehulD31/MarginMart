@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRightLeft, ClipboardList, Phone, Plus, Truck } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
@@ -54,8 +55,21 @@ export default function OrdersPage() {
   const [open, setOpen] = useState<{ order?: AdminOrder; shop?: Shop; plan: Plan } | null>(null)
   const [picking, setPicking] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
-  const [adding, setAdding] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const prefillShopId = searchParams.get('shopId') ?? undefined
+  const [adding, setAdding] = useState(!!prefillShopId)
   const [moving, setMoving] = useState<AdminOrder | null>(null)
+  useEffect(() => {
+    if (prefillShopId) setAdding(true)
+  }, [prefillShopId])
+  const closeAdding = () => {
+    setAdding(false)
+    if (prefillShopId) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('shopId')
+      setSearchParams(next, { replace: true })
+    }
+  }
   const vehicles = useVehicles()
   const vName = (id: string | null) => vehicles.data?.find((v) => v.id === id)?.name
   const isAdmin = useAuth().profile?.role === 'admin'
@@ -129,8 +143,8 @@ export default function OrdersPage() {
       <Sheet open={!!moving} title={moving ? `${t('orders.move')}: ${moving.shop.name}` : ''} onClose={() => setMoving(null)}>
         {moving && <MoveOrder order={moving} initialDate={day} onDone={() => setMoving(null)} />}
       </Sheet>
-      <Sheet open={adding} title={t('orders.new')} onClose={() => setAdding(false)}>
-        {adding && <AddOrder initialDate={day || todayIST()} onReady={(shop, plan, order) => { setAdding(false); setDate(plan.date); setRoute(''); setOpen({ shop, plan, order }) }} />}
+      <Sheet open={adding} title={t('orders.new')} onClose={closeAdding}>
+        {adding && <AddOrder initialDate={day || todayIST()} initialShopId={prefillShopId} onReady={(shop, plan, order) => { closeAdding(); setDate(plan.date); setRoute(''); setOpen({ shop, plan, order }) }} />}
       </Sheet>
       <Sheet open={!!open} wide title={open ? `${open.order?.shop.name ?? open.shop?.name} · ${fmt(open.plan.date)}` : ''} onClose={() => setOpen(null)}>
         {open && <OrderEditor key={open.order?.id ?? open.shop?.id}
@@ -179,7 +193,7 @@ type PlanRow = Plan & { vehicle: { name: string } | null }
  * The trip can be the shop's own route (added for that day if it doesn't usually run) or another
  * route's trip, so one truck can carry extra shops. The vehicle chosen here is pre-set for Loading.
  */
-export function AddOrder({ initialDate, initialVehicle, onReady }: { initialDate: string; initialVehicle?: string; onReady: (s: Shop, p: Plan, o?: AdminOrder) => void }) {
+export function AddOrder({ initialDate, initialVehicle, initialShopId, onReady }: { initialDate: string; initialVehicle?: string; initialShopId?: string; onReady: (s: Shop, p: Plan, o?: AdminOrder) => void }) {
   const { t } = useTranslation()
   const fmt = useLocaleDate()
   const qc = useQueryClient()
@@ -195,6 +209,12 @@ export function AddOrder({ initialDate, initialVehicle, onReady }: { initialDate
     queryKey: ['shop', 'active-all'],
     queryFn: () => must<ShopWithRoute[]>(supabase.from('shop').select('*, route(name)').eq('active', true).order('name')),
   })
+  useEffect(() => {
+    if (initialShopId && !shop && shops.data) {
+      const found = shops.data.find((s) => s.id === initialShopId)
+      if (found) setShop(found)
+    }
+  }, [initialShopId, shop, shops.data])
   const trips = useQuery({
     queryKey: ['plans', 'on', date],
     enabled: !!date,

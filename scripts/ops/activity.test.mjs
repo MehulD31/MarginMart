@@ -54,6 +54,18 @@ suite('website activity', () => {
     const g = groupRows([{ actor: 'a', at: '1' }, { actor: 'a', at: '1' }, { actor: 'b', at: '1' }, { actor: 'a', at: '2' }])
     expect(g.map((x) => x.rows.length)).toEqual([2, 1, 1])
   })
+  it('formats call sheet calls and added shops immediately', () => {
+    const L2 = { ...L, sheetShop: () => ({ outlet_name: 'Chai shala', sheet_name: 'ROUTE1D' }) }
+    const out = describe({ rows: [
+      row('route_call_log', 'insert', { sheet_shop_id: 'ss1', status: 'order_taken', note: 'kal gadi bhejna' }),
+      row('route_sheet_shop', 'insert', { outlet_name: 'New Mart', sheet_name: 'ROUTE 1A' }),
+    ] }, L2)
+    expect(out).toEqual([
+      '🏪 Call sheet me nayi dukaan: <b>New Mart</b> (ROUTE 1A)',
+      '📞 Call: <b>Chai shala</b> (ROUTE1D) · order · "kal gadi bhejna"',
+    ])
+    expect(split(out).now).toEqual(out)
+  })
 })
 
 suite('one group: now vs 2-hour summary', () => {

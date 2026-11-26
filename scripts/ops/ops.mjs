@@ -121,7 +121,17 @@ async function night() {
       `\n${dd.profit >= 0 ? '🟢' : '🔴'} Aaj ka profit ${rs(dd.profit)}${dd.need ? ` · break-even ke liye ~${dd.need} peti aur` : ''}` +
       `\nMahina ab tak: profit ${rs(mm.profit)} (${n(pm?.active_days)} din) · ${b.line} ${rs(b.spent)}/${rs(b.budget)}${b.over ? ' ⚠️ budget se upar' : ''}`
   } catch (e) { console.log('pnl skipped', e.message) }
-  await say(text + pl + money + tip)
+  let cs = ''
+  try {
+    const calls = await db(`route_call_log?call_date=eq.${today}&select=status`)
+    if (calls.length) {
+      const ord = calls.filter((c) => c.status === 'order_taken').length
+      const cb = calls.filter((c) => c.status === 'callback').length
+      const pct = Math.round((ord / calls.length) * 100)
+      cs = `\n\n📞 Call sheet: <b>${calls.length}</b> calls · <b>${ord}</b> orders (${pct}%)${cb ? ` · ${cb} callback` : ''}`
+    }
+  } catch (e) { console.log('call sheet night skipped', e.message) }
+  await say(text + pl + cs + money + tip)
   await mark('night', today, { cases })
 }
 
@@ -440,9 +450,11 @@ async function activity() {
     const vehicles = await fetchMap('vehicle', 'id', 'id,name', ids('vehicle_id'))
     const shops = await fetchMap('shop', 'id', 'id,name', ids('shop_id'))
     const suppliers = await fetchMap('supplier', 'id', 'id,name', ids('supplier_id'))
+    const sheetShops = await fetchMap('route_sheet_shop', 'id', 'id,outlet_name,sheet_name', ids('sheet_shop_id'))
     const L = {
       variant: (id) => { const v = variants.get(id); return v ? item(`${v.pack?.name_en ?? ''} ${v.flavour_en ?? ''}`.trim()) : null },
       route: (id) => routes.get(id)?.name, vehicle: (id) => vehicles.get(id)?.name, shop: (id) => shops.get(id)?.name, supplier: (id) => suppliers.get(id)?.name,
+      sheetShop: (id) => sheetShops.get(id),
       load: (pid) => loads.filter((l) => l.route_day_plan_id === pid).map((l) => ({ variant_id: l.variant_id, qty: n(l.qty_ordered_total) + n(l.qty_spare) })).filter((l) => l.qty > 0),
     }
     const blocks = []
