@@ -89,17 +89,19 @@ export default function SalesReportPage() {
           </div>
           <div className="table-wrap table-scroll"><table className="dense table-stack" data-testid="srep-items">
             <thead><tr>{th('item', t('srep.item'), false)}{th('cases', t('srep.cases'))}<th scope="col" className="num">{t('srep.bottles')}</th>{th('amount_paise', t('srep.amount'))}
-              <th scope="col" className="num">{t('srep.avgRate')}</th>{th('margin_paise', t('srep.marginCol'))}{th('shops', t('srep.shopsCol'))}<th scope="col" className="num">{t('srep.lastSold')}</th></tr></thead>
+              <th scope="col" className="num">{t('srep.avgRate')}</th><th scope="col" className="num">{t('srep.avgBuy')}</th>{th('margin_paise', t('srep.marginCol'))}{th('shops', t('srep.shopsCol'))}<th scope="col" className="num">{t('srep.lastSold')}</th></tr></thead>
             <tbody>{items.map((i) => (
               <tr key={i.item}><td className="lead"><b>{itemName(i.item)}</b><div className="cell-sub">{i.brand}</div></td>
                 <td className="num" data-label={t('srep.cases')}><b>{i.cases}</b></td><td className="num" data-label={t('srep.bottles')}>{Number(i.units).toLocaleString('en-IN')}</td>
                 <td className="num" data-label={t('srep.amount')}><b>{rupees(i.amount_paise)}</b></td>
                 <td className="num" data-label={t('srep.avgRate')}>{rupees(i.avg_rate_paise)}</td>
+                <td className="num" data-label={t('srep.avgBuy')}>{i.avg_buy_paise != null ? rupees(i.avg_buy_paise) : '—'}</td>
                 <td className="num" data-label={t('srep.marginCol')} style={{ color: Number(i.margin_paise) < 0 ? '#dc2626' : undefined }}>{rupees(i.margin_paise)}</td>
                 <td className="num" data-label={t('srep.shopsCol')}>{i.shops}</td><td className="num" data-label={t('srep.lastSold')}>{niceDate(i.last_sold)}</td></tr>))}</tbody>
             <tfoot><tr><td className="lead"><b>{t('srep.total')}</b></td><td className="num" data-label={t('srep.cases')}><b>{cases}</b></td><td className="num" data-label={t('srep.bottles')}>{Number(tt!.units).toLocaleString('en-IN')}</td>
               <td className="num" data-label={t('srep.amount')}><b>{rupees(tt!.gross_paise)}</b></td>
               <td className="num" data-label={t('srep.avgRate')}>{rupees(Number(tt!.gross_paise) / Math.max(1, cases))}</td>
+              <td className="num" data-label={t('srep.avgBuy')}>{rupees(Number(tt!.cost_paise) / Math.max(1, cases))}</td>
               <td className="num" data-label={t('srep.marginCol')}>{rupees(Number(tt!.margin_paise) + Number(tt!.discount_paise))}</td><td className="phone-hide" /><td className="phone-hide" /></tr></tfoot>
           </table></div>
         </div>

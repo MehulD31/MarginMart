@@ -65,10 +65,10 @@ ${showMargin ? card('Margin (over buy price)', rupees(t.margin_paise), `${pct(Nu
 </div>
 
 <h2>Items sold</h2>
-<table>${head([['#'], ['Item'], ['Cases', 1], ['Bottles', 1], ['Amount', 1], ['Avg rate / case', 1], ...(showMargin ? [['Margin', 1]] : []), ['Shops', 1], ['Last sold', 1]])}
+<table>${head([['#'], ['Item'], ['Cases', 1], ['Bottles', 1], ['Amount', 1], ['Avg rate / case', 1], ...(showMargin ? [['Avg buy / case', 1], ['Margin', 1]] : []), ['Shops', 1], ['Last sold', 1]])}
 <tbody>${items.map((i, k) => `<tr><td class="muted">${k + 1}</td><td>${esc(itemName(i.item))}<div class="muted">${esc(i.brand)}</div></td><td class="n"><b>${int(i.cases)}</b></td><td class="n">${int(i.units)}</td>
-<td class="n">${rupees(i.amount_paise)}</td><td class="n">${rupees(i.avg_rate_paise)}</td>${showMargin ? `<td class="n">${rupees(i.margin_paise)}</td>` : ''}<td class="n">${int(i.shops)}</td><td class="n">${niceDate(i.last_sold)}</td></tr>`).join('')}</tbody>
-<tfoot><tr><td></td><td>Total (${items.length} items)</td><td class="n">${int(cases)}</td><td class="n">${int(t.units)}</td><td class="n">${rupees(t.gross_paise)}</td><td class="n">${rupees(Number(t.gross_paise) / Math.max(1, cases))}</td>${showMargin ? `<td class="n">${rupees(Number(t.margin_paise) + Number(t.discount_paise))}</td>` : ''}<td></td><td></td></tr></tfoot></table>
+<td class="n">${rupees(i.amount_paise)}</td><td class="n">${rupees(i.avg_rate_paise)}</td>${showMargin ? `<td class="n">${i.avg_buy_paise != null ? rupees(i.avg_buy_paise) : '—'}</td><td class="n">${rupees(i.margin_paise)}</td>` : ''}<td class="n">${int(i.shops)}</td><td class="n">${niceDate(i.last_sold)}</td></tr>`).join('')}</tbody>
+<tfoot><tr><td></td><td>Total (${items.length} items)</td><td class="n">${int(cases)}</td><td class="n">${int(t.units)}</td><td class="n">${rupees(t.gross_paise)}</td><td class="n">${rupees(Number(t.gross_paise) / Math.max(1, cases))}</td>${showMargin ? `<td class="n">${rupees(Number(t.cost_paise) / Math.max(1, cases))}</td><td class="n">${rupees(Number(t.margin_paise) + Number(t.discount_paise))}</td>` : ''}<td></td><td></td></tr></tfoot></table>
 ${Number(t.discount_paise) ? `<p class="muted">Item amounts are before bill discounts (${rupees(t.discount_paise)} in total).</p>` : ''}
 
 <div class="two">
