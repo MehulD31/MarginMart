@@ -39,10 +39,16 @@ export default function PurchasesPage() {
   const suppliers = useSuppliers()
   const purchases = usePurchases()
   const { rows } = useStockRows()
+  const settingsQ = useQuery({
+    queryKey: ['business_settings', 'margin'],
+    queryFn: () => must<{ default_margin_paise: number } | null>(supabase.from('business_settings').select('default_margin_paise').eq('id', 1).maybeSingle()),
+  })
+  const defaultMarginPaise = settingsQ.data?.default_margin_paise ?? 3200
   const [newOpen, setNewOpen] = useState(false)
   const [suppOpen, setSuppOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [view, setView] = useState<string | null>(null)
+  const rowById = new Map(rows.map((r) => [r.variant_id, r]))
   const names = new Map(rows.map((r) => [r.variant_id, r.name]))
   const supp = new Map(suppliers.data?.map((s) => [s.id, s.name]))
   const loc = i18n.language === 'hi' ? 'hi-IN' : 'en-IN'
@@ -106,21 +112,36 @@ export default function PurchasesPage() {
         { header: 'Supplier', key: 'supplier', width: 26 },
         { header: 'Invoice No', key: 'invoice', width: 18 },
         { header: 'Item', key: 'item', width: 34 },
-        { header: 'Cases', key: 'cases', width: 12 },
-        { header: 'Rate (₹)', key: 'rate', width: 14 },
+        { header: 'Cases', key: 'cases', width: 10 },
+        { header: 'Bottles / Case', key: 'units', width: 14 },
+        { header: 'Total Bottles', key: 'bottles', width: 14 },
+        { header: 'Rate / Case (₹)', key: 'rate', width: 15 },
+        { header: 'Cost / Bottle (₹)', key: 'costBottle', width: 16 },
+        { header: 'Suggested Sell / Case (₹)', key: 'sellCase', width: 22 },
+        { header: 'Suggested Sell / Bottle (₹)', key: 'sellBottle', width: 23 },
         { header: 'Line Total (₹)', key: 'lineTotal', width: 16 },
       ]
       styleHead(wsItems, itemCols)
       const itemRows = all.flatMap((p) =>
-        p.purchase_line.map((l) => ({
-          date: p.purchase_date,
-          supplier: supp.get(p.supplier_id) ?? '—',
-          invoice: p.invoice_no ?? '',
-          item: names.get(l.variant_id) ?? '—',
-          cases: l.qty,
-          rate: Number((l.cost_paise / 100).toFixed(2)),
-          lineTotal: Number(((l.qty * l.cost_paise) / 100).toFixed(2)),
-        }))
+        p.purchase_line.map((l) => {
+          const units = Math.max(1, rowById.get(l.variant_id)?.units ?? 1)
+          const rateRs = l.cost_paise / 100
+          const sellCaseRs = (l.cost_paise + defaultMarginPaise) / 100
+          return {
+            date: p.purchase_date,
+            supplier: supp.get(p.supplier_id) ?? '—',
+            invoice: p.invoice_no ?? '',
+            item: names.get(l.variant_id) ?? '—',
+            cases: l.qty,
+            units,
+            bottles: l.qty * units,
+            rate: Number(rateRs.toFixed(2)),
+            costBottle: Number((rateRs / units).toFixed(2)),
+            sellCase: Number(sellCaseRs.toFixed(2)),
+            sellBottle: Number((sellCaseRs / units).toFixed(2)),
+            lineTotal: Number(((l.qty * l.cost_paise) / 100).toFixed(2)),
+          }
+        })
       )
       wsItems.addRows(itemRows)
 
@@ -176,10 +197,23 @@ export default function PurchasesPage() {
       <Sheet open={!!current} title={current ? `${supp.get(current.supplier_id) ?? ''} ${current.invoice_no ?? ''}` : ''} onClose={() => setView(null)}>
         {current && <div className="stack">
           {current.note && <p className="muted">{current.note}</p>}
-          <ul className="plain-list stack">{current.purchase_line.map((l) => (
-            <li key={l.variant_id} className="row-between"><span>{names.get(l.variant_id) ?? '—'}</span>
-              <span className="num">{l.qty} × {formatPaise(l.cost_paise)} = <strong>{formatPaise(l.qty * l.cost_paise)}</strong></span></li>))}
-          </ul>
+          <ul className="plain-list stack">{current.purchase_line.map((l) => {
+            const units = Math.max(1, rowById.get(l.variant_id)?.units ?? 1)
+            const costBottle = l.cost_paise / units
+            const sellCase = l.cost_paise + defaultMarginPaise
+            const sellBottle = sellCase / units
+            return (
+              <li key={l.variant_id} className="stack" style={{ gap: 2 }}>
+                <div className="row-between">
+                  <span>{names.get(l.variant_id) ?? '—'}</span>
+                  <span className="num">{l.qty} × {formatPaise(l.cost_paise)} = <strong>{formatPaise(l.qty * l.cost_paise)}</strong></span>
+                </div>
+                <div className="cell-sub num">
+                  {units} bottles/case · Cost/bottle: ₹{(costBottle / 100).toFixed(2)} · Suggested sell: {formatPaise(sellCase)}/case (₹{(sellBottle / 100).toFixed(2)}/bottle)
+                </div>
+              </li>
+            )
+          })}</ul>
           <div className="row-between"><strong>{t('purchases.total')}</strong><strong className="num">{formatPaise(current.total_paise)}</strong></div>
           <div className="sheet-foot">
             <DeleteButton kind="purchase" id={current.id} name={`${supp.get(current.supplier_id) ?? ''} ${current.invoice_no ?? ''}`.trim()}
@@ -190,7 +224,7 @@ export default function PurchasesPage() {
         </div>}
       </Sheet>
       <Sheet open={newOpen} wide title={t('purchases.new')} onClose={() => setNewOpen(false)}>
-        {newOpen && <PurchaseForm suppliers={(suppliers.data ?? []).filter((s) => s.active)} items={rows.filter((r) => r.active)} onDone={() => setNewOpen(false)} />}
+        {newOpen && <PurchaseForm suppliers={(suppliers.data ?? []).filter((s) => s.active)} items={rows.filter((r) => r.active)} defaultMarginPaise={defaultMarginPaise} onDone={() => setNewOpen(false)} />}
       </Sheet>
       <Sheet open={importOpen} wide title={t('purchases.importExcel')} onClose={() => setImportOpen(false)}>
         {importOpen && <ImportInvoice suppliers={(suppliers.data ?? []).filter((s) => s.active)} items={rows.filter((r) => r.active)} onDone={() => setImportOpen(false)} />}
@@ -206,7 +240,7 @@ type Line = { variant_id: string; qty: string; cost: string }
 type PurchaseDraft = { supplier: string; invoice: string; date: string; note: string; lines: Line[]; sending: boolean }
 const blank = (): Line => ({ variant_id: '', qty: '', cost: '' })
 
-function PurchaseForm({ suppliers, items, onDone }: { suppliers: Supplier[]; items: { variant_id: string; name: string }[]; onDone: () => void }) {
+function PurchaseForm({ suppliers, items, defaultMarginPaise, onDone }: { suppliers: Supplier[]; items: { variant_id: string; name: string; units: number }[]; defaultMarginPaise: number; onDone: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   // The purchase being typed is kept until it is saved or cancelled. "sending" marks the moment the save was sent: if the tab died
@@ -253,17 +287,32 @@ function PurchaseForm({ suppliers, items, onDone }: { suppliers: Supplier[]; ite
       </div>
       <div className="stack">
         <h3>{t('purchases.lines')}</h3>
-        {lines.map((l, i) => (
-          <div key={i} className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <label className="field grow" style={{ minWidth: 220 }}><span>{t('inventory.item')}</span>
-              <select value={l.variant_id} onChange={(e) => set(i, { variant_id: e.target.value })}>
-                <option value="">—</option>
-                {items.map((x) => <option key={x.variant_id} value={x.variant_id} disabled={x.variant_id !== l.variant_id && ids.includes(x.variant_id)}>{x.name}</option>)}
-              </select></label>
-            <label className="field" style={{ width: 100 }}><span>{t('orders.cases')}</span><input type="number" inputMode="numeric" min={1} value={l.qty} onChange={(e) => set(i, { qty: e.target.value })} /></label>
-            <label className="field" style={{ width: 140 }}><span>{t('purchases.costPerCase')}</span><input type="number" inputMode="decimal" min={0} step="0.01" value={l.cost} onChange={(e) => set(i, { cost: e.target.value })} /></label>
-            <button type="button" className="ghost icon-btn" aria-label={t('purchases.removeLine')} disabled={lines.length === 1} onClick={() => setLines(lines.filter((_, j) => j !== i))}><Trash2 size={18} /></button>
-          </div>))}
+        {lines.map((l, i) => {
+          const itemInfo = items.find((x) => x.variant_id === l.variant_id)
+          const units = Math.max(1, itemInfo?.units ?? 1)
+          const costNum = Number(l.cost) || 0
+          const sellCaseRs = costNum + defaultMarginPaise / 100
+          return (
+            <div key={i} className="stack" style={{ gap: 4 }}>
+              <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <label className="field grow" style={{ minWidth: 220 }}><span>{t('inventory.item')}</span>
+                  <select value={l.variant_id} onChange={(e) => set(i, { variant_id: e.target.value })}>
+                    <option value="">—</option>
+                    {items.map((x) => <option key={x.variant_id} value={x.variant_id} disabled={x.variant_id !== l.variant_id && ids.includes(x.variant_id)}>{x.name}</option>)}
+                  </select></label>
+                <label className="field" style={{ width: 100 }}><span>{t('orders.cases')}</span><input type="number" inputMode="numeric" min={1} value={l.qty} onChange={(e) => set(i, { qty: e.target.value })} /></label>
+                <label className="field" style={{ width: 140 }}><span>{t('purchases.costPerCase')}</span><input type="number" inputMode="decimal" min={0} step="0.01" value={l.cost} onChange={(e) => set(i, { cost: e.target.value })} /></label>
+                <button type="button" className="ghost icon-btn" aria-label={t('purchases.removeLine')} disabled={lines.length === 1} onClick={() => setLines(lines.filter((_, j) => j !== i))}><Trash2 size={18} /></button>
+              </div>
+              {itemInfo && (
+                <div className="cell-sub num">
+                  {units} bottles/case
+                  {costNum > 0 && <> · Cost/bottle: ₹{(costNum / units).toFixed(2)} · Suggested sell: ₹{sellCaseRs.toFixed(0)}/case (₹{(sellCaseRs / units).toFixed(2)}/bottle)</>}
+                </div>
+              )}
+            </div>
+          )
+        })}
         <div className="row"><button type="button" onClick={() => setLines([...lines, blank()])}><Plus size={18} aria-hidden="true" />{t('purchases.addLine')}</button></div>
       </div>
       <div className="row-between"><strong>{t('purchases.total')}</strong><strong className="num">{formatPaise(total)}</strong></div>
