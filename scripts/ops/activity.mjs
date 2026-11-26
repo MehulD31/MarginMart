@@ -6,7 +6,8 @@ const rs = (p) => '<b>₹' + Math.round(Number(p ?? 0) / 100).toLocaleString('en
 const cnt = (rows, table, action) => rows.filter((r) => r.table_name === table && (!action || r.action === action))
 const NICE = { shop: 'dukaan', pack: 'item', variant: 'item flavour', price_list: 'rate list', price_list_item: 'rate', scheme: 'scheme', settings: 'settings',
   business_settings: 'business settings', vehicle: 'gaadi', route: 'route', profiles: 'login', supplier: 'supplier', join_requests: 'join request', stock: 'stock',
-  route_call_log: 'call log', route_sheet_shop: 'call sheet shop' }
+  route_call_log: 'call log', route_sheet_shop: 'call sheet shop',
+  staff_member: 'staff', staff_attendance: 'attendance', staff_advance: 'advance' }
 
 const CALL_LBL = { order_taken: 'order', called: 'called', no_answer: 'no answer', callback: 'callback', pending: 'reset' }
 
@@ -73,6 +74,18 @@ export function describe(g, L0) {
     out.push(`📞 Call: <b>${name}</b>${sheet} · ${CALL_LBL[a.status] ?? esc(a.status)}${note}`)
   }
   if (calls.length > 12) out.push(`📞 +${calls.length - 12} aur calls`)
+  const atts = [...take(cnt(rows, 'staff_attendance', 'insert')), ...take(cnt(rows, 'staff_attendance', 'update'))]
+  for (const r of atts.slice(0, 12)) {
+    const a = r.after ?? {}
+    const nm = esc(L0.staff?.(a.staff_id) ?? 'Staff')
+    const ot = Number(a.overtime_paise) > 0 ? ` · OT ${rs(a.overtime_paise)}` : ''
+    out.push(`👷 Attendance: <b>${nm}</b> · ${esc(a.status)}${ot}`)
+  }
+  if (atts.length > 12) out.push(`👷 +${atts.length - 12} aur attendance`)
+  for (const r of take(cnt(rows, 'staff_advance', 'insert'))) {
+    const a = r.after ?? {}
+    out.push(`💸 Advance: <b>${esc(L0.staff?.(a.staff_id) ?? 'Staff')}</b> · ${rs(a.amount_paise)}${a.note ? ` · "${esc(String(a.note).slice(0, 50))}"` : ''}`)
+  }
   // manual stock changes (not part of a bill/load/purchase)
   const moves = take(cnt(rows, 'stock_move', 'insert'))
   const manual = moves.filter((r) => !r.after?.cash_sale_id && !r.after?.route_day_plan_id && !r.after?.purchase_id)
@@ -102,7 +115,7 @@ export function groupRows(rows) {
 // One group only (owner, 12 Nov 2026): send right away only what needs attention; everything else is collected
 // and sent as one summary every 2 hours. Trips (load / back / close) go right away as one short line, with the
 // item list kept for the summary.
-const NOW = /^(🚫|🗑|📊|↶|🏪|📞|📝)/
+const NOW = /^(🚫|🗑|📊|↶|🏪|📞|📝|👷|💸)/
 const TRIP = /^(🚚|↩️|🛣|✅|🔁)/
 export function split(lines) {
   const now = [], later = []

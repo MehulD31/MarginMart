@@ -451,10 +451,12 @@ async function activity() {
     const shops = await fetchMap('shop', 'id', 'id,name', ids('shop_id'))
     const suppliers = await fetchMap('supplier', 'id', 'id,name', ids('supplier_id'))
     const sheetShops = await fetchMap('route_sheet_shop', 'id', 'id,outlet_name,sheet_name', ids('sheet_shop_id'))
+    const staffMembers = await fetchMap('staff_member', 'id', 'id,name', ids('staff_id'))
     const L = {
       variant: (id) => { const v = variants.get(id); return v ? item(`${v.pack?.name_en ?? ''} ${v.flavour_en ?? ''}`.trim()) : null },
       route: (id) => routes.get(id)?.name, vehicle: (id) => vehicles.get(id)?.name, shop: (id) => shops.get(id)?.name, supplier: (id) => suppliers.get(id)?.name,
       sheetShop: (id) => sheetShops.get(id),
+      staff: (id) => staffMembers.get(id)?.name,
       load: (pid) => loads.filter((l) => l.route_day_plan_id === pid).map((l) => ({ variant_id: l.variant_id, qty: n(l.qty_ordered_total) + n(l.qty_spare) })).filter((l) => l.qty > 0),
     }
     const blocks = []

@@ -37,6 +37,7 @@ import AssistantPage from './AssistantPage'
 import SalesReportPage from './SalesReportPage'
 import BuyingPage from './BuyingPage'
 import CallSheetPage from './CallSheetPage'
+import AttendancePage from './AttendancePage'
 
 interface Item { to: string; label: string; icon: LucideIcon; badge?: number }
 
@@ -67,6 +68,7 @@ export default function AdminApp() {
     ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ to: 'ask', label: t('nav.ask'), icon: Bot }] : []),
     { to: 'orders', label: t('nav.orders'), icon: ClipboardList },
     { to: 'call-sheet', label: t('nav.callSheet'), icon: PhoneCall },
+    { to: 'attendance', label: t('nav.attendance'), icon: ClipboardCheck },
     { to: 'loading', label: t('nav.loading'), icon: Truck },
     { to: 'live', label: t('nav.live'), icon: Radio },
     { to: 'sales', label: t('nav.sales'), icon: Receipt },
@@ -140,6 +142,7 @@ export default function AdminApp() {
           <Route path="ask" element={<AssistantPage />} />
         <Route path="orders" element={<OrdersPage />} />
           <Route path="call-sheet" element={<CallSheetPage />} />
+          <Route path="attendance" element={<AttendancePage />} />
           <Route path="loading" element={<TripsPage />} />
           <Route path="live" element={<LivePage />} />
           <Route path="sales" element={<CounterSalesPage />} />
