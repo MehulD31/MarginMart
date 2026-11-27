@@ -400,6 +400,9 @@ export default function CallSheetPage() {
             flexWrap: 'nowrap',
             paddingBottom: 6,
             WebkitOverflowScrolling: 'touch',
+            maxWidth: '100%',
+            width: '100%',
+            boxSizing: 'border-box',
           }}
           role="tablist"
           aria-label="Route sheets"
@@ -550,9 +553,9 @@ export default function CallSheetPage() {
                               </span>
                             )}
                           </td>
-                          <td className="lead" data-label="Shop">
+                          <td className="lead" data-label="Shop" style={{ maxWidth: '100%', minWidth: 0, overflowWrap: 'anywhere' }}>
                             <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                              <b>{s.outlet_name}</b>
+                              <b style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{s.outlet_name}</b>
                               {bal && bal.balance_paise > 0 && (
                                 <span
                                   style={{
@@ -578,7 +581,7 @@ export default function CallSheetPage() {
                                 </button>
                               )}
                             </div>
-                            {areaBits && <div className="cell-sub" style={{ marginTop: 2 }}>{areaBits}</div>}
+                            {areaBits && <div className="cell-sub" style={{ marginTop: 2, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{areaBits}</div>}
 
                             {/* LAST PURCHASE & CALLING TALK-TRACK */}
                             {pur && pur.items && pur.items.length > 0 && purAgo ? (
@@ -590,6 +593,10 @@ export default function CallSheetPage() {
                                   background: '#f0fdfa',
                                   border: '1px solid #a7f3d0',
                                   fontSize: 12,
+                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
+                                  overflowWrap: 'anywhere',
+                                  wordBreak: 'break-word',
                                 }}
                               >
                                 <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
@@ -619,7 +626,7 @@ export default function CallSheetPage() {
                                   </span>
                                 </div>
 
-                                <div style={{ color: '#1e293b', fontWeight: 600, fontSize: 12, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                                <div style={{ color: '#1e293b', fontWeight: 600, fontSize: 12, lineHeight: 1.35, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                   🛒 {pur.items.map((it) => `${it.qty}× ${it.name}`).join(' · ')}
                                 </div>
 
@@ -639,12 +646,17 @@ export default function CallSheetPage() {
                                       background: 'transparent',
                                       color: '#047857',
                                       fontSize: 11,
-                                      lineHeight: 1.35,
+                                      lineHeight: 1.4,
                                       textAlign: 'left',
                                       cursor: 'pointer',
                                       padding: '5px 0 0 0',
                                       display: 'block',
                                       width: '100%',
+                                      maxWidth: '100%',
+                                      boxSizing: 'border-box',
+                                      whiteSpace: 'normal',
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'anywhere',
                                     }}
                                   >
                                     🗣️ <strong>Say on call:</strong> &ldquo;Bhaiya, {purAgo.label === 'Today' || purAgo.label === 'Yesterday' ? purAgo.label.toLowerCase() : purAgo.dateStr} ko <strong>{pitchItems}</strong> liya tha — refill bhejein?&rdquo;
@@ -667,14 +679,19 @@ export default function CallSheetPage() {
                                   padding: '3px 8px',
                                   borderRadius: 6,
                                   border: '1px dashed #cbd5e1',
+                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
+                                  whiteSpace: 'normal',
+                                  wordBreak: 'break-word',
+                                  overflowWrap: 'anywhere',
                                 }}
                               >
                                 <span>🆕 No past orders in app · Pitch starter pack (Dew/Sting/Aquafina)</span>
                               </div>
                             )}
                           </td>
-                          <td data-label="Call">
-                            {s.contact_name && <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, color: '#334155' }}>👤 {s.contact_name}</div>}
+                          <td data-label="Call" style={{ maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                            {s.contact_name && <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, color: '#334155', wordBreak: 'break-word' }}>👤 {s.contact_name}</div>}
                             <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                               {phone10 ? (
                                 <>
@@ -747,13 +764,13 @@ export default function CallSheetPage() {
                               )}
                             </div>
                           </td>
-                          <td data-label="Status & Note">
+                          <td data-label="Status & Note" style={{ maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                             <div className="row" style={{ gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 5 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: meta.bg, color: meta.fg }}>
                                 {meta.label}
                               </span>
                               {log?.called_at && (
-                                <span className="cell-sub" style={{ fontSize: 11 }}>
+                                <span className="cell-sub" style={{ fontSize: 11, wordBreak: 'break-word' }}>
                                   {fmtTime(log.called_at)}{log.called_by_name ? ` · ${log.called_by_name}` : ''}
                                 </span>
                               )}
@@ -812,7 +829,7 @@ export default function CallSheetPage() {
                             </div>
                             <input
                               className="input"
-                              style={{ width: '100%', fontSize: 13, padding: '5px 8px', borderRadius: 7 }}
+                              style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', fontSize: 13, padding: '5px 8px', borderRadius: 7 }}
                               placeholder="Remark / order note..."
                               value={draft}
                               onChange={(e) => setNoteDrafts((d) => ({ ...d, [s.id]: e.target.value }))}
@@ -826,7 +843,7 @@ export default function CallSheetPage() {
                               }}
                             />
                             {prev && (
-                              <div className="cell-sub" style={{ fontSize: 11, marginTop: 4 }}>
+                              <div className="cell-sub" style={{ fontSize: 11, marginTop: 4, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                 Last ({fmtShortDate(prev.call_date)}): {STATUS_META[prev.status]?.label ?? prev.status}
                                 {prev.note ? ` · "${prev.note}"` : ''}
                               </div>
