@@ -85,6 +85,18 @@ ${Number(t.discount_paise) ? `<p class="muted">Item amounts are before bill disc
 <table>${head([['Date'], ['Bills', 1], ['Cases', 1], ['Amount', 1], ['']])}<tbody>${days.map((d) => `<tr><td>${niceDate(d.dy)}</td><td class="n">${int(d.bills)}</td><td class="n">${int(d.cases)}</td><td class="n">${rupees(d.amount_paise)}</td>
 <td style="width:35%"><span class="bar" style="width:${Math.max(2, Math.round((Number(d.amount_paise) / maxDay) * 100))}%"></span></td></tr>`).join('')}</tbody></table>
 
+${(r.by_day_vehicle ?? []).length > 0 ? `
+<h2>Day-wise vehicle sales</h2>
+<table>${head([['Date'], ...(r.by_vehicle ?? []).map((v) => [v.vehicle, 1]), ['Day total', 1]])}
+<tbody>${[...(r.by_day ?? [])].reverse().map((d) => {
+  const vMap = new Map((r.by_day_vehicle ?? []).filter((x) => x.dy === d.dy).map((x) => [x.vehicle, x]))
+  return `<tr><td>${niceDate(d.dy)}</td>${(r.by_vehicle ?? []).map((v) => {
+    const item = vMap.get(v.vehicle)
+    return `<td class="n">${item ? `${rupees(item.amount_paise)} <span class="muted">(${int(item.cases)})</span>` : '—'}</td>`
+  }).join('')}<td class="n"><b>${rupees(d.amount_paise)}</b> <span class="muted">(${int(d.cases)})</span></td></tr>`
+}).join('')}</tbody></table>
+` : ''}
+
 <h2>Top shops</h2>
 <table>${head([['#'], ['Shop'], ['Area'], ['Bills', 1], ['Cases', 1], ['Amount', 1]])}<tbody>${shops.map((s, k) => `<tr><td class="muted">${k + 1}</td><td>${esc(s.name)}</td><td class="muted">${esc(s.locality ?? '')}</td><td class="n">${int(s.bills)}</td><td class="n">${int(s.cases)}</td><td class="n">${rupees(s.amount_paise)}</td></tr>`).join('')}</tbody></table>
 `}

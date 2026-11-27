@@ -230,7 +230,55 @@ export default function SalesReportPage() {
         })
       }
 
-      // 6. Top Shops sheet
+      // 6. Day by Vehicle matrix sheet
+      const reportVehiclesExcel = (r.by_vehicle ?? []).map((v) => v.vehicle)
+      if (reportVehiclesExcel.length && (r.by_day_vehicle ?? []).length) {
+        const wsDayVeh = wb.addWorksheet('Day by Vehicle')
+        const dvCols = [
+          { header: 'Date', key: 'date', width: 14 },
+          ...reportVehiclesExcel.flatMap((v) => [
+            { header: `${v} (₹)`, key: `${v}_amt`, width: 16 },
+            { header: `${v} (Cases)`, key: `${v}_cs`, width: 12 },
+          ]),
+          { header: 'Day Total (₹)', key: 'tot_amt', width: 16 },
+          { header: 'Day Cases', key: 'tot_cs', width: 12 },
+        ]
+        styleHead(wsDayVeh, dvCols)
+
+        const dvMap = new Map<string, { cases: number; amount_paise: number }>()
+        for (const row of r.by_day_vehicle ?? []) {
+          dvMap.set(`${row.dy}::${row.vehicle}`, { cases: Number(row.cases), amount_paise: Number(row.amount_paise) })
+        }
+
+        const sortedDays = [...(r.by_day ?? [])].sort((a, b) => b.dy.localeCompare(a.dy))
+        for (const d of sortedDays) {
+          const rowData: Record<string, string | number> = {
+            date: d.dy,
+            tot_amt: rs(d.amount_paise),
+            tot_cs: Number(d.cases),
+          }
+          for (const v of reportVehiclesExcel) {
+            const item = dvMap.get(`${d.dy}::${v}`)
+            rowData[`${v}_amt`] = item ? rs(item.amount_paise) : 0
+            rowData[`${v}_cs`] = item ? Number(item.cases) : 0
+          }
+          wsDayVeh.addRow(rowData)
+        }
+        const totRowData: Record<string, string | number> = {
+          date: 'TOTAL',
+          tot_amt: rs(grossAmt),
+          tot_cs: totCases,
+        }
+        for (const v of reportVehiclesExcel) {
+          const vehTot = (r.by_vehicle ?? []).find((x) => x.vehicle === v)
+          totRowData[`${v}_amt`] = vehTot ? rs(vehTot.amount_paise) : 0
+          totRowData[`${v}_cs`] = vehTot ? Number(vehTot.cases) : 0
+        }
+        const rTot = wsDayVeh.addRow(totRowData)
+        rTot.font = { bold: true }
+      }
+
+      // 7. Top Shops sheet
       const wsShops = wb.addWorksheet('Top Shops')
       styleHead(wsShops, [
         { header: '#', key: 'idx', width: 6 },
@@ -268,6 +316,19 @@ export default function SalesReportPage() {
   const r = rep.data, tt = r?.totals
   const net = Number(tt?.net_paise ?? 0), cases = Number(tt?.cases ?? 0), bills = Math.max(1, Number(tt?.bills ?? 0))
   const maxDay = Math.max(1, ...(r?.by_day ?? []).map((d) => Number(d.amount_paise)))
+  const reportVehicles = useMemo(() => (r?.by_vehicle ?? []).map((v) => v.vehicle), [r])
+  const dayVehMap = useMemo(() => {
+    const m = new Map<string, { cases: number; amount_paise: number; bills: number }>()
+    for (const row of r?.by_day_vehicle ?? []) {
+      m.set(`${row.dy}::${row.vehicle}`, {
+        cases: Number(row.cases),
+        amount_paise: Number(row.amount_paise),
+        bills: Number(row.bills),
+      })
+    }
+    return m
+  }, [r])
+  const dayRows = useMemo(() => [...(r?.by_day ?? [])].sort((a, b) => b.dy.localeCompare(a.dy)), [r])
   const th = (k: SortKey, label: string, num = true) => (
     <th scope="col" className={num ? 'num' : undefined} aria-sort={sort === k ? 'descending' : 'none'}>
       <button type="button" className="th-sort" onClick={() => setSort(k)}>{label}{sort === k ? ' ▾' : ''}</button></th>)
@@ -356,6 +417,75 @@ export default function SalesReportPage() {
 
         <div className="card stack" style={{ gap: 6 }}><h2 style={{ margin: 0, fontSize: 17 }}>{t('srep.byDay')}</h2>
           {r.by_day.map((d) => <Bar key={d.dy} label={niceDate(d.dy)} right={`${d.bills} ${t('srep.billsShort')} · ${d.cases} ${t('srep.casesShort')} · ${rupees(d.amount_paise)}`} pct={Number(d.amount_paise) / maxDay} />)}</div>
+
+        {reportVehicles.length > 0 && dayRows.length > 0 && (
+          <div className="card stack" style={{ gap: 8 }}>
+            <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <h2 style={{ margin: 0, fontSize: 17 }}>{t('srep.dayVehicleTitle', 'Day-wise vehicle sales')}</h2>
+              <span className="cell-sub">{t('srep.dayVehicleSub', 'Sales and cases per vehicle for each day')}</span>
+            </div>
+            <div className="table-wrap table-scroll">
+              <table className="dense">
+                <thead>
+                  <tr>
+                    <th scope="col">{t('srep.date', 'Date')}</th>
+                    {reportVehicles.map((v) => (
+                      <th key={v} scope="col" className="num">{v}</th>
+                    ))}
+                    <th scope="col" className="num">{t('srep.dayTotal', 'Day total')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dayRows.map((d) => (
+                    <tr key={d.dy}>
+                      <td className="lead">
+                        <b>{niceDate(d.dy)}</b>
+                        <div className="cell-sub">{d.bills} {t('srep.billsShort', 'bills')}</div>
+                      </td>
+                      {reportVehicles.map((v) => {
+                        const item = dayVehMap.get(`${d.dy}::${v}`)
+                        if (!item || item.amount_paise === 0) {
+                          return <td key={v} className="num muted" style={{ color: 'var(--muted, #94a3b8)' }}>—</td>
+                        }
+                        return (
+                          <td key={v} className="num">
+                            <b>{rupees(item.amount_paise)}</b>
+                            <div className="cell-sub">{item.cases} {t('srep.casesShort', 'cases')} ({item.bills})</div>
+                          </td>
+                        )
+                      })}
+                      <td className="num" style={{ background: 'var(--bg-subtle, #f8fafc)' }}>
+                        <b style={{ color: 'var(--brand-700, #15803d)' }}>{rupees(d.amount_paise)}</b>
+                        <div className="cell-sub">{d.cases} {t('srep.casesShort', 'cases')}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td className="lead"><b>{t('srep.total', 'Total')}</b></td>
+                    {reportVehicles.map((v) => {
+                      const vehTot = (r?.by_vehicle ?? []).find((x) => x.vehicle === v)
+                      if (!vehTot || !vehTot.amount_paise) {
+                        return <td key={v} className="num muted">—</td>
+                      }
+                      return (
+                        <td key={v} className="num">
+                          <b>{rupees(vehTot.amount_paise)}</b>
+                          <div className="cell-sub">{vehTot.cases} {t('srep.casesShort', 'cases')}</div>
+                        </td>
+                      )
+                    })}
+                    <td className="num" style={{ background: 'var(--bg-subtle, #f8fafc)' }}>
+                      <b style={{ color: 'var(--brand-700, #15803d)' }}>{rupees(tt?.gross_paise)}</b>
+                      <div className="cell-sub">{cases} {t('srep.casesShort', 'cases')}</div>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
 
         <div className="card stack" style={{ gap: 8 }}><h2 style={{ margin: 0, fontSize: 17 }}>{t('srep.topShops')}</h2>
           <div className="table-wrap table-scroll"><table className="dense">

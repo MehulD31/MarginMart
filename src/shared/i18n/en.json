@@ -1877,6 +1877,10 @@
     "billsShort": "bills",
     "casesShort": "cases",
     "byDay": "Day by day",
+    "dayVehicleTitle": "Day-wise vehicle sales",
+    "dayVehicleSub": "Sales and cases per vehicle for each day",
+    "dayTotal": "Day total",
+    "date": "Date",
     "topShops": "Top shops",
     "shop": "Shop",
     "ch": {

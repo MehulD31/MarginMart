@@ -8,6 +8,7 @@ const r: SalesReport = {
   by_vehicle: [{ vehicle: 'Vehicle 1', bills: 14, cases: 57, amount_paise: 2128500, margin_paise: 90000, shops: 10 }],
   by_item: [{ item: 'Nimbooz 345ml Nimbooz 345ml', brand: 'Pepsi', cases: 54, units: 1620, amount_paise: 2800000, avg_rate_paise: 51852, avg_buy_paise: 50185, margin_paise: 90000, bills: 11, shops: 10, first_sold: '2026-11-06', last_sold: '2026-11-12' }],
   by_brand: [{ brand: 'Pepsi', cases: 297, amount_paise: 12850000 }], by_day: [{ dy: '2026-11-06', bills: 5, cases: 120, amount_paise: 6000000 }],
+  by_day_vehicle: [{ dy: '2026-11-06', vehicle: 'Vehicle 1', bills: 5, cases: 120, amount_paise: 6000000 }],
   top_shops: [{ name: 'Paul <Aqua>', locality: 'Supela', bills: 1, cases: 50, amount_paise: 2475000 }],
 }
 

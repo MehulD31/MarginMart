@@ -7,6 +7,7 @@ export interface SalesReport {
   by_item: { item: string; brand: string; cases: number; units: number; amount_paise: number; avg_rate_paise: number; avg_buy_paise?: number; margin_paise: number; bills: number; shops: number; first_sold: string; last_sold: string }[]
   by_brand: { brand: string; cases: number; amount_paise: number }[]
   by_day: { dy: string; bills: number; cases: number; amount_paise: number }[]
+  by_day_vehicle: { dy: string; vehicle: string; bills: number; cases: number; amount_paise: number }[]
   top_shops: { name: string; locality: string | null; bills: number; cases: number; amount_paise: number }[]
 }
 export function rupees(p: number | null | undefined, dec?: number): string

@@ -1878,6 +1878,10 @@
     "billsShort": "बिल",
     "casesShort": "पेटी",
     "byDay": "रोज़ का",
+    "dayVehicleTitle": "दिन अनुसार गाड़ियों की बिक्री",
+    "dayVehicleSub": "हर दिन प्रत्येक गाड़ी की बिक्री और पेटी",
+    "dayTotal": "दिन का कुल",
+    "date": "तारीख",
     "topShops": "टॉप दुकानें",
     "shop": "दुकान",
     "ch": {
