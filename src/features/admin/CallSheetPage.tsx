@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import { Check, MessageCircle, Phone, PhoneCall, PhoneMissed, Clock, Plus, RotateCcw, Search, ShoppingCart } from 'lucide-react'
+import { Check, MessageCircle, Phone, PhoneCall, PhoneMissed, Clock, Plus, RotateCcw, Search, ShoppingCart, ShoppingBag } from 'lucide-react'
 import { supabase } from '../../shared/api/supabase'
 import { must } from '../../shared/api/db'
 import { useAuth } from '../../shared/api/auth'
@@ -45,6 +45,19 @@ interface CallLog {
   note: string | null
   called_by_name: string | null
   called_at: string
+}
+
+interface PurchaseItem {
+  qty: number
+  name: string
+}
+
+interface ShopLastPurchase {
+  shop_id: string
+  created_at: string
+  total_paise: number
+  purchase_type: 'bill' | 'order' | 'invoice'
+  items: PurchaseItem[] | null
 }
 
 const SHEET_ORDER = ['ROUTE 1A', 'ROUTE1B', 'ROUTE1C', 'ROUTE1D', 'ROUTE1E', 'ROUTE2A', 'ROUTE2B', 'ROUTE2C', 'ROUTE3A']
@@ -99,6 +112,37 @@ function fmtShortDate(iso: string) {
   } catch {
     return iso
   }
+}
+
+function formatPurchaseAgo(isoDate: string, todayStr: string): { label: string; dateStr: string; diffDays: number } {
+  try {
+    const dStr = isoDate.slice(0, 10)
+    const dBuy = new Date(`${dStr}T00:00:00Z`)
+    const dToday = new Date(`${todayStr}T00:00:00Z`)
+    const diffDays = Math.round((dToday.getTime() - dBuy.getTime()) / (1000 * 60 * 60 * 24))
+    const formatted = new Date(`${dStr}T00:00:00Z`).toLocaleDateString('en-IN', { timeZone: 'UTC', day: 'numeric', month: 'short' })
+
+    if (diffDays <= 0) return { label: 'Today', dateStr: formatted, diffDays: 0 }
+    if (diffDays === 1) return { label: 'Yesterday', dateStr: formatted, diffDays: 1 }
+    if (diffDays < 7) return { label: `${diffDays}d ago`, dateStr: formatted, diffDays }
+    if (diffDays < 14) return { label: '1w ago', dateStr: formatted, diffDays }
+    if (diffDays < 30) return { label: `${Math.floor(diffDays / 7)}w ago`, dateStr: formatted, diffDays }
+    return { label: `${Math.floor(diffDays / 30)}mo ago`, dateStr: formatted, diffDays }
+  } catch {
+    return { label: isoDate.slice(0, 10), dateStr: '', diffDays: 999 }
+  }
+}
+
+function formatPitchSummary(items: PurchaseItem[]): string {
+  if (!items || items.length === 0) return ''
+  const sorted = [...items].sort((a, b) => b.qty - a.qty)
+  if (sorted.length === 1) {
+    return `${sorted[0].qty} case ${sorted[0].name}`
+  }
+  if (sorted.length === 2) {
+    return `${sorted[0].qty} case ${sorted[0].name} aur ${sorted[1].qty} case ${sorted[1].name}`
+  }
+  return `${sorted[0].qty} case ${sorted[0].name}, ${sorted[1].qty} case ${sorted[1].name} aur anya`
 }
 
 export default function CallSheetPage() {
@@ -159,6 +203,13 @@ export default function CallSheetPage() {
     ),
   })
 
+  const lastPurchasesQ = useQuery({
+    queryKey: ['call_sheet_last_purchases'],
+    queryFn: () => must<ShopLastPurchase[]>(
+      supabase.from('v_shop_last_purchase').select('shop_id, created_at, total_paise, purchase_type, items')
+    ),
+  })
+
   const routeById = useMemo(() => new Map((routesQ.data ?? []).map((r) => [r.id, r])), [routesQ.data])
   const dow = isoDow(callDate)
 
@@ -208,6 +259,11 @@ export default function CallSheetPage() {
     [balancesQ.data],
   )
 
+  const lastPurchaseByShop = useMemo(
+    () => new Map((lastPurchasesQ.data ?? []).map((p) => [p.shop_id, p])),
+    [lastPurchasesQ.data],
+  )
+
   const markets = useMemo(() => {
     const set = new Set<string>()
     for (const s of activeSheet?.items ?? []) {
@@ -248,10 +304,12 @@ export default function CallSheetPage() {
       if (!needle && mktFilter && (s.mkt ?? '').trim() !== mktFilter) return false
       if (!needle) return true
       const areaName = sheetAreaByName.get(s.sheet_name) ?? ''
-      return [s.outlet_name, s.contact_name, s.phone, s.address, s.location, s.mkt, areaName, s.sheet_name, s.sr_no ? String(s.sr_no) : '']
+      const pur = s.shop_id ? lastPurchaseByShop.get(s.shop_id) : undefined
+      const purWords = (pur?.items ?? []).map((it) => `${it.qty} ${it.name}`).join(' ')
+      return [s.outlet_name, s.contact_name, s.phone, s.address, s.location, s.mkt, areaName, s.sheet_name, s.sr_no ? String(s.sr_no) : '', purWords]
         .some((v) => (v ?? '').toLowerCase().includes(needle))
     })
-  }, [activeSheet, shopsQ.data, sheetAreaByName, logByShop, prevLogByShop, statusFilter, mktFilter, q])
+  }, [activeSheet, shopsQ.data, sheetAreaByName, logByShop, prevLogByShop, lastPurchaseByShop, statusFilter, mktFilter, q])
 
   const upsertCall = useMutation({
     mutationFn: async ({ shopId, status, note }: { shopId: string; status: CallStatus; note?: string }) => {
@@ -334,7 +392,18 @@ export default function CallSheetPage() {
       {shopsQ.isLoading && <Skeleton rows={8} />}
 
       {!shopsQ.isLoading && sheets.length > 0 && <>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }} role="tablist" aria-label="Route sheets">
+        <div
+          className="row"
+          style={{
+            gap: 8,
+            overflowX: 'auto',
+            flexWrap: 'nowrap',
+            paddingBottom: 6,
+            WebkitOverflowScrolling: 'touch',
+          }}
+          role="tablist"
+          aria-label="Route sheets"
+        >
           {sheets.map((s) => {
             const active = s.name === activeSheet?.name
             return (
@@ -352,6 +421,8 @@ export default function CallSheetPage() {
                   color: '#0f172a',
                   textAlign: 'left',
                   cursor: 'pointer',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <div className="row" style={{ gap: 6, alignItems: 'center' }}>
@@ -460,6 +531,9 @@ export default function CallSheetPage() {
                       const log = logByShop.get(s.id)
                       const prev = prevLogByShop.get(s.id)
                       const bal = s.shop_id ? balanceByShop.get(s.shop_id) : undefined
+                      const pur = s.shop_id ? lastPurchaseByShop.get(s.shop_id) : undefined
+                      const purAgo = pur ? formatPurchaseAgo(pur.created_at, today) : undefined
+                      const pitchItems = pur?.items?.length ? formatPitchSummary(pur.items) : ''
                       const st: CallStatus = log?.status ?? 'pending'
                       const meta = STATUS_META[st]
                       const phone10 = cleanPhone(s.phone)
@@ -504,17 +578,122 @@ export default function CallSheetPage() {
                                 </button>
                               )}
                             </div>
-                            {areaBits && <div className="cell-sub">{areaBits}</div>}
+                            {areaBits && <div className="cell-sub" style={{ marginTop: 2 }}>{areaBits}</div>}
+
+                            {/* LAST PURCHASE & CALLING TALK-TRACK */}
+                            {pur && pur.items && pur.items.length > 0 && purAgo ? (
+                              <div
+                                style={{
+                                  marginTop: 7,
+                                  padding: '8px 10px',
+                                  borderRadius: 8,
+                                  background: '#f0fdfa',
+                                  border: '1px solid #a7f3d0',
+                                  fontSize: 12,
+                                }}
+                              >
+                                <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                                  <span
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      fontWeight: 700,
+                                      fontSize: 11,
+                                      color: '#065f46',
+                                      background: '#d1fae5',
+                                      padding: '2px 7px',
+                                      borderRadius: 99,
+                                    }}
+                                  >
+                                    <ShoppingBag size={11} aria-hidden="true" />
+                                    Last bought: {purAgo.label} ({purAgo.dateStr})
+                                  </span>
+                                  {pur.total_paise > 0 && (
+                                    <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 11 }}>
+                                      {formatPaise(pur.total_paise)}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: 10, color: '#059669', opacity: 0.85 }}>
+                                    • {pur.purchase_type === 'order' ? 'App Order' : 'Truck / Van'}
+                                  </span>
+                                </div>
+
+                                <div style={{ color: '#1e293b', fontWeight: 600, fontSize: 12, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                                  🛒 {pur.items.map((it) => `${it.qty}× ${it.name}`).join(' · ')}
+                                </div>
+
+                                {pitchItems && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setNoteDrafts((d) => ({
+                                      ...d,
+                                      [s.id]: draft ? `${draft} · Refill ${pitchItems}?` : `Refill: ${pitchItems}?`
+                                    }))}
+                                    title="Click to insert talk-track into remark note"
+                                    style={{
+                                      marginTop: 5,
+                                      paddingTop: 5,
+                                      border: 0,
+                                      borderTop: '1px dashed #6ee7b7',
+                                      background: 'transparent',
+                                      color: '#047857',
+                                      fontSize: 11,
+                                      lineHeight: 1.35,
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                      padding: '5px 0 0 0',
+                                      display: 'block',
+                                      width: '100%',
+                                    }}
+                                  >
+                                    🗣️ <strong>Say on call:</strong> &ldquo;Bhaiya, {purAgo.label === 'Today' || purAgo.label === 'Yesterday' ? purAgo.label.toLowerCase() : purAgo.dateStr} ko <strong>{pitchItems}</strong> liya tha — refill bhejein?&rdquo;
+                                    <span style={{ fontSize: 10, color: '#059669', textDecoration: 'underline', marginLeft: 6, fontWeight: 500 }}>
+                                      (tap to note)
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div
+                                style={{
+                                  marginTop: 5,
+                                  fontSize: 11,
+                                  color: '#64748b',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  background: '#f8fafc',
+                                  padding: '3px 8px',
+                                  borderRadius: 6,
+                                  border: '1px dashed #cbd5e1',
+                                }}
+                              >
+                                <span>🆕 No past orders in app · Pitch starter pack (Dew/Sting/Aquafina)</span>
+                              </div>
+                            )}
                           </td>
                           <td data-label="Call">
-                            {s.contact_name && <div style={{ fontSize: 12, marginBottom: 3 }}>{s.contact_name}</div>}
-                            <div className="row" style={{ gap: 5, flexWrap: 'wrap' }}>
+                            {s.contact_name && <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, color: '#334155' }}>👤 {s.contact_name}</div>}
+                            <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                               {phone10 ? (
                                 <>
                                   <a
                                     href={`tel:+91${phone10}`}
                                     className="btn-sm"
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#16a34a', color: '#fff', textDecoration: 'none', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      background: '#16a34a',
+                                      color: '#fff',
+                                      textDecoration: 'none',
+                                      padding: '6px 10px',
+                                      borderRadius: 7,
+                                      fontWeight: 700,
+                                      fontSize: 12,
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                                    }}
                                   >
                                     <Phone size={13} aria-hidden="true" /> {phone10}
                                   </a>
@@ -524,7 +703,19 @@ export default function CallSheetPage() {
                                     rel="noreferrer"
                                     className="btn-sm"
                                     title="WhatsApp"
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#ecfdf5', color: '#166534', border: '1px solid #bbf7d0', textDecoration: 'none', padding: '4px 7px', borderRadius: 6 }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3,
+                                      background: '#ecfdf5',
+                                      color: '#166534',
+                                      border: '1px solid #bbf7d0',
+                                      textDecoration: 'none',
+                                      padding: '6px 9px',
+                                      borderRadius: 7,
+                                      fontWeight: 600,
+                                      fontSize: 12
+                                    }}
                                   >
                                     <MessageCircle size={13} aria-hidden="true" /> WA
                                   </a>
@@ -538,16 +729,27 @@ export default function CallSheetPage() {
                                   className="btn-sm"
                                   title="Create order for this shop"
                                   onClick={() => navigate(`/admin/orders?shopId=${s.shop_id}`)}
-                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                    background: '#f0fdf4',
+                                    color: '#15803d',
+                                    border: '1px solid #86efac',
+                                    padding: '6px 9px',
+                                    borderRadius: 7,
+                                    fontWeight: 600,
+                                    fontSize: 12
+                                  }}
                                 >
-                                  <ShoppingCart size={12} aria-hidden="true" /> + Order
+                                  <ShoppingCart size={13} aria-hidden="true" /> + Order
                                 </button>
                               )}
                             </div>
                           </td>
                           <td data-label="Status & Note">
-                            <div className="row" style={{ gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
-                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: meta.bg, color: meta.fg }}>
+                            <div className="row" style={{ gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 5 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: meta.bg, color: meta.fg }}>
                                 {meta.label}
                               </span>
                               {log?.called_at && (
@@ -556,33 +758,61 @@ export default function CallSheetPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginBottom: 5 }}>
-                              <button type="button" className="btn-sm" title="Order taken" aria-pressed={st === 'order_taken'}
-                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'order_taken' })}>
+                            <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                              <button
+                                type="button"
+                                className="btn-sm"
+                                title="Order taken"
+                                aria-pressed={st === 'order_taken'}
+                                style={st === 'order_taken' ? { background: '#16a34a', color: '#fff', borderColor: '#15803d', fontWeight: 700 } : undefined}
+                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'order_taken' })}
+                              >
                                 <Check size={12} aria-hidden="true" /> Order
                               </button>
-                              <button type="button" className="btn-sm" title="Called" aria-pressed={st === 'called'}
-                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'called' })}>
+                              <button
+                                type="button"
+                                className="btn-sm"
+                                title="Called"
+                                aria-pressed={st === 'called'}
+                                style={st === 'called' ? { background: '#2563eb', color: '#fff', borderColor: '#1d4ed8', fontWeight: 700 } : undefined}
+                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'called' })}
+                              >
                                 <PhoneCall size={12} aria-hidden="true" /> Called
                               </button>
-                              <button type="button" className="btn-sm" title="No answer" aria-pressed={st === 'no_answer'}
-                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'no_answer' })}>
+                              <button
+                                type="button"
+                                className="btn-sm"
+                                title="No answer"
+                                aria-pressed={st === 'no_answer'}
+                                style={st === 'no_answer' ? { background: '#dc2626', color: '#fff', borderColor: '#b91c1c', fontWeight: 700 } : undefined}
+                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'no_answer' })}
+                              >
                                 <PhoneMissed size={12} aria-hidden="true" /> No ans
                               </button>
-                              <button type="button" className="btn-sm" title="Call back" aria-pressed={st === 'callback'}
-                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'callback' })}>
+                              <button
+                                type="button"
+                                className="btn-sm"
+                                title="Call back"
+                                aria-pressed={st === 'callback'}
+                                style={st === 'callback' ? { background: '#d97706', color: '#fff', borderColor: '#b45309', fontWeight: 700 } : undefined}
+                                onClick={() => upsertCall.mutate({ shopId: s.id, status: 'callback' })}
+                              >
                                 <Clock size={12} aria-hidden="true" /> Later
                               </button>
                               {st !== 'pending' && (
-                                <button type="button" className="btn-sm" title="Reset"
-                                  onClick={() => upsertCall.mutate({ shopId: s.id, status: 'pending', note: '' })}>
+                                <button
+                                  type="button"
+                                  className="btn-sm"
+                                  title="Reset"
+                                  onClick={() => upsertCall.mutate({ shopId: s.id, status: 'pending', note: '' })}
+                                >
                                   <RotateCcw size={12} aria-hidden="true" />
                                 </button>
                               )}
                             </div>
                             <input
                               className="input"
-                              style={{ width: '100%', fontSize: 12, padding: '4px 8px' }}
+                              style={{ width: '100%', fontSize: 13, padding: '5px 8px', borderRadius: 7 }}
                               placeholder="Remark / order note..."
                               value={draft}
                               onChange={(e) => setNoteDrafts((d) => ({ ...d, [s.id]: e.target.value }))}
@@ -596,7 +826,7 @@ export default function CallSheetPage() {
                               }}
                             />
                             {prev && (
-                              <div className="cell-sub" style={{ fontSize: 11, marginTop: 3 }}>
+                              <div className="cell-sub" style={{ fontSize: 11, marginTop: 4 }}>
                                 Last ({fmtShortDate(prev.call_date)}): {STATUS_META[prev.status]?.label ?? prev.status}
                                 {prev.note ? ` · "${prev.note}"` : ''}
                               </div>
