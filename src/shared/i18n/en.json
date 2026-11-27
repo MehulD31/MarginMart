@@ -542,6 +542,10 @@
     "week": "Last 7 days",
     "weekSub": "{{c}} cases · {{b}} bills",
     "topShops7": "Top shops (7 days)",
+    "vehicleSales": "Vehicle sales",
+    "vehicleSalesSub": "Sales by vehicle & counter",
+    "viewReport": "Full report",
+    "noVehicleSales": "No sales recorded for this period.",
     "invite": {
       "title": "Invite shops to WhatsApp group ({{n}} left)",
       "hint": "Up to 50 a day. Buyers (★) first, then area by area. Tap Send: WhatsApp opens with the message ready.",
@@ -1409,7 +1413,10 @@
       "cases": "cases · {{n}} items",
       "back": "{{n}} came back",
       "short": "{{n}} short",
-      "open": "See load"
+      "open": "See load",
+      "noSales": "No bills",
+      "trips": "trips",
+      "sales": "sales"
     },
     "onTruckNow": "On truck now",
     "parchiDue": "Sold, parchi not entered",
@@ -1864,6 +1871,7 @@
     "lastSold": "Last sold",
     "total": "Total",
     "byBrand": "By brand",
+    "byVehicle": "By vehicle",
     "howSold": "How it was sold",
     "payment": "Payment",
     "billsShort": "bills",

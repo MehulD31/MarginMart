@@ -73,8 +73,12 @@ ${Number(t.discount_paise) ? `<p class="muted">Item amounts are before bill disc
 
 <div class="two">
 <div><h2>By brand</h2><table>${head([['Brand'], ['Cases', 1], ['Amount', 1], ['Share', 1]])}<tbody>${(r.by_brand ?? []).map((b) => `<tr><td>${esc(b.brand)}</td><td class="n">${int(b.cases)}</td><td class="n">${rupees(b.amount_paise)}</td><td class="n">${pct(Number(b.amount_paise), Number(t.gross_paise))}</td></tr>`).join('')}</tbody></table></div>
-<div><h2>How it was sold</h2><table>${head([['Where'], ['Bills', 1], ['Cases', 1], ['Amount', 1]])}<tbody>${(r.by_channel ?? []).map((c) => `<tr><td>${CHANNEL[c.channel] ?? esc(c.channel)}</td><td class="n">${int(c.bills)}</td><td class="n">${int(c.cases)}</td><td class="n">${rupees(c.net)}</td></tr>`).join('')}</tbody></table>
-<h2>Payment</h2><table>${head([['Mode'], ['Bills', 1], ['Amount', 1]])}<tbody>${(r.by_mode ?? []).map((m) => `<tr><td>${MODE[m.mode] ?? esc(m.mode)}</td><td class="n">${int(m.bills)}</td><td class="n">${rupees(m.net)}</td></tr>`).join('')}</tbody></table></div>
+<div><h2>By vehicle</h2><table>${head([['Vehicle'], ['Bills', 1], ['Cases', 1], ['Amount', 1], ['Share', 1]])}<tbody>${(r.by_vehicle ?? []).map((v) => `<tr><td>${esc(v.vehicle)}</td><td class="n">${int(v.bills)}</td><td class="n">${int(v.cases)}</td><td class="n">${rupees(v.amount_paise)}</td><td class="n">${pct(Number(v.amount_paise), Number(t.gross_paise))}</td></tr>`).join('')}</tbody></table></div>
+</div>
+
+<div class="two">
+<div><h2>How it was sold</h2><table>${head([['Where'], ['Bills', 1], ['Cases', 1], ['Amount', 1]])}<tbody>${(r.by_channel ?? []).map((c) => `<tr><td>${CHANNEL[c.channel] ?? esc(c.channel)}</td><td class="n">${int(c.bills)}</td><td class="n">${int(c.cases)}</td><td class="n">${rupees(c.net)}</td></tr>`).join('')}</tbody></table></div>
+<div><h2>Payment</h2><table>${head([['Mode'], ['Bills', 1], ['Amount', 1]])}<tbody>${(r.by_mode ?? []).map((m) => `<tr><td>${MODE[m.mode] ?? esc(m.mode)}</td><td class="n">${int(m.bills)}</td><td class="n">${rupees(m.net)}</td></tr>`).join('')}</tbody></table></div>
 </div>
 
 <h2>Day by day</h2>

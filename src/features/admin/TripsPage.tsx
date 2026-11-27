@@ -80,31 +80,87 @@ function TripHistory({ onOpen }: { onOpen: (planId: string, date: string) => voi
   const today = todayIST()
   const [from, setFrom] = useState(addDays(today, -30))
   const [to, setTo] = useState(today)
+  const [vehicle, setVehicle] = useState('all')
   const q = useTripHistory(from, to)
-  const pg = usePaged(q.data ?? [], 15)
+
+  const vehicles = useMemo(() => {
+    const s = new Set<string>()
+    for (const h of q.data ?? []) {
+      if (h.vehicle) s.add(h.vehicle)
+    }
+    return Array.from(s).sort()
+  }, [q.data])
+
+  const filtered = useMemo(() => {
+    return (q.data ?? []).filter((h) => vehicle === 'all' || h.vehicle === vehicle)
+  }, [q.data, vehicle])
+
+  const totals = useMemo(() => {
+    return filtered.reduce(
+      (acc, h) => {
+        acc.billed_paise += Number(h.billed_paise ?? 0)
+        acc.sold_cases += Number(h.sold_cases ?? (h.loaded - h.returned))
+        acc.bills += Number(h.billed_bills ?? 0)
+        return acc
+      },
+      { billed_paise: 0, sold_cases: 0, bills: 0 }
+    )
+  }, [filtered])
+
+  const pg = usePaged(filtered, 15)
   const time = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString(i18n.language === 'hi' ? 'hi-IN' : 'en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : ''
   return (
     <div className="stack" data-testid="trip-history">
-      <div className="row" style={{ flexWrap: 'wrap', gap: 12 }}>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
         <label className="field"><span>{t('trip.history.from')}</span><input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></label>
         <label className="field"><span>{t('trip.history.to')}</span><input type="date" value={to} min={from} max={today} onChange={(e) => e.target.value && setTo(e.target.value)} /></label>
+        {vehicles.length > 0 && (
+          <label className="field">
+            <span>{t('srep.byVehicle', 'Vehicle')}</span>
+            <select value={vehicle} onChange={(e) => setVehicle(e.target.value)}>
+              <option value="all">{t('trip.allVehicles', 'All vehicles')}</option>
+              {vehicles.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </label>
+        )}
       </div>
       {q.isLoading ? <Skeleton rows={5} /> : q.error ? <Alert msg={{ kind: 'error', text: errorMessage(t, q.error) }} />
-        : !q.data?.length ? <Empty icon={<Truck size={24} />} title={t('trip.history.none')} /> : (
-        <div className="table-wrap"><table className="table-stack"><tbody>{pg.rows.map((h) => {
-          const stage = stageOf(h.status, h.unloaded_at)
-          return (
-            <tr key={h.id} className="clickable" onClick={() => onOpen(h.id, h.date)}>
-              <td className="lead"><div className="row"><span className="avatar-sm" aria-hidden="true"><Truck size={16} /></span>
-                <div><div className="cell-title">{h.vehicle ?? '—'} · {h.route}</div>
-                  <div className="cell-sub">{fmt(h.date, true)}{h.loaded_by ? ` · ${t('trip.history.loadedBy', { who: h.loaded_by, at: time(h.loaded_at) })}` : ''}{h.driver ? ` · ${t('loading.driver')}: ${h.driver}` : ''}</div></div></div></td>
-              <td><strong className="num">{h.loaded}</strong> <span className="cell-sub">{t('trip.history.cases', { n: h.items })}</span>
-                {h.returned > 0 && <div className="cell-sub">{t('trip.history.back', { n: h.returned })}</div>}</td>
-              <td><span className={`badge ${STAGE_LOOK[stage].badge}`}>{t(`trip.stage.${stage}`)}</span>
-                {(h.short_cases ?? 0) > 0 && <div className="cell-sub" style={{ color: 'var(--danger, #dc2626)' }}>{t('trip.history.short', { n: h.short_cases })}</div>}</td>
-              <td className="actions"><button type="button" className="btn-sm" onClick={(e) => { e.stopPropagation(); onOpen(h.id, h.date) }}>{t('trip.history.open')}</button></td>
-            </tr>)
-        })}</tbody></table><Pager p={pg} /></div>
+        : !filtered.length ? <Empty icon={<Truck size={24} />} title={t('trip.history.none')} /> : (
+        <>
+          <div className="row cell-sub" style={{ gap: 14, flexWrap: 'wrap', padding: '2px 0' }}>
+            <span><strong>{filtered.length}</strong> {t('trip.history.trips', 'trips')}</span>
+            <span>·</span>
+            <span><strong style={{ color: 'var(--brand-700, #15803d)' }}>{formatPaise(totals.billed_paise)}</strong> {t('trip.history.sales', 'sales')}</span>
+            <span>·</span>
+            <span><strong>{totals.sold_cases}</strong> {t('srep.casesShort', 'cases')}</span>
+            <span>·</span>
+            <span><strong>{totals.bills}</strong> {t('srep.billsShort', 'bills')}</span>
+          </div>
+          <div className="table-wrap"><table className="table-stack"><tbody>{pg.rows.map((h) => {
+            const stage = stageOf(h.status, h.unloaded_at)
+            return (
+              <tr key={h.id} className="clickable" onClick={() => onOpen(h.id, h.date)}>
+                <td className="lead"><div className="row"><span className="avatar-sm" aria-hidden="true"><Truck size={16} /></span>
+                  <div><div className="cell-title">{h.vehicle ?? '—'} · {h.route}</div>
+                    <div className="cell-sub">{fmt(h.date, true)}{h.loaded_by ? ` · ${t('trip.history.loadedBy', { who: h.loaded_by, at: time(h.loaded_at) })}` : ''}{h.driver ? ` · ${t('loading.driver')}: ${h.driver}` : ''}</div></div></div></td>
+                <td><strong className="num">{h.loaded}</strong> <span className="cell-sub">{t('trip.history.cases', { n: h.items })}</span>
+                  {h.returned > 0 && <div className="cell-sub">{t('trip.history.back', { n: h.returned })}</div>}</td>
+                <td>
+                  {Number(h.billed_paise ?? 0) > 0 ? (
+                    <div>
+                      <strong className="num" style={{ color: 'var(--brand-700, #15803d)' }}>{formatPaise(h.billed_paise ?? 0)}</strong>
+                      <div className="cell-sub">{h.sold_cases ?? (h.loaded - h.returned)} {t('srep.casesShort', 'cases')} · {h.billed_bills} {t('srep.billsShort', 'bills')}</div>
+                    </div>
+                  ) : (
+                    <span className="cell-sub muted">{t('trip.history.noSales', 'No bills')}</span>
+                  )}
+                </td>
+                <td><span className={`badge ${STAGE_LOOK[stage].badge}`}>{t(`trip.stage.${stage}`)}</span>
+                  {(h.short_cases ?? 0) > 0 && <div className="cell-sub" style={{ color: 'var(--danger, #dc2626)' }}>{t('trip.history.short', { n: h.short_cases })}</div>}</td>
+                <td className="actions"><button type="button" className="btn-sm" onClick={(e) => { e.stopPropagation(); onOpen(h.id, h.date) }}>{t('trip.history.open')}</button></td>
+              </tr>)
+          })}</tbody></table><Pager p={pg} /></div>
+        </>
       )}
     </div>
   )

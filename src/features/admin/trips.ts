@@ -69,6 +69,7 @@ export interface TripHistoryRow {
   id: string; date: string; status: PlanStatus; route: string; vehicle: string | null; driver: string | null
   loaded: number; returned: number; items: number; loaded_at: string | null; loaded_by: string | null
   unloaded_at: string | null; closed_at: string | null; short_cases: number | null
+  billed_paise?: number; billed_bills?: number; sold_cases?: number
 }
 export const useTripHistory = (from: string, to: string) => useQuery({
   queryKey: ['trip-history', from, to],

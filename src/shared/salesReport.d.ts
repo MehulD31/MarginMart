@@ -3,6 +3,7 @@ export interface SalesReport {
   totals: { bills: number; shops: number; days: number; items: number; cases: number; units: number; gross_paise: number; discount_paise: number; net_paise: number; cost_paise: number; margin_paise: number }
   by_mode: { mode: string; bills: number; net: number }[]
   by_channel: { channel: string; bills: number; cases: number; net: number }[]
+  by_vehicle: { vehicle: string; bills: number; cases: number; amount_paise: number; margin_paise: number; shops: number }[]
   by_item: { item: string; brand: string; cases: number; units: number; amount_paise: number; avg_rate_paise: number; avg_buy_paise?: number; margin_paise: number; bills: number; shops: number; first_sold: string; last_sold: string }[]
   by_brand: { brand: string; cases: number; amount_paise: number }[]
   by_day: { dy: string; bills: number; cases: number; amount_paise: number }[]

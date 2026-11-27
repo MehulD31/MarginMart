@@ -97,6 +97,12 @@ export default function SalesReportPage() {
         wsSum.addRow({ metric: t(`srep.ch.${c.channel}`), value: c.bills, notes: `${c.cases} cases · ₹${rs(c.net).toLocaleString('en-IN')}` })
       }
       wsSum.addRow({})
+      const vhHead = wsSum.addRow({ metric: 'Vehicle', value: 'Bills', notes: 'Cases / Net (₹)' })
+      vhHead.font = { bold: true }
+      for (const v of r.by_vehicle ?? []) {
+        wsSum.addRow({ metric: v.vehicle, value: v.bills, notes: `${v.cases} cases · ₹${rs(v.amount_paise).toLocaleString('en-IN')}` })
+      }
+      wsSum.addRow({})
       const pmHead = wsSum.addRow({ metric: 'Payment Mode', value: 'Bills', notes: 'Net (₹)' })
       pmHead.font = { bold: true }
       for (const m of r.by_mode ?? []) {
@@ -197,7 +203,34 @@ export default function SalesReportPage() {
         })
       }
 
-      // 5. Top Shops sheet
+      // 5. By Vehicle sheet
+      const wsVehicle = wb.addWorksheet('By Vehicle')
+      styleHead(wsVehicle, [
+        { header: 'Vehicle', key: 'vehicle', width: 22 },
+        { header: 'Bills', key: 'bills', width: 10 },
+        { header: 'Cases', key: 'cases', width: 12 },
+        { header: 'Amount (₹)', key: 'amount', width: 16 },
+        { header: 'Margin (₹)', key: 'margin', width: 16 },
+        { header: 'Margin %', key: 'marginPct', width: 12 },
+        { header: 'Shops', key: 'shops', width: 10 },
+        { header: 'Share %', key: 'share', width: 12 },
+      ])
+      for (const v of r.by_vehicle ?? []) {
+        const amt = Number(v.amount_paise ?? 0)
+        const mrg = Number(v.margin_paise ?? 0)
+        wsVehicle.addRow({
+          vehicle: v.vehicle,
+          bills: Number(v.bills),
+          cases: Number(v.cases),
+          amount: rs(amt),
+          margin: rs(mrg),
+          marginPct: amt ? Number(((mrg / amt) * 100).toFixed(1)) : 0,
+          shops: Number(v.shops),
+          share: grossAmt ? Number(((amt / grossAmt) * 100).toFixed(1)) : 0,
+        })
+      }
+
+      // 6. Top Shops sheet
       const wsShops = wb.addWorksheet('Top Shops')
       styleHead(wsShops, [
         { header: '#', key: 'idx', width: 6 },
@@ -303,6 +336,16 @@ export default function SalesReportPage() {
         </div>
 
         <div className="srep-grid">
+          <div className="card stack" style={{ gap: 6 }}><h2 style={{ margin: 0, fontSize: 17 }}>{t('srep.byVehicle', 'By vehicle')}</h2>
+            {(r.by_vehicle ?? []).map((v) => (
+              <Bar
+                key={v.vehicle}
+                label={v.vehicle}
+                right={`${v.cases} ${t('srep.casesShort')} · ${rupees(v.amount_paise)} (${v.bills} ${t('srep.billsShort')})`}
+                pct={Number(v.amount_paise) / Math.max(1, Number(tt!.gross_paise))}
+              />
+            ))}
+          </div>
           <div className="card stack" style={{ gap: 6 }}><h2 style={{ margin: 0, fontSize: 17 }}>{t('srep.byBrand')}</h2>
             {r.by_brand.map((b) => <Bar key={b.brand} label={b.brand} right={`${b.cases} · ${rupees(b.amount_paise)}`} pct={Number(b.amount_paise) / Math.max(1, Number(tt!.gross_paise))} />)}</div>
           <div className="card stack" style={{ gap: 6 }}><h2 style={{ margin: 0, fontSize: 17 }}>{t('srep.howSold')}</h2>

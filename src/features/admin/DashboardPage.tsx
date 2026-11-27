@@ -17,7 +17,8 @@ import { useStockRows } from './stockRows'
 import { Insights } from './Insights'
 import { DayPnlCard } from './KharchaPage'
 import { useInsights } from './useInsights'
-import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans } from './opsData'
+import { isLive, linesCases, linesTotal, planDates, useLocaleDate, useOrdersFor, usePlans, todayIST, addDays } from './opsData'
+import { type SalesReport } from '../../shared/salesReport.js'
 
 type Handover = { expected_cash_paise: number; handed_cash_paise: number; stock_diff: unknown[]; received_at: string | null }
 
@@ -79,6 +80,14 @@ export default function DashboardPage() {
   const low = lowIds(watch)
   const daysLeft = new Map((watch ?? []).map((w) => [w.variant_id, w.days_left]))
   const lowStock = stockRows.rows.filter((r) => r.active && low.has(r.variant_id)).sort((a, b) => (daysLeft.get(a.variant_id) ?? 999) - (daysLeft.get(b.variant_id) ?? 999))
+
+  const [vehPeriod, setVehPeriod] = useState<'today' | 'week'>('today')
+  const vehFrom = vehPeriod === 'today' ? todayIST() : addDays(todayIST(), -7)
+  const vehReport = useQuery({
+    queryKey: ['sales_report_veh', vehFrom, todayIST()],
+    queryFn: () => must<SalesReport>(supabase.rpc('sales_report', { p_from: vehFrom, p_to: todayIST() })),
+    refetchInterval: 120_000,
+  })
 
   const live = useMemo(() => (orders.data ?? []).filter(isLive), [orders.data])
   // Counter + truck bills are orders too: they count in 'Most ordered' and in the shop / case / value boxes.
@@ -168,10 +177,11 @@ export default function DashboardPage() {
               const os = live.filter((o) => o.route_day_plan_id === p.id)
               const routeShops = (shops.data ?? []).filter((x) => x.route_id === p.route_id).length
               const c = os.reduce((a, o) => a + linesCases(o), 0)
-              const cap = vehicles.data?.find((v) => v.id === p.vehicle_id)?.capacity_cases ?? 120
+              const veh = vehicles.data?.find((v) => v.id === p.vehicle_id)
+              const cap = veh?.capacity_cases ?? 120
               return (
                 <Link key={p.id} to="/admin/loading" className="card route-card">
-                  <div className="row-between"><div className="row"><span className="icon-tile sm"><Truck size={18} aria-hidden="true" /></span><strong>{p.route.name}</strong></div>
+                  <div className="row-between"><div className="row"><span className="icon-tile sm"><Truck size={18} aria-hidden="true" /></span><strong>{p.route.name}</strong>{veh && <span className="cell-sub">({veh.name})</span>}</div>
                     <span className={`badge ${p.status === 'planning' ? 'badge-blue' : 'badge-amber'}`}>{t(`loading.status.${p.status}`)}</span></div>
                   <Meter label={t('dash.shopsOrdered')} value={os.length} max={routeShops} />
                   <Meter label={t('dash.truckFill')} value={c} max={cap} warn />
@@ -203,6 +213,64 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="card stack" style={{ gap: 10 }} data-testid="vehicle-sales-card">
+          <div className="row-between" style={{ flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 17 }}>{t('dash.vehicleSales', 'Vehicle sales')}</h2>
+              <div className="cell-sub">{t('dash.vehicleSalesSub', 'Sales by vehicle & counter')}</div>
+            </div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <div className="segmented" role="tablist">
+                <button type="button" role="tab" className="btn-sm" aria-selected={vehPeriod === 'today'} onClick={() => setVehPeriod('today')}>{t('srep.k.today')}</button>
+                <button type="button" role="tab" className="btn-sm" aria-selected={vehPeriod === 'week'} onClick={() => setVehPeriod('week')}>{t('srep.k.week')}</button>
+              </div>
+              <Link to="/admin/report" className="button btn-sm ghost" style={{ textDecoration: 'none' }}>
+                <TrendingUp size={15} aria-hidden="true" /> {t('dash.viewReport', 'Full report')}
+              </Link>
+            </div>
+          </div>
+          {vehReport.isLoading ? <Skeleton rows={3} /> : (() => {
+            const list = vehReport.data?.by_vehicle ?? []
+            const totalGross = Math.max(1, Number(vehReport.data?.totals?.gross_paise ?? 0))
+            if (!list.length) {
+              return (
+                <div className="muted" style={{ padding: '8px 0', fontSize: 13 }}>
+                  {t('dash.noVehicleSales', 'No sales recorded for this period.')}
+                  {vehPeriod === 'today' && (
+                    <button type="button" className="btn-sm" style={{ marginLeft: 8 }} onClick={() => setVehPeriod('week')}>
+                      {t('dash.week', 'Last 7 days')}
+                    </button>
+                  )}
+                </div>
+              )
+            }
+            return (
+              <ul className="plain-list stack" style={{ gap: 8 }}>
+                {list.map((v) => {
+                  const pct = (Number(v.amount_paise) / totalGross) * 100
+                  return (
+                    <li key={v.vehicle} className="stack" style={{ gap: 3 }}>
+                      <div className="row-between cell-sub" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                          <Truck size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                          {v.vehicle}
+                        </span>
+                        <span className="num">
+                          {v.cases} {t('srep.casesShort')} · {formatPaise(v.amount_paise)}
+                          <span className="muted" style={{ marginLeft: 6 }}>({v.bills} {t('srep.billsShort')})</span>
+                        </span>
+                      </div>
+                      <div className="srep-bar">
+                        <i style={{ width: `${Math.max(2, Math.min(100, pct))}%` }} />
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )
+          })()}
         </div>
 
         {total > 0 && <div className="stack">
