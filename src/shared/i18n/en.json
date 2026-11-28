@@ -83,7 +83,8 @@
     "products": "Products",
     "pepsi": "Pepsi portal",
     "salesReport": "Sales report",
-    "buying": "Who buys what"
+    "buying": "Who buys what",
+    "fleet": "Live vehicles"
   },
   "common": {
     "comingSoon": "Coming soon",
@@ -1822,6 +1823,13 @@
     "casesN": "{{n}} cases", "shopsN": "{{n}} shops", "rate": "rate",
     "itemsBought": "Items bought, most first", "recentBills": "Recent bills", "routeBill": "Route bill",
     "avgRate": "avg rate {{r}}", "lastRate": "last {{r}}", "rateRange": "rate range {{r}}", "times": "{{n}} bills", "avgRateLabel": "Average rate", "whoBuys": "Shops that buy this, most first"
+  },
+  "fleet": {
+    "title": "Live vehicles", "sub": "Where each truck is now and where it went today. Updates every minute from Euler.",
+    "day": "Route of", "none": "No vehicle data yet. It starts within an hour.", "stale": "Tracking has not updated since {{at}}. The watchdog restarts it and tells the group.",
+    "updated": "updated {{at}}", "justNow": "just now", "minAgo": "{{n}} min ago", "hrAgo": "{{n}} h ago",
+    "state": { "running": "Running", "parked": "Parked", "sleep": "Parked (asleep)", "offline": "Offline" },
+    "range": "{{n}} km range", "kmToday": "{{n}} km today", "openMap": "Open in Google Maps", "whichTruck": "Which truck is this?", "notLinked": "Not set"
   },
   "srep": {
     "title": "Sales report",

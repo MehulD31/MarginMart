@@ -1,0 +1,35 @@
+name: db-apply
+# Apply ONE committed migration file to the live database (psql, single transaction). Started by hand / by an agent:
+#   gh workflow run db-apply.yml -f file=supabase/migrations/20261128000100_fleet_live.sql
+# Only files under supabase/migrations/ are accepted. Migrations are written to be re-runnable (create if not exists / or replace).
+on:
+  workflow_dispatch:
+    inputs:
+      file: { description: "supabase/migrations/<name>.sql", required: true }
+permissions: { contents: read }
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "supabase/migrations", sparse-checkout-cone-mode: false }
+      - name: Apply
+        env:
+          FILE: ${{ github.event.inputs.file }}
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          case "$FILE" in supabase/migrations/*.sql) ;; *) echo "file must be supabase/migrations/*.sql"; exit 1 ;; esac
+          test -f "$FILE" || { echo "no such file $FILE"; exit 1; }
+          command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null; }
+          psql "$DB" -v ON_ERROR_STOP=1 --single-transaction -q -f "$FILE"
+          echo "applied $FILE"
+      - name: Tell the KD group if this failed
+        if: failure()
+        env:
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${KD_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${KD_CHAT_ID}" \
+            --data-urlencode "text=⚠️ Database update fail hua (${{ github.event.inputs.file }}). Details: ${URL}" > /dev/null

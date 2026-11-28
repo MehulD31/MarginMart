@@ -1,0 +1,29 @@
+name: fleet
+# Live vehicle tracking (scripts/fleet/poll.mjs): reads Euler Shepherd every minute for ~57 minutes and writes fleet_vehicle /
+# fleet_point. Started every hour on the minute by Supabase pg_cron -> /api/tick?mode=fleet (GitHub's own schedule runs late).
+# A new run replaces the one still running, so there is never more than one poller.
+on:
+  workflow_dispatch:
+    inputs:
+      minutes: { description: "how long to poll (default 57)", required: false, default: "" }
+concurrency: { group: fleet, cancel-in-progress: true }
+permissions: { contents: read }
+jobs:
+  poll:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 62
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "scripts/fleet\nscripts/scheme-bot/lib.mjs", sparse-checkout-cone-mode: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: Poll Euler
+        env:
+          EULER_USER: ${{ secrets.EULER_USER }}
+          EULER_PASS: ${{ secrets.EULER_PASS }}
+          RUN_MINUTES: ${{ github.event.inputs.minutes }}
+          KD_BOT_TOKEN: ${{ secrets.KD_BOT_TOKEN }}
+          KD_CHAT_ID: ${{ secrets.KD_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/fleet/poll.mjs

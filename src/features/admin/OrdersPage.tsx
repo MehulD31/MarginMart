@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
@@ -59,9 +59,9 @@ export default function OrdersPage() {
   const prefillShopId = searchParams.get('shopId') ?? undefined
   const [adding, setAdding] = useState(!!prefillShopId)
   const [moving, setMoving] = useState<AdminOrder | null>(null)
-  useEffect(() => {
-    if (prefillShopId) setAdding(true)
-  }, [prefillShopId])
+  // a new ?shopId= in the URL opens "New order" (adjusted while rendering, not in an effect)
+  const [seenPrefill, setSeenPrefill] = useState(prefillShopId)
+  if (prefillShopId !== seenPrefill) { setSeenPrefill(prefillShopId); if (prefillShopId) setAdding(true) }
   const closeAdding = () => {
     setAdding(false)
     if (prefillShopId) {
@@ -209,12 +209,13 @@ export function AddOrder({ initialDate, initialVehicle, initialShopId, onReady }
     queryKey: ['shop', 'active-all'],
     queryFn: () => must<ShopWithRoute[]>(supabase.from('shop').select('*, route(name)').eq('active', true).order('name')),
   })
-  useEffect(() => {
-    if (initialShopId && !shop && shops.data) {
-      const found = shops.data.find((s) => s.id === initialShopId)
-      if (found) setShop(found)
-    }
-  }, [initialShopId, shop, shops.data])
+  // pick the shop from the URL once, when the shop list arrives ("Change shop" afterwards is not undone)
+  const [usedInitial, setUsedInitial] = useState(false)
+  if (!usedInitial && initialShopId && !shop && shops.data) {
+    setUsedInitial(true)
+    const found = shops.data.find((s) => s.id === initialShopId)
+    if (found) setShop(found)
+  }
   const trips = useQuery({
     queryKey: ['plans', 'on', date],
     enabled: !!date,

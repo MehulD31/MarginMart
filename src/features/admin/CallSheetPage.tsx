@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { Check, MessageCircle, Phone, PhoneCall, PhoneMissed, Clock, Plus, RotateCcw, Search, ShoppingCart, ShoppingBag } from 'lucide-react'
@@ -235,14 +235,9 @@ export default function CallSheetPage() {
     })
   }, [shopsQ.data, routeById, dow])
 
-  useEffect(() => {
-    if (!sheet && sheets.length) {
-      const firstToday = sheets.find((s) => s.isToday)
-      setSheet((firstToday ?? sheets[0]).name)
-    }
-  }, [sheets, sheet])
 
-  const activeSheet = sheets.find((s) => s.name === sheet) ?? sheets[0]
+  // nothing picked yet: today's route sheet, else the first one (derived, so no extra render)
+  const activeSheet = sheets.find((s) => s.name === sheet) ?? sheets.find((s) => s.isToday) ?? sheets[0]
 
   const logByShop = useMemo(() => new Map((logsQ.data ?? []).map((l) => [l.sheet_shop_id, l])), [logsQ.data])
 

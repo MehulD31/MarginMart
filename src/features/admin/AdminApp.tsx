@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, Bot, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, PhoneCall, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, TrendingUp, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { BarChart3, Bot, BookOpen, Boxes, Building2, Calculator, Coins, FileText, Gift, PhoneCall, Radio, ShoppingCart, ClipboardCheck, ClipboardList, Ellipsis, History, Inbox, LayoutDashboard, Navigation, LogOut, Package, Receipt, Route as RouteIcon, Store, Tags, TrendingUp, Truck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../../shared/api/auth'
 import { useFitTables } from '../../shared/ui/useFitTables'
 import { useStockWatch } from '../../shared/api/db'
@@ -36,6 +36,7 @@ import PepsiPage from './PepsiPage'
 import AssistantPage from './AssistantPage'
 import SalesReportPage from './SalesReportPage'
 import BuyingPage from './BuyingPage'
+import FleetPage from './FleetPage'
 import CallSheetPage from './CallSheetPage'
 import AttendancePage from './AttendancePage'
 
@@ -70,6 +71,7 @@ export default function AdminApp() {
     { to: 'call-sheet', label: t('nav.callSheet'), icon: PhoneCall },
     { to: 'attendance', label: t('nav.attendance'), icon: ClipboardCheck },
     { to: 'loading', label: t('nav.loading'), icon: Truck },
+    { to: 'fleet', label: t('nav.fleet'), icon: Navigation },
     { to: 'live', label: t('nav.live'), icon: Radio },
     { to: 'sales', label: t('nav.sales'), icon: Receipt },
     { to: 'khata', label: t('nav.khata'), icon: BookOpen },
@@ -144,6 +146,7 @@ export default function AdminApp() {
           <Route path="call-sheet" element={<CallSheetPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="loading" element={<TripsPage />} />
+      <Route path="fleet" element={<FleetPage />} />
           <Route path="live" element={<LivePage />} />
           <Route path="sales" element={<CounterSalesPage />} />
           <Route path="khata" element={<KhataPage />} />

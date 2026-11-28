@@ -319,6 +319,17 @@ async function watchdog() {
       await mark('size-alert', today)
     }
   } catch (e) { alerts.push(`database check fail: ${e.message.slice(0, 100)}`) }
+  // 6a. live vehicle tracking (fleet.yml every hour): readings older than 90 min = poller stopped -> start it once, alert once a day
+  try {
+    const [f] = await db('fleet_vehicle?select=updated_at&order=updated_at.desc&limit=1')
+    if (f && Date.now() - Date.parse(f.updated_at) > 90 * 60000) {
+      try { await gh('actions/workflows/fleet.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main' }) }) } catch (e) { console.log('fleet restart', e.message) }
+      if (!(await done('fleet-stale', today))) {
+        alerts.push(`Gaadi tracking ${istTime(f.updated_at)} se update nahi hui. Poller dobara chalu kiya.`)
+        await mark('fleet-stale', today)
+      }
+    }
+  } catch (e) { alerts.push(`gaadi tracking check fail: ${e.message.slice(0, 100)}`) }
   // 6b. Pepsi portal data fresh (synced in the last 26 h): retry once, then alert once a day
   try {
     if (env('OMS_USER', false)) {

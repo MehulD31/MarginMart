@@ -14,9 +14,11 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
     "@tanstack/react-query": "5.105.0",
+    "@types/leaflet": "^1.9.12",
     "exceljs": "4.4.0",
     "i18next": "26.5.11",
     "idb": "8.0.4",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.11.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

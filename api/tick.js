@@ -16,6 +16,13 @@ export default async function handler(req, res) {
   const force = req.query?.force === '1'
   // Timed jobs (pg_cron calls this at the exact minute; GitHub's own schedule runs hours late): ?mode=social starts that ops job.
   const timed = ['morning', 'night', 'weekly', 'watchdog', 'social'].includes(String(req.query?.mode)) ? String(req.query.mode) : null
+  // ?mode=fleet (every hour): starts the live vehicle poller (.github/workflows/fleet.yml), which reads Euler for ~57 minutes.
+  if (String(req.query?.mode) === 'fleet') {
+    const f = await fetch(`https://api.github.com/repos/${env.GH_REPO}/actions/workflows/fleet.yml/dispatches`, {
+      method: 'POST', headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'main', inputs: {} }) })
+    return res.status(200).json({ started: f.ok, mode: 'fleet', github: f.status })
+  }
   if (!due && !force && !timed) return res.status(200).json({ started: false })
   const g = await fetch(`https://api.github.com/repos/${env.GH_REPO}/actions/workflows/ops.yml/dispatches`, {
     method: 'POST', headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
