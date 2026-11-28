@@ -17,12 +17,15 @@ jobs:
       - name: Apply
         env:
           FILE: ${{ github.event.inputs.file }}
-          DB: ${{ secrets.SUPABASE_DB_URL }}
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           case "$FILE" in supabase/migrations/*.sql) ;; *) echo "file must be supabase/migrations/*.sql"; exit 1 ;; esac
           test -f "$FILE" || { echo "no such file $FILE"; exit 1; }
           command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null; }
-          psql "$DB" -v ON_ERROR_STOP=1 --single-transaction -q -f "$FILE"
+          test -n "$PGPASSWORD" || { echo "SUPABASE_DB_PASSWORD secret missing"; exit 1; }
+          # same connection as the nightly backup (backup.yml), which works
+          psql -h aws-1-ap-northeast-1.pooler.supabase.com -p 5432 -U postgres.oaqdmffxgqjnpfdqejtf -d postgres \
+            -v ON_ERROR_STOP=1 --single-transaction -q -f "$FILE"
           echo "applied $FILE"
       - name: Tell the KD group if this failed
         if: failure()
